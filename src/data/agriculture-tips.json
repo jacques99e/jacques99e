@@ -1,0 +1,19 @@
+{
+  "west_africa": {
+    "mais": ["Semis en début de saison des pluies.", "Désherbage 3 semaines après semis.", "Surveiller la striure du maïs."],
+    "riz": ["Maintenir 5 cm d'eau en phase végétative.", "Récolte quand 80% des épis sont dorés."],
+    "manioc": ["Plantation sur billons drainés.", "Récolte 9-12 mois selon variété."]
+  },
+  "east_africa": {
+    "mais": ["Utiliser des variétés résistantes à la sécheresse.", "Rotation avec haricot pour fixer l'azote."],
+    "cafe": ["Taille après récolte principale.", "Ombrage 30-40% pour arabica."],
+    "banane": ["Mulch pour conserver l'humidité.", "Surveiller le charançon."]
+  },
+  "central": {
+    "manioc": ["Éviter les sols hydromorphes.", "Traiter les boutures avant plantation."],
+    "cacao": ["Ombrage permanent recommandé.", "Fertilisation NPK 2x/an."]
+  },
+  "default": {
+    "general": ["Consultez l'extension agricole locale.", "Enregistrez chaque intrant dans Wazo.", "Adaptez l'irrigation à la pluviométrie."]
+  }
+}

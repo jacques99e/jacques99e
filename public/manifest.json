@@ -1,0 +1,18 @@
+{
+  "name": "Wazo Digital",
+  "short_name": "Wazo",
+  "description": "Digitalisez votre micro-entreprise en Afrique",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F5F5F0",
+  "theme_color": "#075E54",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
