@@ -1,3 +1,5 @@
+import { notifyAlertsChanged } from "@/lib/alerts";
+
 export interface LocalProduct {
   id: string;
   name: string;
@@ -44,4 +46,5 @@ export function readLocalProducts(): LocalProduct[] {
 export function writeLocalProducts(products: LocalProduct[]) {
   const normalized = products.map((product) => normalizeProduct(product));
   localStorage.setItem("wazo_products", JSON.stringify(normalized));
+  notifyAlertsChanged();
 }

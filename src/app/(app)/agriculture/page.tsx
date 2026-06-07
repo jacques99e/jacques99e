@@ -1,70 +1,60 @@
 "use client";
 
-import Link from "next/link";
-import { BookOpen, Calculator, ShoppingBasket, Sprout } from "lucide-react";
+import { BookOpen, Calculator, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
+import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
+import { ModulePublicPortals } from "@/components/ModulePublicPortals";
+import { useI18n } from "@/contexts/I18nContext";
+
+const iconStyle = "bg-emerald-700/10 text-emerald-800";
 
 export default function AgriculturePage() {
+  const { t } = useI18n();
+
   return (
-    <div className="min-h-screen bg-[#F5F5F0] pb-24">
-      <header className="bg-[#075E54] px-4 py-4 text-white shadow-sm">
-        <div className="mx-auto max-w-lg">
-          <h1 className="text-lg font-semibold">Module Agriculture</h1>
-        </div>
-      </header>
+    <>
+      <AppHeader title={t("modules.agriculture.title")} subtitle="Module" />
+      <main className="app-page animate-fade-in space-y-3 pb-6">
+        <ModulePublicPortals moduleId="agriculture" />
+        <AgricultureInsights />
 
-      <main className="mx-auto max-w-lg space-y-4 p-4">
-        <Link
+        <ModuleMenuLink
           href="/agriculture/cultures"
-          className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <div className="rounded-xl bg-[#8B7355]/15 p-2">
-            <Sprout className="h-5 w-5 text-[#8B7355]" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Suivi des cultures</p>
-            <p className="text-xs text-gray-500">Parcelles, stades et suivi du semis</p>
-          </div>
-        </Link>
-
-        <Link
+          icon={Sprout}
+          title="Suivi des cultures"
+          description="Parcelles, stades et suivi du semis"
+          iconClassName={iconStyle}
+        />
+        <ModuleMenuLink
           href="/agriculture/intrants"
-          className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <div className="rounded-xl bg-[#8B7355]/15 p-2">
-            <BookOpen className="h-5 w-5 text-[#8B7355]" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Journal des intrants</p>
-            <p className="text-xs text-gray-500">Engrais, pesticides, eau</p>
-          </div>
-        </Link>
-
-        <Link
+          icon={BookOpen}
+          title="Journal des intrants"
+          description="Engrais, pesticides, eau"
+          iconClassName={iconStyle}
+        />
+        <ModuleMenuLink
+          href="/agriculture/marches"
+          icon={TrendingUp}
+          title="Prix des marchés"
+          description="Cacao, café, maïs, anacarde…"
+          iconClassName={iconStyle}
+        />
+        <ModuleMenuLink
           href="/agriculture/rendement"
-          className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <div className="rounded-xl bg-[#8B7355]/15 p-2">
-            <Calculator className="h-5 w-5 text-[#8B7355]" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Calculateur de rendement</p>
-            <p className="text-xs text-gray-500">kg récoltés / hectare</p>
-          </div>
-        </Link>
-
-        <Link
+          icon={Calculator}
+          title="Calculateur de rendement"
+          description="kg récoltés / hectare et revenus"
+          iconClassName={iconStyle}
+        />
+        <ModuleMenuLink
           href="/products/add?category=Agriculture"
-          className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <div className="rounded-xl bg-[#8B7355]/15 p-2">
-            <ShoppingBasket className="h-5 w-5 text-[#8B7355]" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">Vendre ma récolte</p>
-            <p className="text-xs text-gray-500">Créer rapidement un produit agricole</p>
-          </div>
-        </Link>
+          icon={ShoppingBasket}
+          title="Vendre ma récolte"
+          description="Créer rapidement un produit agricole"
+          iconClassName={iconStyle}
+        />
       </main>
-    </div>
+    </>
   );
 }

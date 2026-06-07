@@ -3,6 +3,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } });
+  const pathname = request.nextUrl.pathname;
+  const publicPaths = ["/", "/login", "/register", "/auth/receive"];
+
+  // Avoid blocking public/auth handoff routes on external auth network hiccups.
+  if (publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    return response;
+  }
 
   try {
     const supabase = createServerClient(
@@ -26,7 +33,12 @@ export async function proxy(request: NextRequest) {
       }
     );
 
-    await supabase.auth.getUser();
+    await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("auth timeout")), 2500)
+      ),
+    ]);
   } catch {
     // Ignore auth proxy failures in local test mode.
   }
@@ -36,6 +48,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|boutique|api).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|boutique|formation|suivi|trace|api).*)",
   ],
 };

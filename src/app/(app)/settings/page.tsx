@@ -1,9 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
+import { localStore } from "@/lib/db";
+import { mapErrorToUserMessage } from "@/lib/user-messages";
 
 type CheckState = "idle" | "ok" | "error";
 
@@ -12,16 +18,29 @@ interface CheckResult {
   message: string;
 }
 
+interface ApiTestResult {
+  path: string;
+  status: number | null;
+  ok: boolean;
+  detail: string;
+}
+
 const defaultResult: CheckResult = {
   state: "idle",
   message: "Pas encore verifie.",
 };
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  const { canManageSettings, role } = useRole(user?.id);
   const [running, setRunning] = useState(false);
   const [envCheck, setEnvCheck] = useState<CheckResult>(defaultResult);
   const [authCheck, setAuthCheck] = useState<CheckResult>(defaultResult);
   const [dbCheck, setDbCheck] = useState<CheckResult>(defaultResult);
+  const [storeId, setStoreId] = useState("");
+  const [apiRunning, setApiRunning] = useState(false);
+  const [apiResults, setApiResults] = useState<ApiTestResult[]>([]);
+  const [apiSummary, setApiSummary] = useState<CheckResult>(defaultResult);
   const [lastRun, setLastRun] = useState<string>("");
 
   const runChecks = useCallback(async () => {
@@ -63,7 +82,7 @@ export default function SettingsPage() {
         message: "Connexion Auth Supabase OK.",
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      const message = mapErrorToUserMessage(error, "Connexion Auth Supabase indisponible.");
       setAuthCheck({
         state: "error",
         message: `Echec Auth Supabase: ${message}`,
@@ -83,7 +102,7 @@ export default function SettingsPage() {
         message: "Connexion base de donnees Supabase OK.",
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      const message = mapErrorToUserMessage(error, "Connexion base de donnees indisponible.");
       setDbCheck({
         state: "error",
         message: `Echec acces table stores: ${message}`,
@@ -97,6 +116,86 @@ export default function SettingsPage() {
   useEffect(() => {
     void runChecks();
   }, [runChecks]);
+
+  useEffect(() => {
+    const store = localStore.get();
+    if (store?.id) setStoreId(store.id);
+  }, []);
+
+  const runApiTests = useCallback(
+    async (mode: "authenticated" | "anonymous") => {
+      if (!storeId.trim()) {
+        setApiSummary({
+          state: "error",
+          message: "Renseigne un store_id pour lancer les tests API.",
+        });
+        setApiResults([]);
+        return;
+      }
+
+      const store = encodeURIComponent(storeId.trim());
+      const tests = [
+        {
+          path: `/api/education/courses?store_id=${store}`,
+          expected: mode === "authenticated" ? 200 : 401,
+        },
+        {
+          path: `/api/logistics/deliveries?store_id=${store}`,
+          expected: mode === "authenticated" ? 200 : 401,
+        },
+        {
+          path: `/api/blockchain/assets?store_id=${store}`,
+          expected: mode === "authenticated" ? 200 : 401,
+        },
+      ];
+
+      setApiRunning(true);
+      setApiResults([]);
+      setApiSummary({ state: "idle", message: "Tests API en cours..." });
+
+      const results = await Promise.all(
+        tests.map(async (test): Promise<ApiTestResult> => {
+          try {
+            const response = await fetch(test.path, {
+              method: "GET",
+              credentials: mode === "authenticated" ? "include" : "omit",
+            });
+            const ok = response.status === test.expected;
+            return {
+              path: test.path,
+              status: response.status,
+              ok,
+              detail: ok
+                ? `OK (${response.status})`
+                : `Attendu ${test.expected}, recu ${response.status}`,
+            };
+          } catch (error) {
+            const message = mapErrorToUserMessage(
+              error,
+              "Erreur reseau lors du test. Reessayez."
+            );
+            return {
+              path: test.path,
+              status: null,
+              ok: false,
+              detail: message,
+            };
+          }
+        })
+      );
+
+      setApiResults(results);
+      const hasError = results.some((result) => !result.ok);
+      setApiSummary({
+        state: hasError ? "error" : "ok",
+        message: hasError
+          ? "Certains tests API ont echoue. Regarde le detail ci-dessous."
+          : `Tous les tests API (${mode === "authenticated" ? "connecte" : "anonyme"}) sont OK.`,
+      });
+      setApiRunning(false);
+    },
+    [storeId]
+  );
 
   const globalState: CheckState = useMemo(() => {
     const states = [envCheck.state, authCheck.state, dbCheck.state];
@@ -114,8 +213,40 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppHeader title="Health Check" />
-      <main className="mx-auto max-w-lg space-y-4 p-4">
+      <AppHeader title="Diagnostic" subtitle="Paramètres" />
+      <main className="app-page pb-6">
+        {!canManageSettings ? (
+          <section className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+            Accès limité pour le rôle <strong>{role}</strong>. Les diagnostics sont réservés au propriétaire.
+          </section>
+        ) : (
+          <>
+            <Link
+              href="/settings/business"
+              className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
+            >
+              Paramètres métier (seuils stock, objectif CA, modèles WhatsApp) →
+            </Link>
+            <Link
+              href="/settings/notifications"
+              className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
+            >
+              Notifications, sync cloud & rapport e-mail →
+            </Link>
+            <Link
+              href="/settings/team"
+              className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
+            >
+              Équipe & rôles →
+            </Link>
+            <Link
+              href="/settings/sms"
+              className="block rounded-xl bg-wazo-orange/10 p-4 text-sm font-medium text-wazo-orange"
+            >
+              SMS (formation, livraisons, santé) →
+            </Link>
+          </>
+        )}
         <section className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium dark:text-white">Etat general</p>
@@ -135,9 +266,55 @@ export default function SettingsPage() {
           <HealthRow title="Supabase Database (stores)" result={dbCheck} />
         </section>
 
-        <Button onClick={() => void runChecks()} disabled={running} className="w-full bg-[#075E54] hover:opacity-90">
+        <Button
+          onClick={() => void runChecks()}
+          disabled={running || !canManageSettings}
+          className="w-full bg-[#075E54] hover:opacity-90"
+        >
           {running ? "Verification..." : "Relancer les verifications"}
         </Button>
+
+        <section className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800 space-y-3">
+          <p className="text-sm font-medium dark:text-white">Diagnostic API</p>
+          <p className="text-xs text-gray-600 dark:text-gray-300">
+            Teste automatiquement les endpoints proteges sans ouvrir la console.
+          </p>
+          <Input
+            value={storeId}
+            onChange={(e) => setStoreId(e.target.value)}
+            placeholder="store_id"
+            disabled={!canManageSettings}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              onClick={() => void runApiTests("authenticated")}
+              disabled={apiRunning || !canManageSettings}
+            >
+              {apiRunning ? "Test en cours..." : "Tester API connecte"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void runApiTests("anonymous")}
+              disabled={apiRunning || !canManageSettings}
+            >
+              Tester protection anonyme
+            </Button>
+          </div>
+          <HealthRow title="Resultat global API" result={apiSummary} />
+          {apiResults.length ? (
+            <div className="space-y-2">
+              {apiResults.map((result) => (
+                <div
+                  key={result.path}
+                  className="rounded-lg border border-gray-100 p-2 text-xs dark:border-gray-700"
+                >
+                  <p className="font-medium break-all">{result.path}</p>
+                  <p className={result.ok ? "text-green-700" : "text-red-700"}>{result.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </main>
     </>
   );

@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/contexts/I18nContext";
-import { localStore } from "@/lib/db";
+import { ModuleCard } from "@/components/ModuleCard";
+import { localModules, localStore } from "@/lib/db";
+import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
+import { applyPendingModule } from "@/lib/modules/preference";
+import { setBusinessVertical } from "@/lib/onboarding";
+import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { slugify } from "@/lib/utils";
-import type { Store } from "@/types";
+import type { ModuleId, Store } from "@/types";
 
 export default function SetupPage() {
   const { t } = useI18n();
@@ -21,6 +26,19 @@ export default function SetupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [offlineInfo, setOfflineInfo] = useState("");
+  const [selectedModules, setSelectedModules] = useState<ModuleId[]>(() => localModules.get());
+
+  useEffect(() => {
+    const pending = applyPendingModule();
+    if (pending) setSelectedModules(normalizeModuleIds([pending]));
+  }, []);
+
+  const toggleModule = (id: ModuleId) => {
+    setSelectedModules((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      return next.length ? next : ["commerce"];
+    });
+  };
 
   const handleNameChange = (v: string) => {
     setName(v);
@@ -93,11 +111,14 @@ export default function SetupPage() {
     const finalSlug = slug || slugify(name);
     const ownerId = user?.id || "test-user-123";
     const phone = user?.phone || "+221771234567";
+    const modules = normalizeModuleIds(selectedModules);
     setSubmitting(true);
     setError("");
     setOfflineInfo("");
 
     try {
+      localModules.save(modules);
+      setBusinessVertical(modules[0]);
       localStorage.setItem("store_name", name);
       localStorage.setItem("store_slug", finalSlug);
       localStorage.setItem("store_setup_complete", "true");
@@ -121,31 +142,82 @@ export default function SetupPage() {
       }
 
       if (user) {
-        try {
+        // La table stores possede une FK owner_id -> profiles.id. Si le profil
+        // n'existe pas encore (trigger d'inscription absent en base), l'insertion
+        // de la boutique echoue avec une violation de cle etrangere (23503).
+        // On garantit donc la presence du profil avant de creer la boutique.
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert({ id: user.id, phone: user.phone ?? null }, { onConflict: "id" });
+        if (profileError) {
+          setError(
+            mapErrorToUserMessage(profileError, "Impossible de preparer votre profil pour le moment.")
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        let candidateSlug = finalSlug;
+        let savedStore: Store | null = null;
+
+        for (let attempt = 0; attempt < 6; attempt++) {
           const { data, error: insertError } = await supabase
             .from("stores")
             .insert({
               owner_id: user.id,
               name,
-              slug: finalSlug,
+              slug: candidateSlug,
               phone: user.phone,
               whatsapp: user.phone,
               is_public: true,
             })
             .select()
             .single();
-          if (insertError) throw insertError;
-          if (data) {
-            localStore.save(data as Store);
+
+          if (!insertError) {
+            savedStore = data as Store;
+            break;
           }
-        } catch {
-          setOfflineInfo("Mode hors ligne - données locales");
+
+          if (insertError.code === "23505") {
+            const suffix = Math.random().toString(36).slice(2, 6);
+            candidateSlug = `${finalSlug}-${suffix}`;
+            continue;
+          }
+
+          setError(
+            mapErrorToUserMessage(insertError, "Impossible d'enregistrer votre boutique pour le moment.")
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        if (!savedStore) {
+          setError(
+            "Impossible de generer une URL publique unique. Essaie un autre nom d'activite.",
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        localStore.save(savedStore);
+        localStorage.setItem("store_slug", savedStore.slug);
+
+        await supabase
+          .from("profiles")
+          .upsert({ id: user.id, phone: user.phone ?? null, active_modules: modules }, { onConflict: "id" });
+
+        await supabase.from("store_modules").delete().eq("store_id", savedStore.id);
+        if (modules.length) {
+          await supabase.from("store_modules").insert(
+            modules.map((module_id) => ({ store_id: savedStore.id, module_id, enabled: true }))
+          );
         }
       }
 
       router.push("/dashboard");
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("common.error");
+      const message = mapErrorToUserMessage(e, t("common.error"));
       setError(message);
       router.push("/dashboard");
     } finally {
@@ -162,27 +234,61 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-wazo-cream px-4 py-8">
-      <div className="mx-auto max-w-sm space-y-6">
-        <h1 className="text-xl font-bold text-wazo-green">{t("setup.title")}</h1>
+    <div className="app-shell flex min-h-screen items-center px-4 py-8">
+      <div className="mx-auto w-full max-w-sm space-y-6">
+        <div className="text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-wazo-green/10 text-2xl">
+            🏪
+          </div>
+          <h1 className="text-2xl font-bold text-wazo-green">Votre activité</h1>
+          <p className="mt-1 text-sm text-gray-600">Un seul nom suffit pour démarrer</p>
+        </div>
         {offlineInfo && (
           <p className="rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700">
             {offlineInfo}
           </p>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl bg-white p-6 shadow">
+        <form onSubmit={handleSubmit} className="app-card space-y-4 p-6">
           <div>
-            <Label>{t("auth.shopName")}</Label>
-            <Input value={name} onChange={(e) => handleNameChange(e.target.value)} required className="mt-1" />
+            <Label className="text-base">Nom de la boutique</Label>
+            <Input
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              required
+              placeholder="Ex: Boutique Awa"
+              className="mt-2 h-14 text-lg"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("modules.title")}</Label>
+            <p className="text-xs text-gray-500">
+              Seules les fonctionnalités choisies apparaîtront sur votre tableau de bord.
+            </p>
+            {ALL_MODULE_IDS.map((id) => (
+              <ModuleCard
+                key={id}
+                moduleId={id}
+                enabled={selectedModules.includes(id)}
+                onToggle={toggleModule}
+              />
+            ))}
           </div>
           <div>
             <Label>{t("setup.slug")}</Label>
-            <p className="text-xs text-gray-500 mb-1">{t("setup.slugHint")}{slug}</p>
-            <Input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} required className="mt-1" />
+            <p className="mb-1 text-xs text-gray-500">
+              {t("setup.slugHint")}
+              {slug}
+            </p>
+            <Input
+              value={slug}
+              onChange={(e) => setSlug(slugify(e.target.value))}
+              required
+              className="mt-1"
+            />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? t("common.loading") : t("setup.continue")}
+          <Button type="submit" className="h-14 w-full text-lg font-bold" disabled={submitting}>
+            {submitting ? t("common.loading") : "Commencer ✅"}
           </Button>
         </form>
       </div>

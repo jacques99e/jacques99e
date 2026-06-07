@@ -10,24 +10,32 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        localAuth.saveSession(session.access_token, {
-          id: session.user.id,
-          phone: session.user.phone,
-        });
-      } else {
-        const cached = localAuth.getUser();
-        if (cached && !navigator.onLine) {
-          setUser({ id: cached.id, phone: cached.phone } as User);
-        }
-      }
+    const cached = localAuth.getUser();
+    if (cached) {
+      setUser({ id: cached.id, phone: cached.phone } as User);
       setLoading(false);
+    }
+
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          localAuth.saveSession(session.access_token, {
+            id: session.user.id,
+            phone: session.user.phone,
+          });
+        } else if (!cached) {
+          setUser(null);
+        }
+      } catch {
+        if (!cached) setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    init();
+    void init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -45,14 +53,14 @@ export function useAuth() {
     );
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, []);
 
   const sendOtp = useCallback(async (phone: string) => {
     const formatted = phone.startsWith("+") ? phone : `+${phone}`;
     const { error } = await supabase.auth.signInWithOtp({ phone: formatted });
     if (error) throw error;
     return formatted;
-  }, [supabase.auth]);
+  }, []);
 
   const verifyOtp = useCallback(async (phone: string, token: string) => {
     const { data, error } = await supabase.auth.verifyOtp({
@@ -62,13 +70,13 @@ export function useAuth() {
     });
     if (error) throw error;
     return data;
-  }, [supabase.auth]);
+  }, []);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     localAuth.clear();
     setUser(null);
-  }, [supabase.auth]);
+  }, []);
 
   return { user, loading, sendOtp, verifyOtp, signOut, supabase };
 }

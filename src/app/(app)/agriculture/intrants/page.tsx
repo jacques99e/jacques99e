@@ -30,6 +30,7 @@ export default function InputsPage() {
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [plotId, setPlotId] = useState("");
+  const [search, setSearch] = useState("");
 
   const plots = useMemo(() => {
     const raw = localStorage.getItem("wazo_cultures");
@@ -46,6 +47,25 @@ export default function InputsPage() {
     setEntries(next);
     localStorage.setItem("wazo_intrants", JSON.stringify(next));
   };
+
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(
+      (entry) =>
+        entry.name.toLowerCase().includes(q) ||
+        entry.type.toLowerCase().includes(q) ||
+        entry.plotName.toLowerCase().includes(q)
+    );
+  }, [entries, search]);
+
+  const stats = useMemo(() => {
+    return {
+      engrais: entries.filter((e) => e.type === "engrais").length,
+      pesticides: entries.filter((e) => e.type === "pesticides").length,
+      eau: entries.filter((e) => e.type === "eau").length,
+    };
+  }, [entries]);
 
   const addEntry = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +99,20 @@ export default function InputsPage() {
       </header>
 
       <main className="mx-auto max-w-lg space-y-4 p-4">
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-xl bg-white p-3 shadow-sm">
+            <p className="text-lg font-semibold text-[#075E54]">{stats.engrais}</p>
+            <p>Engrais</p>
+          </div>
+          <div className="rounded-xl bg-white p-3 shadow-sm">
+            <p className="text-lg font-semibold text-[#075E54]">{stats.pesticides}</p>
+            <p>Pesticides</p>
+          </div>
+          <div className="rounded-xl bg-white p-3 shadow-sm">
+            <p className="text-lg font-semibold text-[#075E54]">{stats.eau}</p>
+            <p>Eau</p>
+          </div>
+        </div>
         <form onSubmit={addEntry} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
           <div>
             <Label>Type d'intrant</Label>
@@ -132,8 +166,14 @@ export default function InputsPage() {
           </Button>
         </form>
 
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher (intrant, type, parcelle)"
+        />
+
         <section className="space-y-2">
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <article key={entry.id} className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="font-semibold capitalize text-gray-900">
                 {entry.type} • {entry.name}
@@ -144,7 +184,7 @@ export default function InputsPage() {
               <p className="text-xs text-gray-500">{new Date(entry.date).toLocaleDateString("fr-FR")}</p>
             </article>
           ))}
-          {entries.length === 0 && (
+          {filteredEntries.length === 0 && (
             <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
               Aucun intrant enregistré pour le moment.
             </p>

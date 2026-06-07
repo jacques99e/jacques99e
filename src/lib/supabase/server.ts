@@ -33,8 +33,9 @@ export async function createServerSupabase() {
 
 export async function createServiceSupabase() {
   const { createClient } = await import("@supabase/supabase-js");
-  return createClient(
-    supabaseUrl,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
-  );
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for server API access");
+  }
+  return createClient(supabaseUrl, serviceRoleKey);
 }

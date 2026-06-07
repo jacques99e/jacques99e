@@ -1,19 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceSupabase } from "@/lib/supabase/server";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   const storeId = request.nextUrl.searchParams.get("store_id");
-  if (!storeId) return NextResponse.json({ error: "store_id required" }, { status: 400 });
-  const supabase = await createServiceSupabase();
-  const { data, error } = await supabase.from("courses").select("*").eq("store_id", storeId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!storeId) return NextResponse.json({ error: "Identifiant boutique requis." }, { status: 400 });
+  const auth = await requireAuthContext();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "read");
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  const { data, error } = await auth.serviceSupabase.from("courses").select("*").eq("store_id", storeId);
+  if (error) return NextResponse.json({ error: "Impossible de recuperer les cours." }, { status: 500 });
   return NextResponse.json({ courses: data });
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const supabase = await createServiceSupabase();
-  const { data, error } = await supabase.from("courses").insert(body).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const storeId = typeof body.store_id === "string" ? body.store_id : null;
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const description = typeof body.description === "string" ? body.description : null;
+  const isPublic = body.is_public === true;
+
+  if (!storeId || !title) {
+    return NextResponse.json({ error: "Identifiant boutique et titre requis." }, { status: 400 });
+  }
+
+  const auth = await requireAuthContext();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "write");
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  const { data, error } = await auth.serviceSupabase
+    .from("courses")
+    .insert({
+      store_id: storeId,
+      title,
+      description,
+      is_public: isPublic,
+    })
+    .select()
+    .single();
+  if (error) return NextResponse.json({ error: "Impossible de creer le cours." }, { status: 500 });
   return NextResponse.json({ course: data });
 }

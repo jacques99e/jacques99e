@@ -3,8 +3,13 @@ node_modules
 out
 .env
 .env.local
+.env.vercel.production
 *.log
 .DS_Store
 public/sw.js
 public/workbox-*.js
 public/worker-*.js
+.vercel
+_login*.html
+_login*.js
+_*.js

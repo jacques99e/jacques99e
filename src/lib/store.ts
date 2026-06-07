@@ -1,25 +1,14 @@
-import { supabase } from "@/lib/supabase/client";
-import { db, localStore } from "@/lib/db";
+import { db, localModules } from "@/lib/db";
+import { resolveActiveStore } from "@/lib/stores-multi";
 import type { Store } from "@/types";
 
-/** Charge la boutique du commerçant depuis Supabase et met en cache local. */
-export async function loadUserStore(ownerId: string): Promise<Store | null> {
-  const cached = localStore.get();
-  if (cached && cached.owner_id === ownerId) return cached;
-
-  if (!navigator.onLine) return cached;
-
-  const { data } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!data) return null;
-
-  const store = data as Store;
-  localStore.save(store);
-  if (db) await db.store.put(store);
+/** Charge la boutique active (propriétaire ou membre d'équipe). */
+export async function loadUserStore(userId: string): Promise<Store | null> {
+  const store = await resolveActiveStore(userId);
+  if (store && db) await db.store.put(store);
+  if (store?.modules?.length) {
+    const { normalizeModuleIds } = await import("@/lib/modules/config");
+    localModules.save(normalizeModuleIds(store.modules));
+  }
   return store;
 }

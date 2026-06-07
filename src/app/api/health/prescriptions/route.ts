@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceSupabase } from "@/lib/supabase/server";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { store_id, patient_id, medications, doctor_name } = body;
   if (!store_id || !patient_id || !medications) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    return NextResponse.json({ error: "Donnees invalides pour creer l'ordonnance." }, { status: 400 });
   }
-  const supabase = await createServiceSupabase();
-  const { data, error } = await supabase
+  const auth = await requireAuthContext();
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+  const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, store_id, "write");
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  const { data, error } = await auth.serviceSupabase
     .from("health_prescriptions")
     .insert({ store_id, patient_id, medications, doctor_name })
     .select()
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Impossible de creer l'ordonnance." }, { status: 500 });
   return NextResponse.json({ prescription: data });
 }

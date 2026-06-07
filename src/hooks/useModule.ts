@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { localModules } from "@/lib/db";
-import { DEFAULT_MODULES } from "@/lib/modules/config";
+import { normalizeModuleIds } from "@/lib/modules/config";
 import type { ModuleId } from "@/types";
 
 export function useModule(storeId?: string) {
@@ -27,7 +27,7 @@ export function useModule(storeId?: string) {
       : { data: null };
 
     if (profile?.active_modules?.length) {
-      const ids = profile.active_modules as ModuleId[];
+      const ids = normalizeModuleIds(profile.active_modules as string[]);
       localModules.save(ids);
       setModules(ids);
       setPrimaryModule(ids[0]);
@@ -40,7 +40,7 @@ export function useModule(storeId?: string) {
       .eq("enabled", true);
 
     if (storeMods?.length) {
-      const ids = storeMods.map((m) => m.module_id as ModuleId);
+      const ids = normalizeModuleIds(storeMods.map((m) => m.module_id as string));
       localModules.save(ids);
       setModules(ids);
       setPrimaryModule(ids[0]);
@@ -55,7 +55,7 @@ export function useModule(storeId?: string) {
 
   const setActiveModules = useCallback(
     async (ids: ModuleId[]) => {
-      const unique = [...new Set(ids.length ? ids : DEFAULT_MODULES)];
+      const unique = normalizeModuleIds(ids);
       localModules.save(unique);
       setModules(unique);
       setPrimaryModule(unique[0]);

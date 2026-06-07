@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
+import { ModuleRouteGuard } from "@/components/ModuleRouteGuard";
+import { DailyAlertsBanner } from "@/components/DailyAlertsBanner";
+import { GuidedOnboarding } from "@/components/GuidedOnboarding";
+import { PushAlertsRunner } from "@/components/PushAlertsRunner";
+import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
 import { loadUserStore } from "@/lib/store";
@@ -47,8 +52,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen pb-nav">
-      {children}
+    <div className="app-shell pb-nav">
+      <PushAlertsRunner />
+      <StoreSwitcher />
+      <DailyAlertsBanner />
+      <GuidedOnboarding />
+      <ModuleRouteGuard>{children}</ModuleRouteGuard>
       <BottomNav />
     </div>
   );

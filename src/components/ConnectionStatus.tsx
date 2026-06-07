@@ -4,13 +4,15 @@ import { useSync } from "@/hooks/useSync";
 import { useI18n } from "@/contexts/I18nContext";
 
 export function ConnectionStatus() {
-  const { isOnline, syncing } = useSync();
+  const { isOnline, syncing, pendingCount } = useSync();
   const { t } = useI18n();
 
   const label = syncing
     ? t("offline.syncing")
     : isOnline
-      ? t("offline.online")
+      ? pendingCount > 0
+        ? `${t("offline.online")} · ${pendingCount} en attente`
+        : t("offline.online")
       : t("offline.offline");
 
   return (
@@ -25,6 +27,11 @@ export function ConnectionStatus() {
         }`}
       />
       <span className="text-white/80 hidden sm:inline">{label}</span>
+      {pendingCount > 0 && !syncing ? (
+        <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-amber-950">
+          {pendingCount}
+        </span>
+      ) : null}
     </span>
   );
 }

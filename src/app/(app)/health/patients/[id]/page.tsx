@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Calendar } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/contexts/I18nContext";
 import { db } from "@/lib/db";
+import { downloadCsv } from "@/lib/export";
 import { listVitals, saveVital, generatePrescriptionPdf } from "@/lib/health";
 import { getWhatsAppLink } from "@/lib/utils";
 import type { HealthPatient, HealthVital } from "@/types";
@@ -20,6 +23,8 @@ export default function PatientDetailPage() {
   const [weight, setWeight] = useState("");
   const [bp, setBp] = useState("");
   const [temp, setTemp] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     if (db) db.healthPatients.get(id).then((p) => setPatient(p ?? null));
@@ -27,15 +32,24 @@ export default function PatientDetailPage() {
   }, [id]);
 
   const addVital = async () => {
+    setError("");
+    setNotice("");
+    const parsedWeight = weight ? Number(weight) : null;
+    const parsedTemp = temp ? Number(temp) : null;
+    if ((parsedWeight !== null && !Number.isFinite(parsedWeight)) || (parsedTemp !== null && !Number.isFinite(parsedTemp))) {
+      setError("Valeurs de constantes invalides.");
+      return;
+    }
     await saveVital({
       patient_id: id,
-      weight_kg: weight ? Number(weight) : null,
+      weight_kg: parsedWeight,
       blood_pressure: bp || null,
-      temperature_c: temp ? Number(temp) : null,
+      temperature_c: parsedTemp,
     });
     setWeight("");
     setBp("");
     setTemp("");
+    setNotice("Constantes enregistrées.");
     listVitals(id).then(setVitals);
   };
 
@@ -55,6 +69,19 @@ export default function PatientDetailPage() {
     if (patient?.phone) {
       window.open(getWhatsAppLink(patient.phone, `Consultation ${patient.full_name}`), "_blank");
     }
+  };
+
+  const exportVitals = () => {
+    if (!patient) return;
+    downloadCsv(
+      `constantes-${patient.full_name}-${new Date().toISOString().slice(0, 10)}.csv`,
+      vitals.map((v) => ({
+        recorded_at: v.recorded_at ?? "",
+        weight_kg: v.weight_kg ?? "",
+        blood_pressure: v.blood_pressure ?? "",
+        temperature_c: v.temperature_c ?? "",
+      }))
+    );
   };
 
   if (!patient) return <p className="p-4">{t("common.loading")}</p>;
@@ -77,6 +104,8 @@ export default function PatientDetailPage() {
             <Input placeholder="°C" value={temp} onChange={(e) => setTemp(e.target.value)} />
           </div>
           <Button size="sm" onClick={addVital}>{t("common.save")}</Button>
+          {notice ? <p className="text-xs text-green-700">{notice}</p> : null}
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
           <ul className="text-xs space-y-1">
             {vitals.map((v) => (
               <li key={v.id}>
@@ -86,6 +115,15 @@ export default function PatientDetailPage() {
           </ul>
         </section>
 
+        <Button asChild variant="outline" className="w-full">
+          <Link href={`/health/appointments/new?patient=${encodeURIComponent(id)}`}>
+            <Calendar className="h-4 w-4" />
+            Planifier un rendez-vous
+          </Link>
+        </Button>
+        <Button variant="outline" className="w-full" onClick={exportVitals}>
+          Export constantes CSV
+        </Button>
         <Button variant="outline" className="w-full" onClick={exportRx}>{t("health.prescription")}</Button>
         <Button className="w-full" onClick={teleconsult}>{t("health.teleconsult")}</Button>
       </main>

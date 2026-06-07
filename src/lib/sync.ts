@@ -47,6 +47,13 @@ export async function syncAll(storeId: string): Promise<{ synced: number; errors
     );
   }
 
+  try {
+    const { syncStoreToCloud } = await import("@/lib/cloud-sync");
+    await syncStoreToCloud(storeId);
+  } catch {
+    // Cloud sync optional if tables not migrated yet
+  }
+
   return { synced, errors };
 }
 
@@ -101,25 +108,36 @@ async function syncSale(
     subtotal: number;
   }> };
 
+  const localRef = payload._localId || payload.id;
+  const total = Number(payload.total_amount ?? 0);
+
   const { data: sale, error } = await supabase
     .from("sales")
-    .insert({
-      store_id: storeId,
-      total_amount: payload.total_amount,
-      payment_method: payload.payment_method,
-      payment_status: payload.payment_status,
-      client_local_id: payload.client_local_id || payload._localId,
-    })
+    .upsert(
+      {
+        store_id: storeId,
+        total_amount: total,
+        total,
+        payment_method: payload.payment_method,
+        payment_status: payload.payment_status ?? "completed",
+        external_local_id: localRef,
+      },
+      { onConflict: "store_id,external_local_id" }
+    )
     .select()
     .single();
 
   if (error) throw error;
 
   if (payload.items?.length) {
+    await supabase.from("sale_items").delete().eq("sale_id", sale.id);
     await supabase.from("sale_items").insert(
       payload.items.map((i) => ({
         sale_id: sale.id,
-        product_id: i.product_id,
+        product_id:
+          i.product_id && !String(i.product_id).startsWith("local-")
+            ? i.product_id
+            : null,
         product_name: i.product_name,
         quantity: i.quantity,
         unit_price: i.unit_price,

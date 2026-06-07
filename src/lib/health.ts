@@ -1,7 +1,12 @@
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
 import { generateLocalId } from "@/lib/sync";
-import type { HealthAppointment, HealthPatient, HealthVital } from "@/types";
+import type {
+  HealthAppointment,
+  HealthAppointmentWithPatient,
+  HealthPatient,
+  HealthVital,
+} from "@/types";
 
 export async function listPatients(storeId: string): Promise<HealthPatient[]> {
   if (db) {
@@ -62,8 +67,70 @@ export async function listAppointments(storeId: string): Promise<HealthAppointme
     .from("health_appointments")
     .select("*")
     .eq("store_id", storeId)
-    .gte("scheduled_at", new Date().toISOString().split("T")[0]);
+    .gte("scheduled_at", new Date().toISOString().split("T")[0])
+    .order("scheduled_at");
   return data || [];
+}
+
+export async function listAppointmentsWithPatients(
+  storeId: string
+): Promise<HealthAppointmentWithPatient[]> {
+  if (!navigator.onLine) return [];
+  const { data } = await supabase
+    .from("health_appointments")
+    .select("*, health_patients(full_name, phone)")
+    .eq("store_id", storeId)
+    .gte("scheduled_at", new Date(Date.now() - 86400000).toISOString())
+    .order("scheduled_at");
+
+  return (data || []).map((row) => {
+    const patient = row.health_patients as { full_name?: string; phone?: string } | null;
+    return {
+      id: row.id,
+      store_id: row.store_id,
+      patient_id: row.patient_id,
+      scheduled_at: row.scheduled_at,
+      status: row.status,
+      notes: row.notes,
+      patient_name: patient?.full_name ?? null,
+      patient_phone: patient?.phone ?? null,
+    };
+  });
+}
+
+export async function updateAppointmentStatus(
+  appointmentId: string,
+  status: "pending" | "confirmed" | "done"
+): Promise<void> {
+  if (!navigator.onLine) return;
+  const { error } = await supabase
+    .from("health_appointments")
+    .update({ status })
+    .eq("id", appointmentId);
+  if (error) throw error;
+}
+
+export async function saveAppointment(
+  storeId: string,
+  appointment: Pick<HealthAppointment, "scheduled_at" | "notes"> & {
+    patient_id?: string | null;
+    status?: string;
+  }
+): Promise<HealthAppointment | null> {
+  if (!navigator.onLine) return null;
+  const { data, error } = await supabase
+    .from("health_appointments")
+    .insert({
+      store_id: storeId,
+      patient_id: appointment.patient_id ?? null,
+      scheduled_at: appointment.scheduled_at,
+      status: appointment.status ?? "pending",
+      notes: appointment.notes ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data || null;
 }
 
 export async function listVitals(patientId: string): Promise<HealthVital[]> {

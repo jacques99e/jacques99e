@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,17 +10,27 @@ import { useI18n } from "@/contexts/I18nContext";
 import { ModuleCard } from "@/components/ModuleCard";
 import { languages } from "@/i18n";
 import { localModules } from "@/lib/db";
-import { ALL_MODULE_IDS } from "@/lib/modules/config";
+import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
+import { savePendingModule } from "@/lib/modules/preference";
+import { setBusinessVertical } from "@/lib/onboarding";
 import type { Language, ModuleId } from "@/types";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const { t, setLang } = useI18n();
   const { user, supabase } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [shopName, setShopName] = useState("");
   const [language, setLanguage] = useState<Language>("fr");
-  const [selectedModules, setSelectedModules] = useState<ModuleId[]>(["commerce"]);
+  const [selectedModules, setSelectedModules] = useState<ModuleId[]>(() => localModules.get());
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("module");
+    if (!fromUrl) return;
+    savePendingModule(fromUrl);
+    setSelectedModules(normalizeModuleIds([fromUrl]));
+  }, [searchParams]);
 
   const toggleModule = (id: ModuleId) => {
     setSelectedModules((prev) => {
@@ -37,13 +47,15 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      localModules.save(selectedModules);
+      const modules = normalizeModuleIds(selectedModules);
+      localModules.save(modules);
+      setBusinessVertical(modules[0]);
       await supabase.from("profiles").upsert({
         id: user.id,
         phone: user.phone,
         full_name: shopName,
         preferred_language: language,
-        active_modules: selectedModules,
+        active_modules: modules,
       });
       setLang(language);
       router.push("/setup");
@@ -103,5 +115,19 @@ export default function RegisterPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-wazo-cream">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-wazo-green border-t-transparent" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

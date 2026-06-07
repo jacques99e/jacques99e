@@ -73,6 +73,39 @@ export const ALL_MODULE_IDS = Object.keys(MODULES) as ModuleId[];
 
 export const DEFAULT_MODULES: ModuleId[] = ["commerce"];
 
+/** Modules affiches sur le dashboard (ordre grille 3 colonnes). */
+export const DASHBOARD_MODULE_IDS: ModuleId[] = [
+  "commerce",
+  "agriculture",
+  "health",
+  "logistics",
+  "education",
+  "blockchain",
+];
+
+export const MODULE_LABELS: Record<ModuleId, string> = {
+  commerce: "Commerce",
+  agriculture: "🌾 Agriculture",
+  health: "Santé",
+  logistics: "Logistique",
+  education: "Éducation",
+  blockchain: "Blockchain",
+};
+
+const LEGACY_MODULE_IDS: Record<string, ModuleId> = {
+  sante: "health",
+  santé: "health",
+  logistique: "logistics",
+  éducation: "education",
+};
+
+export function normalizeModuleIds(ids: string[]): ModuleId[] {
+  const normalized = ids
+    .map((id) => LEGACY_MODULE_IDS[id] ?? id)
+    .filter((id): id is ModuleId => ALL_MODULE_IDS.includes(id as ModuleId));
+  return [...new Set(normalized.length ? normalized : DEFAULT_MODULES)];
+}
+
 export function getModuleConfig(id: ModuleId): ModuleConfig {
   return MODULES[id];
 }
@@ -80,4 +113,10 @@ export function getModuleConfig(id: ModuleId): ModuleConfig {
 export function getPrimaryModulePath(modules: ModuleId[]): string {
   const primary = modules[0] ?? "commerce";
   return MODULES[primary].path;
+}
+
+/** Modules actifs dans l'ordre d'affichage dashboard / navigation. */
+export function getOrderedActiveModules(modules: ModuleId[]): ModuleId[] {
+  const active = new Set(modules);
+  return DASHBOARD_MODULE_IDS.filter((id) => active.has(id));
 }

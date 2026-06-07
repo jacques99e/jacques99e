@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODULES } from "@/lib/modules/config";
@@ -10,20 +11,19 @@ interface ModuleCardProps {
   moduleId: ModuleId;
   enabled: boolean;
   onToggle: (id: ModuleId) => void;
+  canToggle?: boolean;
 }
 
-export function ModuleCard({ moduleId, enabled, onToggle }: ModuleCardProps) {
+export function ModuleCard({ moduleId, enabled, onToggle, canToggle = true }: ModuleCardProps) {
   const { t } = useI18n();
   const config = MODULES[moduleId];
   const Icon = config.icon;
 
   return (
-    <button
-      type="button"
-      onClick={() => onToggle(moduleId)}
+    <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors dark:border-gray-700 dark:bg-gray-800",
-        enabled ? "border-wazo-green bg-wazo-green/5" : "border-gray-200 bg-white"
+        "app-card flex w-full items-center gap-3 border-2 p-4 transition-all dark:border-gray-700 dark:bg-gray-800",
+        enabled ? "border-wazo-green/40 bg-wazo-green/5 shadow-wazo" : "border-transparent"
       )}
     >
       <div
@@ -40,11 +40,29 @@ export function ModuleCard({ moduleId, enabled, onToggle }: ModuleCardProps) {
           {t(`modules.${moduleId}.desc`)}
         </p>
       </div>
-      {enabled && (
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-wazo-green text-white">
+      <div className="flex shrink-0 items-center gap-2">
+        <Link
+          href={config.path}
+          className="rounded-full bg-[#075E54] px-3 py-1.5 text-xs font-semibold text-white"
+        >
+          Ouvrir
+        </Link>
+        <button
+          type="button"
+          onClick={() => onToggle(moduleId)}
+          aria-label={enabled ? "Désactiver le module" : "Activer le module"}
+          disabled={!canToggle}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-full border-2 transition",
+            !canToggle ? "cursor-not-allowed opacity-50" : "",
+            enabled
+              ? "border-wazo-green bg-wazo-green text-white"
+              : "border-gray-300 bg-white text-transparent"
+          )}
+        >
           <Check className="h-4 w-4" />
-        </span>
-      )}
-    </button>
+        </button>
+      </div>
+    </div>
   );
 }

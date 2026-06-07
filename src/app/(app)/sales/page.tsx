@@ -5,7 +5,11 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { syncStoreToCloud } from "@/lib/cloud-sync";
 import { readLocalProducts, writeLocalProducts, type LocalProduct } from "@/lib/local-products";
+import { appendLocalSale } from "@/lib/local-sales";
+import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
 interface CartItem {
@@ -17,6 +21,7 @@ interface CartItem {
 
 interface LocalSale {
   id: string;
+  store_id?: string;
   items: Array<{
     product_id: string;
     name: string;
@@ -27,6 +32,7 @@ interface LocalSale {
   total: number;
   date: string;
   payment_method: string;
+  payment_status?: string;
 }
 
 export default function SalesPage() {
@@ -34,9 +40,11 @@ export default function SalesPage() {
   const [products, setProducts] = useState<LocalProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [confirmation, setConfirmation] = useState<{
     total: number;
     whatsappLink: string;
+    paymentMethod: string;
   } | null>(null);
 
   useEffect(() => {
@@ -105,8 +113,11 @@ export default function SalesPage() {
     writeLocalProducts(updatedProducts);
     setProducts(updatedProducts);
 
+    const store = localStore.get();
+    const storeId = store?.id || "local-store";
     const sale: LocalSale = {
-      id: `sale-${Date.now()}`,
+      id: `sale-${crypto.randomUUID()}`,
+      store_id: storeId,
       items: cart.map((item) => ({
         product_id: item.productId,
         name: item.name,
@@ -116,12 +127,12 @@ export default function SalesPage() {
       })),
       total,
       date: new Date().toISOString(),
-      payment_method: "cash",
+      payment_method: paymentMethod,
+      payment_status: "completed",
     };
 
-    const salesRaw = localStorage.getItem("wazo_sales");
-    const sales = salesRaw ? (JSON.parse(salesRaw) as LocalSale[]) : [];
-    localStorage.setItem("wazo_sales", JSON.stringify([...sales, sale]));
+    appendLocalSale(storeId, { ...sale, store_id: storeId });
+    void syncStoreToCloud(storeId);
 
     const receiptText = [
       "Reçu Wazo Digital",
@@ -130,8 +141,9 @@ export default function SalesPage() {
     ].join("\n");
     const whatsappLink = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
 
-    setConfirmation({ total: sale.total, whatsappLink });
+    setConfirmation({ total: sale.total, whatsappLink, paymentMethod });
     setCart([]);
+    setPaymentMethod("cash");
     setTimeout(() => {
       router.push("/dashboard");
     }, 3000);
@@ -144,42 +156,58 @@ export default function SalesPage() {
 
   return (
     <>
-      <AppHeader title="Caisse / Vente" />
-      <main className="mx-auto max-w-lg flex flex-col gap-3 p-4 pb-44">
+      <AppHeader title="Caisse" subtitle="Enregistrer une vente" />
+      <main className="app-page flex flex-col gap-3 pb-44">
         {confirmation && (
-          <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+          <section className="app-card space-y-3 border-green-200 bg-green-50/50 p-4">
             <p className="text-sm font-medium text-green-700">
               Vente enregistrée avec succès ! Total: {formatCurrency(confirmation.total)}
+            </p>
+            <p className="text-xs text-gray-600">
+              Méthode de paiement: {confirmation.paymentMethod === "cash" ? "Espèces" : confirmation.paymentMethod}
             </p>
             <Button asChild className="w-full" variant="outline">
               <a href={confirmation.whatsappLink} target="_blank" rel="noreferrer">
                 Partager le reçu via WhatsApp
               </a>
             </Button>
-            <Button className="w-full bg-[#FF6F00] hover:opacity-90" onClick={startNewSale}>
+            <Button variant="orange" className="w-full" onClick={startNewSale}>
               Nouvelle vente
             </Button>
           </section>
         )}
 
-        <input
+        <Input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher un produit"
-          className="h-11 rounded-lg border px-3"
         />
+        <select
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+          className="app-input-field h-12 text-sm"
+        >
+          <option value="cash">Espèces</option>
+          <option value="momo">Mobile money</option>
+          <option value="card">Carte</option>
+        </select>
 
         <div className="space-y-2">
+          {filtered.length === 0 ? (
+            <p className="rounded-xl bg-white p-3 text-xs text-gray-500 shadow-sm">
+              Aucun produit pour cette recherche.
+            </p>
+          ) : null}
           {filtered.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm">
+            <div key={p.id} className="app-list-item justify-between">
               <div className="min-w-0">
                 <p className="truncate font-medium">{p.name}</p>
                 <p className="text-sm text-[#075E54]">{formatCurrency(p.price)}</p>
                 <p className="text-xs text-gray-500">Stock: {p.stock}</p>
               </div>
               {p.stock > 0 ? (
-                <Button size="icon" className="h-9 w-9 bg-[#075E54]" onClick={() => addToCart(p)}>
+                <Button size="icon" variant="default" className="h-10 w-10 shrink-0" onClick={() => addToCart(p)}>
                   <Plus className="h-4 w-4" />
                 </Button>
               ) : (
@@ -192,9 +220,10 @@ export default function SalesPage() {
         </div>
 
         {cart.length > 0 && (
-          <div className="fixed bottom-16 left-0 right-0 border-t bg-white p-4 shadow-lg safe-bottom">
-            <div className="mx-auto max-w-lg space-y-2">
-              <h2 className="text-sm font-semibold text-gray-700">Panier</h2>
+          <div className="fixed bottom-20 left-0 right-0 safe-bottom">
+            <div className="mx-auto max-w-lg px-3">
+            <div className="space-y-2 rounded-t-3xl border border-gray-100 bg-white/95 p-4 shadow-wazo-lg backdrop-blur-xl">
+              <h2 className="text-sm font-bold text-gray-800">Panier</h2>
               {cart.map((item) => (
                 <div key={item.productId} className="flex items-center justify-between gap-2 text-sm">
                   <span className="min-w-0 flex-1 truncate">{item.name}</span>
@@ -223,9 +252,10 @@ export default function SalesPage() {
                 <span>TOTAL</span>
                 <span className="text-wazo-orange">{formatCurrency(total)}</span>
               </div>
-              <Button className="w-full bg-[#075E54] hover:opacity-90" onClick={finalizeSale}>
+              <Button variant="orange" size="lg" className="w-full" onClick={finalizeSale}>
                 Finaliser la vente
               </Button>
+            </div>
             </div>
           </div>
         )}

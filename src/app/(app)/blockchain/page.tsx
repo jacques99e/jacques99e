@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Shield } from "lucide-react";
+import { MessageCircle, Plus, Shield } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
-import { listAssets, listLedger } from "@/lib/blockchain";
+import { ModulePublicPortals } from "@/components/ModulePublicPortals";
+import { ModuleStatGrid } from "@/components/ModuleStatGrid";
+import { traceUrl } from "@/lib/blockchain-public";
+import { shareTraceLink } from "@/lib/module-share";
+import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { listAssets, listLedger, verifyAssetHash } from "@/lib/blockchain";
 import type { BlockchainAsset, BlockchainLedgerEntry } from "@/types";
 
 export default function BlockchainPage() {
@@ -15,17 +21,41 @@ export default function BlockchainPage() {
   const store = localStore.get();
   const [assets, setAssets] = useState<BlockchainAsset[]>([]);
   const [ledger, setLedger] = useState<BlockchainLedgerEntry[]>([]);
+  const [search, setSearch] = useState("");
+  const [verifiedMap, setVerifiedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!store) return;
-    listAssets(store.id).then(setAssets);
+    listAssets(store.id).then(async (rows) => {
+      setAssets(rows);
+      const checks = await Promise.all(rows.map(async (row) => [row.id, await verifyAssetHash(row)] as const));
+      setVerifiedMap(Object.fromEntries(checks));
+    });
     listLedger(store.id).then(setLedger);
   }, [store]);
 
+  const filteredAssets = assets.filter((asset) =>
+    asset.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   return (
     <>
-      <AppHeader title={t("modules.blockchain.title")} />
-      <main className="mx-auto max-w-lg space-y-4 p-4">
+      <AppHeader title={t("modules.blockchain.title")} subtitle="Module" />
+      <main className="app-page space-y-4 pb-6">
+        <ModuleStatGrid
+          columns={3}
+          items={[
+            { value: assets.length, label: "Actifs", accent: "text-sky-600" },
+            { value: ledger.length, label: "Écritures", accent: "text-sky-600" },
+            {
+              value: Object.values(verifiedMap).filter(Boolean).length,
+              label: "Vérifiés",
+              accent: "text-sky-600",
+            },
+          ]}
+        />
+        <ModulePublicPortals moduleId="blockchain" />
+
         <Button asChild className="w-full">
           <Link href="/blockchain/assets/new">
             <Plus className="h-4 w-4" />
@@ -33,22 +63,59 @@ export default function BlockchainPage() {
           </Link>
         </Button>
 
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un actif..."
+        />
+
         <section>
           <h2 className="mb-2 text-sm font-medium text-gray-600">{t("blockchain.assets")}</h2>
           <ul className="space-y-2">
-            {assets.map((a) => (
-              <li key={a.id} className="rounded-xl bg-white p-3 shadow-sm dark:bg-gray-800">
+            {filteredAssets.map((a) => (
+              <li key={a.id} className="app-card p-3">
                 <div className="flex justify-between">
                   <span className="font-medium">{a.name}</span>
                   <span className="text-xs text-indigo-600">{a.asset_type}</span>
                 </div>
                 <p className="mt-1 truncate font-mono text-[10px] text-gray-400">{a.hash_sha256}</p>
+                <p className="text-xs">
+                  Hash:{" "}
+                  <span className={verifiedMap[a.id] ? "text-green-700" : "text-amber-700"}>
+                    {verifiedMap[a.id] ? "valide" : "à vérifier"}
+                  </span>
+                </p>
                 {a.latitude && (
                   <p className="text-xs text-gray-500">GPS: {a.latitude}, {a.longitude}</p>
                 )}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="text-[10px] text-indigo-600 underline"
+                    onClick={() => void navigator.clipboard.writeText(traceUrl(a.hash_sha256))}
+                  >
+                    Copier lien
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-full bg-[#25D366]/15 px-2 py-0.5 text-[10px] text-[#128C7E]"
+                    onClick={() => {
+                      const { message } = shareTraceLink({ assetName: a.name, hash: a.hash_sha256 });
+                      window.open(buildWhatsAppShareUrl(message), "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    Partager WhatsApp
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
+          {filteredAssets.length === 0 ? (
+            <p className="rounded-xl bg-white p-3 text-sm text-gray-500 shadow-sm dark:bg-gray-800">
+              Aucun actif trouvé.
+            </p>
+          ) : null}
         </section>
 
         <section>

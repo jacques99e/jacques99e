@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, CheckCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { useI18n } from "@/contexts/I18nContext";
+import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/types";
 
@@ -36,7 +37,7 @@ export function PaymentModal({ total, onClose, onConfirm }: PaymentModalProps) {
     setProcessing(true);
     setFailed(false);
     try {
-      const res = await fetch("/api/payments/momo", {
+      const res = await apiFetch("/api/payments/momo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: total, method }),

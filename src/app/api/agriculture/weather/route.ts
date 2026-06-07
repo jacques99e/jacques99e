@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuthContext } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuthContext();
+  if (!auth.ok) {
+    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+
   const lat = request.nextUrl.searchParams.get("lat");
   const lon = request.nextUrl.searchParams.get("lon");
   const apiKey = process.env.OPENWEATHER_API_KEY;

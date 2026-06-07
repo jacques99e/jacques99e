@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
+import { logAuditEvent } from "@/lib/audit";
 import { createDelivery } from "@/lib/logistics";
 
 export default function NewDeliveryPage() {
@@ -27,6 +28,16 @@ export default function NewDeliveryPage() {
       recipient_name: recipient,
       recipient_phone: phone,
       address,
+    });
+    await logAuditEvent({
+      action: "delivery_created",
+      entityType: "delivery",
+      entityId: d.id,
+      payload: {
+        tracking_code: d.tracking_code,
+        recipient_name: d.recipient_name,
+        status: d.status,
+      },
     });
     router.push(`/logistics/deliveries/${encodeURIComponent(d.id)}`);
   };

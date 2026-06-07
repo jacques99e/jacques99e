@@ -48,6 +48,7 @@ export interface Store {
   latitude?: number | null;
   longitude?: number | null;
   is_public: boolean;
+  modules?: string[];
   created_at?: string;
 }
 
@@ -83,6 +84,7 @@ export interface Sale {
   total_amount: number;
   payment_method: PaymentMethod | string | null;
   payment_status: string;
+  /** @deprecated use external_local_id in Supabase; kept for legacy payloads */
   client_local_id?: string | null;
   created_at?: string;
   items?: SaleItem[];
@@ -196,6 +198,11 @@ export interface HealthAppointment {
   notes?: string | null;
 }
 
+export interface HealthAppointmentWithPatient extends HealthAppointment {
+  patient_name?: string | null;
+  patient_phone?: string | null;
+}
+
 export interface HealthVital {
   id: string;
   patient_id: string;
@@ -243,12 +250,37 @@ export interface Course {
   _pendingSync?: boolean;
 }
 
+export type CourseSubtitleLang = "fr" | "en" | "wo" | "sw";
+
+export type ModuleSubtitles = Partial<Record<CourseSubtitleLang, string>>;
+
+export interface QuizQuestion {
+  id: string;
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+}
+
+export interface ModuleQuiz {
+  module_id: string;
+  course_id: string;
+  title: string;
+  passing_score: number;
+  questions: QuizQuestion[];
+}
+
+export interface LearnerProgressMeta {
+  completedModuleIds: string[];
+  passedQuizModuleIds: string[];
+}
+
 export interface CourseModule {
   id: string;
   course_id: string;
   title: string;
   content?: string | null;
   media_url?: string | null;
+  subtitles?: ModuleSubtitles | null;
   sort_order: number;
 }
 
@@ -258,7 +290,11 @@ export interface CourseEnrollment {
   student_name: string;
   student_email?: string | null;
   progress_percent: number;
+  progress_meta?: LearnerProgressMeta | null;
   completed_at?: string | null;
+  certificate_token?: string | null;
+  invite_sms_sent_at?: string | null;
+  created_at?: string | null;
 }
 
 export interface Message {

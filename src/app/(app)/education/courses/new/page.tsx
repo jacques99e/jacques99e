@@ -16,11 +16,12 @@ export default function NewCoursePage() {
   const store = localStore.get();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
-    const c = await saveCourse(store.id, { title, description });
+    const c = await saveCourse(store.id, { title, description, is_public: isPublic });
     router.push(`/education/courses/${encodeURIComponent(c.id)}`);
   };
 
@@ -37,6 +38,14 @@ export default function NewCoursePage() {
             <Label>{t("products.description")}</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1" />
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+            />
+            Cours public (lien + code invitation pour apprenants)
+          </label>
           <Button type="submit" className="w-full">{t("common.save")}</Button>
         </form>
       </main>

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { appendLocalSale, readLocalSales, writeLocalSales } from "@/lib/local-sales";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId } from "@/lib/sync";
 import type { CartItem, PaymentMethod, Sale, SaleItem } from "@/types";
@@ -25,7 +26,6 @@ export async function completeSale(
     total_amount: total,
     payment_method: paymentMethod,
     payment_status: "completed",
-    client_local_id: localId,
     created_at: new Date().toISOString(),
     _localId: localId,
     _pendingSync: true,
@@ -62,20 +62,44 @@ export async function completeSale(
     payload: { ...sale, items } as unknown as Record<string, unknown>,
   });
 
+  appendLocalSale(storeId, {
+    id: localId,
+    store_id: storeId,
+    items: items.map((i) => ({
+      product_id: i.product_id,
+      name: i.product_name,
+      product_name: i.product_name,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      line_total: i.subtotal,
+      subtotal: i.subtotal,
+    })),
+    total,
+    total_amount: total,
+    created_at: sale.created_at,
+    date: sale.created_at,
+    payment_method: paymentMethod,
+    payment_status: "completed",
+  });
+
   if (navigator.onLine) {
-    const { data: saleRow } = await supabase
+    const { data: saleRow, error: saleError } = await supabase
       .from("sales")
-      .insert({
-        store_id: storeId,
-        total_amount: total,
-        payment_method: paymentMethod,
-        payment_status: "completed",
-        client_local_id: localId,
-      })
+      .upsert(
+        {
+          store_id: storeId,
+          total_amount: total,
+          total,
+          payment_method: paymentMethod,
+          payment_status: "completed",
+          external_local_id: localId,
+        },
+        { onConflict: "store_id,external_local_id" }
+      )
       .select()
       .single();
 
-    if (saleRow) {
+    if (saleRow && !saleError) {
       await supabase.from("sale_items").insert(
         items.map((i) => ({
           sale_id: saleRow.id,
@@ -101,26 +125,63 @@ export async function completeSale(
       sale.id = saleRow.id;
       sale._pendingSync = false;
       if (db) await db.sales.put(sale);
+
+      writeLocalSales(
+        readLocalSales(storeId).map((s) =>
+          s.id === localId ? { ...s, cloud_id: saleRow.id } : s
+        ),
+        storeId
+      );
     }
   }
 
   return sale;
 }
 
-export async function getSales(storeId: string, date?: string): Promise<Sale[]> {
-  if (db) {
-    const all = await db.sales
-      .where("store_id")
-      .equals(storeId)
-      .reverse()
-      .sortBy("created_at");
+function localRecordToSale(
+  record: ReturnType<typeof readLocalSales>[number]
+): Sale {
+  return {
+    id: record.cloud_id || record.id,
+    store_id: record.store_id,
+    total_amount: Number(record.total ?? record.total_amount ?? 0),
+    payment_method: record.payment_method ?? "cash",
+    payment_status: record.payment_status ?? "completed",
+    created_at: record.created_at || record.date,
+    items: (record.items || []).map((i) => ({
+      product_id: i.product_id || "",
+      product_name: i.name || i.product_name || "Produit",
+      quantity: i.quantity,
+      unit_price: Number(i.unit_price ?? 0),
+      subtotal: Number(i.line_total ?? i.subtotal ?? 0),
+    })),
+  };
+}
 
-    if (date) {
-      return all.filter((s) => s.created_at?.startsWith(date));
-    }
-    return all;
+export async function getSales(storeId: string, date?: string): Promise<Sale[]> {
+  const fromLocal = readLocalSales(storeId).map(localRecordToSale);
+  const byId = new Map<string, Sale>();
+  for (const s of fromLocal) {
+    byId.set(s.id, s);
   }
-  return [];
+
+  if (db) {
+    const fromDexie = await db.sales.where("store_id").equals(storeId).toArray();
+    for (const s of fromDexie) {
+      if (!byId.has(s.id)) byId.set(s.id, s);
+    }
+  }
+
+  const merged = [...byId.values()].sort((a, b) => {
+    const ta = new Date(a.created_at || 0).getTime();
+    const tb = new Date(b.created_at || 0).getTime();
+    return tb - ta;
+  });
+
+  if (date) {
+    return merged.filter((s) => (s.created_at || "").slice(0, 10) === date);
+  }
+  return merged;
 }
 
 export async function getDashboardStats(storeId: string) {
