@@ -1,7 +1,8 @@
 /**
  * Crée ou met à jour deux comptes test : propriétaire + employé, liés à une boutique.
  * Usage : node scripts/setup-test-accounts.mjs
- * Requiert SUPABASE_SERVICE_ROLE_KEY et NEXT_PUBLIC_SUPABASE_URL dans .env.local
+ *
+ * Préfère SUPABASE_SERVICE_ROLE_KEY si valide ; sinon utilise la clé anon (signup + session).
  */
 
 import fs from "fs";
@@ -33,16 +34,14 @@ function loadEnvFile(filePath) {
 
 const env = loadEnvFile(path.join(ROOT, ".env.local"));
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceKey) {
-  console.error("Manque NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY dans .env.local");
+if (!supabaseUrl || !anonKey) {
+  console.error("Manque NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local");
   process.exit(1);
 }
-
-const admin = createClient(supabaseUrl, serviceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const ACCOUNTS = {
   owner: {
@@ -60,44 +59,113 @@ const ACCOUNTS = {
 };
 
 const STORE_NAME = "Boutique Test Rôles Wazo";
+const STORE_SLUG = "boutique-test-roles-wazo";
 
-async function upsertUser({ email, password, phone, full_name }) {
+async function serviceRoleWorks() {
+  if (!serviceKey) return false;
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=1`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  return res.ok;
+}
+
+async function ensureUserViaAdmin(admin, account) {
   const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const existing = list?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  const existing = list?.users?.find((u) => u.email?.toLowerCase() === account.email.toLowerCase());
 
   let userId;
   if (existing) {
     userId = existing.id;
     await admin.auth.admin.updateUserById(userId, {
-      password,
-      user_metadata: { full_name, phone },
+      password: account.password,
+      email_confirm: true,
+      user_metadata: { full_name: account.full_name, phone: account.phone },
     });
-    console.log(`  Utilisateur existant mis à jour : ${email}`);
+    console.log(`  Utilisateur existant mis à jour : ${account.email}`);
   } else {
     const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
+      email: account.email,
+      password: account.password,
       email_confirm: true,
-      user_metadata: { full_name, phone },
+      user_metadata: { full_name: account.full_name, phone: account.phone },
     });
-    if (error) throw new Error(`${email}: ${error.message}`);
+    if (error) throw new Error(`${account.email}: ${error.message}`);
     userId = data.user.id;
-    console.log(`  Utilisateur créé : ${email}`);
+    console.log(`  Utilisateur créé : ${account.email}`);
   }
 
   await admin.from("profiles").upsert(
-    { id: userId, phone, full_name, whatsapp: phone },
+    { id: userId, phone: account.phone, full_name: account.full_name, whatsapp: account.phone },
     { onConflict: "id" }
   );
 
   return userId;
 }
 
-async function main() {
-  console.log("Création des comptes test Wazo Digital…\n");
+async function signIn(account) {
+  const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: anonKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: account.email, password: account.password }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) return null;
+  return json;
+}
 
-  const ownerId = await upsertUser(ACCOUNTS.owner);
-  const employeeId = await upsertUser(ACCOUNTS.employee);
+async function signUp(account) {
+  const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+    method: "POST",
+    headers: { apikey: anonKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: account.email,
+      password: account.password,
+      data: { full_name: account.full_name, phone: account.phone },
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.ok && json.access_token) return json;
+  if (res.ok && json.id) {
+    return signIn(account);
+  }
+  if (json.msg?.includes("already registered") || json.error_description?.includes("already")) {
+    return signIn(account);
+  }
+  throw new Error(`${account.email}: ${json.msg || json.error_description || res.status}`);
+}
+
+async function ensureUserViaAnon(account) {
+  const session = (await signIn(account)) || (await signUp(account));
+  if (!session?.access_token || !session?.user?.id) {
+    throw new Error(`${account.email}: impossible de se connecter après inscription`);
+  }
+
+  const client = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${session.access_token}` } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  await client.from("profiles").upsert(
+    {
+      id: session.user.id,
+      phone: account.phone,
+      full_name: account.full_name,
+      whatsapp: account.phone,
+    },
+    { onConflict: "id" }
+  );
+
+  console.log(`  Compte prêt : ${account.email}`);
+  return { userId: session.user.id, client };
+}
+
+async function setupWithServiceRole() {
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const ownerId = await ensureUserViaAdmin(admin, ACCOUNTS.owner);
+  const employeeId = await ensureUserViaAdmin(admin, ACCOUNTS.employee);
 
   const { data: existingStore } = await admin
     .from("stores")
@@ -113,6 +181,7 @@ async function main() {
       .insert({
         owner_id: ownerId,
         name: STORE_NAME,
+        slug: STORE_SLUG,
         phone: ACCOUNTS.owner.phone,
         whatsapp: ACCOUNTS.owner.phone,
       })
@@ -120,36 +189,88 @@ async function main() {
       .single();
     if (error) throw new Error(`Boutique: ${error.message}`);
     storeId = store.id;
-    console.log(`  Boutique créée : ${STORE_NAME} (${storeId})`);
+    console.log(`  Boutique créée : ${STORE_NAME}`);
   } else {
-    console.log(`  Boutique existante : ${STORE_NAME} (${storeId})`);
+    console.log(`  Boutique existante : ${STORE_NAME}`);
   }
 
   const { error: memberError } = await admin.from("store_members").upsert(
-    {
-      store_id: storeId,
-      user_id: employeeId,
-      role: "employee",
-    },
+    { store_id: storeId, user_id: employeeId, role: "employee" },
     { onConflict: "store_id,user_id" }
   );
   if (memberError) throw new Error(`Membre: ${memberError.message}`);
-  console.log("  Employé ajouté à la boutique (rôle: employee)\n");
+  console.log("  Employé ajouté à la boutique (rôle: employee)");
+}
 
-  console.log("=== Comptes prêts ===\n");
+async function setupWithAnonKey() {
+  console.log("  (mode anon — service role indisponible)\n");
+
+  const { userId: employeeId } = await ensureUserViaAnon(ACCOUNTS.employee);
+  const { userId: ownerId, client: ownerClient } = await ensureUserViaAnon(ACCOUNTS.owner);
+
+  const { data: existingStore } = await ownerClient
+    .from("stores")
+    .select("id, name")
+    .eq("owner_id", ownerId)
+    .eq("name", STORE_NAME)
+    .maybeSingle();
+
+  let storeId = existingStore?.id;
+  if (!storeId) {
+    const { data: store, error } = await ownerClient
+      .from("stores")
+      .insert({
+        owner_id: ownerId,
+        name: STORE_NAME,
+        slug: STORE_SLUG,
+        phone: ACCOUNTS.owner.phone,
+        whatsapp: ACCOUNTS.owner.phone,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Boutique: ${error.message}`);
+    storeId = store.id;
+    console.log(`  Boutique créée : ${STORE_NAME}`);
+  } else {
+    console.log(`  Boutique existante : ${STORE_NAME}`);
+  }
+
+  const { error: memberError } = await ownerClient.from("store_members").upsert(
+    { store_id: storeId, user_id: employeeId, role: "employee" },
+    { onConflict: "store_id,user_id" }
+  );
+  if (memberError) throw new Error(`Membre: ${memberError.message}`);
+  console.log("  Employé ajouté à la boutique (rôle: employee)");
+}
+
+function printSummary() {
+  console.log("\n=== Comptes prêts ===\n");
   console.log("Propriétaire");
-  console.log(`  Email    : ${ACCOUNTS.owner.email}`);
+  console.log(`  Email        : ${ACCOUNTS.owner.email}`);
   console.log(`  Mot de passe : ${ACCOUNTS.owner.password}`);
-  console.log(`  Téléphone : ${ACCOUNTS.owner.phone}`);
+  console.log(`  Téléphone    : ${ACCOUNTS.owner.phone}`);
   console.log("\nEmployé");
-  console.log(`  Email    : ${ACCOUNTS.employee.email}`);
+  console.log(`  Email        : ${ACCOUNTS.employee.email}`);
   console.log(`  Mot de passe : ${ACCOUNTS.employee.password}`);
-  console.log(`  Téléphone : ${ACCOUNTS.employee.phone}`);
+  console.log(`  Téléphone    : ${ACCOUNTS.employee.phone}`);
   console.log(`\nBoutique : ${STORE_NAME}`);
-  console.log("\nValidation rôles :");
-  console.log("  1. Connectez le propriétaire → Paramètres > Équipe : voir l'employé");
-  console.log("  2. Connectez l'employé → caisse/clients OK, paramètres équipe bloqués");
-  console.log("\nVoir docs/TEST-ACCOUNTS.md pour la matrice complète.");
+  console.log("\nValidation : connectez chaque compte sur landing-jacques99e.vercel.app/login");
+}
+
+async function main() {
+  console.log("Création des comptes test Wazo Digital…\n");
+
+  if (await serviceRoleWorks()) {
+    console.log("  Mode : service role\n");
+    await setupWithServiceRole();
+  } else {
+    if (serviceKey) {
+      console.warn("  SUPABASE_SERVICE_ROLE_KEY invalide — bascule mode anon.\n");
+    }
+    await setupWithAnonKey();
+  }
+
+  printSummary();
 }
 
 main().catch((err) => {

@@ -7,7 +7,15 @@ cd wazo-digital
 node scripts/setup-test-accounts.mjs
 ```
 
-Requiert `SUPABASE_SERVICE_ROLE_KEY` dans `.env.local`.
+**Clés requises dans `.env.local` :**
+
+| Variable | Où la trouver (Supabase → Project Settings → API) |
+|----------|-----------------------------------------------------|
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé **publishable** (`sb_publishable_…`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé **secret / service role** (`sb_secret_…`) — **pas** la publishable |
+
+Le script utilise la service role si elle est valide ; sinon il tente un mode anon (signup).  
+Si l’e-mail doit être confirmé dans Supabase Auth, le mode anon échoue → utilisez la service role ou désactivez « Confirm email » pour les tests.
 
 ## Identifiants (après exécution du script)
 
