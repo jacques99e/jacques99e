@@ -13,3 +13,5 @@ public/worker-*.js
 _login*.html
 _login*.js
 _*.js
+
+.vercel
