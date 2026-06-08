@@ -73,12 +73,26 @@ Parcours : `/login` → `/register` (modules) → `/setup` (GPS + slug) → `/da
 - `useSync()` — File de sync Dexie → Supabase
 - `useModule()` — Modules activés par boutique
 
-## Déploiement Vercel
+## Déploiement Vercel (Git + auto-deploy)
 
-1. Importez le dépôt.
-2. Variables = `.env.example`.
-3. `NEXT_PUBLIC_APP_URL` = URL production.
-4. Domaine vitrine : `wazo.digital` → routes `/boutique/*`.
+| | |
+|---|---|
+| **Repo GitHub** | [github.com/jacques99e/jacques99e](https://github.com/jacques99e/jacques99e) |
+| **Projet Vercel** | `wazo-digital` |
+| **URL prod** | https://wazo-digital.vercel.app |
+| **Branche prod** | `master` |
+
+Le dépôt est connecté à Vercel : chaque `git push origin master` déploie en production.
+
+```bash
+git add .
+git commit -m "feat: ma modification"
+git push origin master
+```
+
+Variables : voir `.env.example` (Supabase, `CRON_SECRET`, VAPID, `PAYMENT_CALLBACK_SECRET`, etc.).
+
+Déploiement manuel de secours : `vercel deploy --prod --yes` (dossier lié via `vercel link`).
 
 ## PWA
 
