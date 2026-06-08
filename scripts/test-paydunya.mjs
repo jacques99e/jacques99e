@@ -20,7 +20,14 @@ console.log("keys_present", {
   master_len: master.length,
 });
 
-const res = await fetch("https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create", {
+const mode = (get("PAYMENT_MODE") || "test").toLowerCase();
+const apiBase =
+  mode === "live"
+    ? "https://app.paydunya.com/api/v1"
+    : "https://app.paydunya.com/sandbox-api/v1";
+console.log("payment_mode", mode, "api", apiBase);
+
+const res = await fetch(`${apiBase}/checkout-invoice/create`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
