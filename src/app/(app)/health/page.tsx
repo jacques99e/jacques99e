@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Pill } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import { HealthTodayPanel } from "@/components/health/HealthTodayPanel";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { listPatients, listAppointments } from "@/lib/health";
 import type { HealthPatient } from "@/types";
@@ -48,8 +50,17 @@ export default function HealthPage() {
           ]}
         />
         <ModulePublicPortals moduleId="health" />
+        <ModuleCompetitiveEdge moduleId="health" />
 
         {store ? <HealthTodayPanel storeId={store.id} /> : null}
+
+        <ModuleMenuLink
+          href="/health/pharmacie"
+          icon={Pill}
+          title="Mini pharmacie"
+          description="Stock médicaments, alertes rupture et expiration"
+          iconClassName="bg-rose-700/10 text-rose-800"
+        />
 
         <Button asChild className="w-full">
           <Link href="/health/patients/new">

@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Copy, MessageCircle, Link2 } from "lucide-react";
+import { Plus, Copy, MessageCircle, Link2, UserCheck } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { formationUrl } from "@/lib/education-public";
@@ -44,6 +46,15 @@ export default function EducationPage() {
           ]}
         />
         <ModulePublicPortals moduleId="education" />
+        <ModuleCompetitiveEdge moduleId="education" />
+
+        <ModuleMenuLink
+          href="/education/presence"
+          icon={UserCheck}
+          title="Feuille de présence"
+          description="Émargement par cours avec export PDF"
+          iconClassName="bg-violet-600/10 text-violet-800"
+        />
 
         <Button asChild className="w-full">
           <Link href="/education/courses/new">

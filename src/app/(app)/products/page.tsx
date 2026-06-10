@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, Pencil, Plus, Search } from "lucide-react";
+import { Copy, CreditCard, Pencil, Plus, Search } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
 import { readLocalProducts, type LocalProduct, writeLocalProducts } from "@/lib/local-products";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
@@ -98,6 +100,15 @@ export default function ProductsPage() {
         )}
 
         <ModulePublicPortals moduleId="commerce" />
+        <ModuleCompetitiveEdge moduleId="commerce" />
+
+        <ModuleMenuLink
+          href="/sales/credit"
+          icon={CreditCard}
+          title="Carnet crédit clients"
+          description="Dettes, acomptes et relance WhatsApp"
+          iconClassName="bg-wazo-green/10 text-wazo-green"
+        />
 
         <Button
           type="button"

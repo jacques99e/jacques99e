@@ -18,12 +18,18 @@ export const HELP_LINKS: HelpLink[] = [
   { href: "/modules", label: "Gérer les modules" },
   { href: "/products", label: "Catalogue produits", modules: ["commerce"] },
   { href: "/sales", label: "Caisse & ventes", modules: ["commerce"] },
+  { href: "/sales/credit", label: "Carnet crédit clients", modules: ["commerce"] },
   { href: "/clients", label: "Mini CRM clients", modules: ["commerce"] },
   { href: "/health", label: "Module santé", modules: ["health"] },
+  { href: "/health/pharmacie", label: "Mini pharmacie", modules: ["health"] },
   { href: "/logistics", label: "Livraisons", modules: ["logistics"] },
+  { href: "/logistics/tournee", label: "Tournée du jour", modules: ["logistics"] },
   { href: "/education", label: "Formation", modules: ["education"] },
+  { href: "/education/presence", label: "Feuille de présence", modules: ["education"] },
   { href: "/agriculture", label: "Agriculture", modules: ["agriculture"] },
+  { href: "/agriculture/calendrier", label: "Calendrier cultural", modules: ["agriculture"] },
   { href: "/blockchain", label: "Traçabilité", modules: ["blockchain"] },
+  { href: "/blockchain/qr", label: "QR traçabilité", modules: ["blockchain"] },
   { href: "/settings", label: "Diagnostic technique" },
   { href: "/billing", label: "Abonnement" },
 ];
@@ -31,32 +37,32 @@ export const HELP_LINKS: HelpLink[] = [
 export const HELP_FAQ: HelpFaqItem[] = [
   {
     q: "Comment démarrer avec le commerce ?",
-    a: "Ajoutez un produit, enregistrez une vente depuis la caisse, puis partagez votre catalogue WhatsApp ou le lien boutique publique.",
+    a: "Ajoutez un produit, enregistrez une vente depuis la caisse, gérez les dettes clients dans le carnet crédit, puis partagez votre catalogue WhatsApp.",
     modules: ["commerce"],
   },
   {
     q: "Comment démarrer avec la santé ?",
-    a: "Créez un premier patient, planifiez un rendez-vous, puis envoyez un rappel WhatsApp ou SMS depuis la liste des RDV.",
+    a: "Créez un patient, planifiez un RDV, gérez le stock médicaments dans la mini pharmacie, puis envoyez un rappel WhatsApp depuis le planning.",
     modules: ["health"],
   },
   {
     q: "Comment démarrer avec la logistique ?",
-    a: "Créez une livraison avec code de suivi, puis partagez le lien /suivi au client pour qu'il suive son colis.",
+    a: "Créez une livraison, organisez la tournée du jour, puis partagez le lien /suivi au client par WhatsApp.",
     modules: ["logistics"],
   },
   {
     q: "Comment démarrer avec la formation ?",
-    a: "Créez un cours, ajoutez des leçons, puis partagez le code d'invitation ou le portail /formation.",
+    a: "Créez un cours, enregistrez les présences, puis partagez le portail /formation ou le code d'invitation.",
     modules: ["education"],
   },
   {
     q: "Comment démarrer avec l'agriculture ?",
-    a: "Enregistrez une parcelle, notez les prix du marché local, puis calculez votre rendement kg/ha.",
+    a: "Planifiez vos cultures dans le calendrier, notez les prix marchés, puis calculez votre rendement kg/ha.",
     modules: ["agriculture"],
   },
   {
     q: "Comment démarrer avec la traçabilité ?",
-    a: "Enregistrez un actif avec hash GPS, puis partagez le lien /trace pour vérification publique.",
+    a: "Enregistrez un actif avec hash GPS, générez un QR pour vos étiquettes, puis partagez le lien /trace.",
     modules: ["blockchain"],
   },
   {

@@ -13,6 +13,12 @@ import {
   Truck,
   Shield,
   GraduationCap,
+  CreditCard,
+  Calendar,
+  Pill,
+  Map,
+  UserCheck,
+  QrCode,
 } from "lucide-react";
 import type { ModuleId } from "@/types";
 
@@ -43,6 +49,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       href: "/products",
       icon: Package,
     },
+    {
+      title: "Carnet crédit",
+      description: "Dettes clients + relance WhatsApp",
+      href: "/sales/credit",
+      icon: CreditCard,
+    },
   ],
   agriculture: [
     {
@@ -62,6 +74,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       description: "Mettre un produit en vente rapidement",
       href: "/products/add?category=Agriculture",
       icon: Package,
+    },
+    {
+      title: "Calendrier cultural",
+      description: "Semis, traitements et récolte",
+      href: "/agriculture/calendrier",
+      icon: Calendar,
     },
   ],
   health: [
@@ -83,6 +101,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       href: "/clients",
       icon: Stethoscope,
     },
+    {
+      title: "Mini pharmacie",
+      description: "Stock médicaments et alertes",
+      href: "/health/pharmacie",
+      icon: Pill,
+    },
   ],
   logistics: [
     {
@@ -103,6 +127,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       href: "/clients",
       icon: MessageCircle,
     },
+    {
+      title: "Tournée du jour",
+      description: "Itinéraire + partage WhatsApp",
+      href: "/logistics/tournee",
+      icon: Map,
+    },
   ],
   education: [
     {
@@ -122,6 +152,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       description: "Lien public /formation pour élèves",
       href: "/formation",
       icon: MessageCircle,
+    },
+    {
+      title: "Feuille de présence",
+      description: "Émargement + export PDF",
+      href: "/education/presence",
+      icon: UserCheck,
     },
   ],
   blockchain: [
@@ -148,6 +184,12 @@ const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
       description: "Hash et grand livre",
       href: "/blockchain/assets/new",
       icon: Shield,
+    },
+    {
+      title: "QR étiquettes",
+      description: "Code scannable /trace",
+      href: "/blockchain/qr",
+      icon: QrCode,
     },
   ],
 };

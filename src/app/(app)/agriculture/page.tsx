@@ -1,8 +1,9 @@
 "use client";
 
-import { BookOpen, Calculator, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
+import { BookOpen, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { useI18n } from "@/contexts/I18nContext";
@@ -17,8 +18,16 @@ export default function AgriculturePage() {
       <AppHeader title={t("modules.agriculture.title")} subtitle="Module" />
       <main className="app-page animate-fade-in space-y-3 pb-6">
         <ModulePublicPortals moduleId="agriculture" />
+        <ModuleCompetitiveEdge moduleId="agriculture" />
         <AgricultureInsights />
 
+        <ModuleMenuLink
+          href="/agriculture/calendrier"
+          icon={Calendar}
+          title="Calendrier cultural"
+          description="Semis, traitements et récolte par culture"
+          iconClassName={iconStyle}
+        />
         <ModuleMenuLink
           href="/agriculture/cultures"
           icon={Sprout}

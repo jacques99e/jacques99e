@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODULES } from "@/lib/modules/config";
+import { advantagesForModule } from "@/lib/module-advantages";
 import { useI18n } from "@/contexts/I18nContext";
 import type { ModuleId } from "@/types";
 
@@ -18,6 +19,7 @@ export function ModuleCard({ moduleId, enabled, onToggle, canToggle = true }: Mo
   const { t } = useI18n();
   const config = MODULES[moduleId];
   const Icon = config.icon;
+  const advantageCount = advantagesForModule(moduleId).length;
 
   return (
     <div
@@ -38,6 +40,9 @@ export function ModuleCard({ moduleId, enabled, onToggle, canToggle = true }: Mo
         <p className="font-semibold dark:text-white">{t(`modules.${moduleId}.title`)}</p>
         <p className="text-xs text-gray-500 line-clamp-2 dark:text-gray-400">
           {t(`modules.${moduleId}.desc`)}
+        </p>
+        <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+          {advantageCount} avantages Wazo
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">

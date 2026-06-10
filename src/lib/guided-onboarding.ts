@@ -14,42 +14,42 @@ export const GUIDED_STEPS_BY_MODULE: Record<ModuleId, GuidedStep> = {
   commerce: {
     title: "Commerce & caisse",
     description:
-      "Ajoutez vos produits, enregistrez une vente et partagez votre catalogue WhatsApp en quelques minutes.",
+      "Ajoutez vos produits, encaissez en Mobile Money, gérez le crédit client et partagez votre catalogue WhatsApp.",
     href: "/products/add",
     cta: "Ajouter un produit",
   },
   health: {
     title: "Santé & rendez-vous",
     description:
-      "Créez un patient, planifiez un RDV et activez les rappels pour ne plus manquer une consultation.",
+      "Créez un patient, gérez la mini pharmacie, planifiez un RDV et activez les rappels WhatsApp.",
     href: "/health/patients/new",
     cta: "Créer un patient",
   },
   agriculture: {
     title: "Agriculture",
     description:
-      "Notez vos parcelles, les prix du marché et calculez le rendement avant de vendre la récolte.",
+      "Planifiez le calendrier cultural, notez les prix marchés et calculez le rendement avant la vente.",
     href: "/agriculture/parcels/new",
     cta: "Ajouter une parcelle",
   },
   logistics: {
     title: "Logistique",
     description:
-      "Créez une livraison, envoyez le lien de suivi au client et testez le portail public /suivi.",
+      "Créez une livraison, organisez la tournée du jour et envoyez le lien /suivi par WhatsApp.",
     href: "/logistics/deliveries/new",
     cta: "Nouvelle livraison",
   },
   education: {
     title: "Formation",
     description:
-      "Publiez un cours, ajoutez une leçon vidéo et partagez le portail /formation à vos apprenants.",
+      "Publiez un cours, enregistrez les présences et partagez le portail /formation à vos apprenants.",
     href: "/education/courses/new",
     cta: "Créer un cours",
   },
   blockchain: {
     title: "Traçabilité",
     description:
-      "Enregistrez un actif, générez un lien /trace et partagez la preuve d'origine à vos partenaires.",
+      "Enregistrez un actif, imprimez le QR sur vos étiquettes et partagez le lien /trace.",
     href: "/blockchain/assets/new",
     cta: "Enregistrer un actif",
   },

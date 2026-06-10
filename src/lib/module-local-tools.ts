@@ -35,6 +35,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       description: "Lien boutique sans appli à installer",
       href: "/profile",
     },
+    {
+      id: "credit",
+      title: "Carnet crédit",
+      description: "Dettes clients et relance WhatsApp",
+      href: "/sales/credit",
+    },
   ],
   agriculture: [
     {
@@ -67,6 +73,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       description: "Mettre la récolte en vente rapidement",
       href: "/products/add?category=Agriculture",
     },
+    {
+      id: "calendrier",
+      title: "Calendrier cultural",
+      description: "Semis, traitements et récolte planifiés",
+      href: "/agriculture/calendrier",
+    },
   ],
   health: [
     {
@@ -93,6 +105,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       description: "Appel / WhatsApp avec le patient",
       href: "/clients",
     },
+    {
+      id: "pharmacie",
+      title: "Mini pharmacie",
+      description: "Stock médicaments et alertes rupture",
+      href: "/health/pharmacie",
+    },
   ],
   logistics: [
     {
@@ -118,6 +136,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       title: "Paiement à la livraison",
       description: "Encaissement MoMo à la remise",
       href: "/sales",
+    },
+    {
+      id: "tournee",
+      title: "Tournée du jour",
+      description: "Itinéraire et partage groupé WhatsApp",
+      href: "/logistics/tournee",
     },
   ],
   education: [
@@ -151,6 +175,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       description: "Contenus texte disponibles sans réseau",
       href: "/education",
     },
+    {
+      id: "presence",
+      title: "Feuille de présence",
+      description: "Émargement par cours + export PDF",
+      href: "/education/presence",
+    },
   ],
   blockchain: [
     {
@@ -182,6 +212,12 @@ export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
       title: "Export conformité",
       description: "Preuves pour bailleurs ou export",
       href: "/blockchain",
+    },
+    {
+      id: "qr",
+      title: "QR étiquettes",
+      description: "Code scannable pour portail /trace",
+      href: "/blockchain/qr",
     },
   ],
 };

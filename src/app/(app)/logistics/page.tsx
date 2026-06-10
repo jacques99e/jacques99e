@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Copy, MessageCircle, Plus } from "lucide-react";
+import { Copy, Map, MessageCircle, Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { listDeliveries } from "@/lib/logistics";
@@ -75,6 +77,15 @@ export default function LogisticsPage() {
           ]}
         />
         <ModulePublicPortals moduleId="logistics" />
+        <ModuleCompetitiveEdge moduleId="logistics" />
+
+        <ModuleMenuLink
+          href="/logistics/tournee"
+          icon={Map}
+          title="Tournée du jour"
+          description="Itinéraire livraisons et partage groupé WhatsApp"
+          iconClassName="bg-sky-600/10 text-sky-800"
+        />
 
         <Button asChild className="w-full">
           <Link href="/logistics/deliveries/new">

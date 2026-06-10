@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, Plus, Shield } from "lucide-react";
+import { MessageCircle, Plus, QrCode, Shield } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
+import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { traceUrl } from "@/lib/blockchain-public";
@@ -55,6 +57,15 @@ export default function BlockchainPage() {
           ]}
         />
         <ModulePublicPortals moduleId="blockchain" />
+        <ModuleCompetitiveEdge moduleId="blockchain" />
+
+        <ModuleMenuLink
+          href="/blockchain/qr"
+          icon={QrCode}
+          title="QR sur étiquettes"
+          description="Code scannable pour vérification /trace"
+          iconClassName="bg-indigo-600/10 text-indigo-800"
+        />
 
         <Button asChild className="w-full">
           <Link href="/blockchain/assets/new">
