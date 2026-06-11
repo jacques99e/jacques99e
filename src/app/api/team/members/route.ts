@@ -17,10 +17,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  let { data, error } = await auth.serviceSupabase
     .from("store_members")
     .select("id, role, allow_momo_links, created_at, profiles(id, phone, full_name)")
     .eq("store_id", storeId);
+
+  if (error?.code === "42703" || error?.message?.includes("allow_momo_links")) {
+    const fallback = await auth.serviceSupabase
+      .from("store_members")
+      .select("id, role, created_at, profiles(id, phone, full_name)")
+      .eq("store_id", storeId);
+    data = (fallback.data || []).map((m) => ({ ...m, allow_momo_links: true }));
+    error = fallback.error;
+  }
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

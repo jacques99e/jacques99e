@@ -19,12 +19,26 @@ export async function checkMomoLinkAccess(
 
   if (owner) return { ok: true };
 
-  const { data: member } = await supabase
+  let member: { role: string; allow_momo_links?: boolean | null } | null = null;
+
+  const withPerm = await supabase
     .from("store_members")
     .select("role, allow_momo_links")
     .eq("store_id", storeId)
     .eq("user_id", userId)
     .maybeSingle();
+
+  if (withPerm.error?.code === "42703" || withPerm.error?.message?.includes("allow_momo_links")) {
+    const fallback = await supabase
+      .from("store_members")
+      .select("role")
+      .eq("store_id", storeId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    member = fallback.data;
+  } else {
+    member = withPerm.data;
+  }
 
   if (!member) {
     return { ok: false, status: 403, error: "Accès refusé." };
