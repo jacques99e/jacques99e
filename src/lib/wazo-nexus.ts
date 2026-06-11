@@ -44,7 +44,7 @@ export const WAZO_PREMIUM_TOOLS: PremiumTool[] = [
     moduleId: "commerce",
     title: "Liens MoMo",
     tagline: "Encaisser à distance",
-    description: "Demande de paiement WhatsApp avec référence unique Orange / MTN / Moov",
+    description: "Facture PayDunya LIVE — le client paie en 1 clic MoMo",
     href: "/sales/liens",
     badge: "MoMo",
   },

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const serviceSupabase = await createServiceSupabase();
     const { data: payment, error: paymentError } = await serviceSupabase
       .from("billing_payments")
-      .select("id,store_id,plan,provider")
+      .select("id,store_id,plan,provider,payload")
       .eq("provider_tx_id", txId)
       .maybeSingle();
 
@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", payment.id);
 
-    if (success) {
+    const paymentPayload = (payment.payload ?? {}) as { source?: string };
+    const isMomoLink = paymentPayload.source === "momo_link";
+
+    if (success && !isMomoLink) {
       const periodEnd = addDays(new Date().toISOString().slice(0, 10), 30);
       await serviceSupabase.from("billing_subscriptions").upsert(
         {
