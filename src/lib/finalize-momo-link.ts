@@ -21,6 +21,13 @@ export async function finalizeMomoLinkPayment(
     momo_reference?: string;
     customer_phone?: string | null;
     sale_id?: string;
+    items?: Array<{
+      product_id?: string | null;
+      product_name?: string;
+      name?: string;
+      quantity?: number;
+      unit_price?: number;
+    }>;
   };
 
   const alreadyPaid = payment.status === "succeeded";
@@ -52,6 +59,12 @@ export async function finalizeMomoLinkPayment(
     label: payload.label ?? "Paiement MoMo",
     transactionId: payment.provider_tx_id,
     reference: payload.momo_reference,
+    items: payload.items?.map((i) => ({
+      product_id: i.product_id,
+      product_name: i.product_name || i.name || payload.label || "Produit",
+      quantity: Number(i.quantity ?? 1),
+      unit_price: Number(i.unit_price ?? payment.amount),
+    })),
   });
 
   if (saleResult.saleId && !payload.sale_id) {

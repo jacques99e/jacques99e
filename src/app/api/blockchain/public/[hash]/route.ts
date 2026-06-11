@@ -15,7 +15,7 @@ export async function GET(
     const supabase = await createServiceSupabase();
     const { data: rows, error } = await supabase
       .from("blockchain_assets")
-      .select("name, asset_type, hash_sha256, description, created_at")
+      .select("name, asset_type, hash_sha256, description, metadata, created_at")
       .ilike("hash_sha256", `${prefix}%`)
       .limit(1);
 
@@ -24,6 +24,18 @@ export async function GET(
     }
 
     const asset = rows[0];
+    const metadata = (asset.metadata ?? {}) as Record<string, unknown>;
+    const passport = metadata.passport as
+      | {
+          cooperative?: string;
+          region?: string;
+          harvestDate?: string;
+          certifications?: string[];
+          farmerStory?: string;
+          carbonEstimateKg?: number;
+        }
+      | undefined;
+
     return NextResponse.json({
       success: true,
       asset: {
@@ -33,6 +45,7 @@ export async function GET(
         description: asset.description,
         recorded_at: asset.created_at,
         verified: Boolean(asset.hash_sha256 && String(asset.hash_sha256).length >= 32),
+        passport: passport ?? null,
       },
     });
   } catch (e) {

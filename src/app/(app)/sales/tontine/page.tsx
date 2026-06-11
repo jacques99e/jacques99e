@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { localStore } from "@/lib/db";
 import {
   advanceTontineRound,
+  buildTontineGroupReminder,
   createTontine,
+  getNextRoundDueDate,
   readTontines,
   recordTontinePayment,
   tontinePotTotal,
@@ -66,6 +68,11 @@ export default function TontinePage() {
     else void navigator.clipboard.writeText(msg);
   };
 
+  const remindGroup = (group: ReturnType<typeof readTontines>[number]) => {
+    const msg = buildTontineGroupReminder(group);
+    window.open(buildWhatsAppShareUrl(msg), "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5F0] pb-24">
       <header className="bg-[#075E54] px-4 py-4 text-white">
@@ -116,6 +123,9 @@ export default function TontinePage() {
               <p className="text-xs text-gray-600">
                 Bénéficiaire ce tour : <strong>{beneficiary?.name ?? "—"}</strong>
               </p>
+              <p className="text-[10px] text-gray-500">
+                Échéance tour : {getNextRoundDueDate(g)}
+              </p>
               <ul className="mt-2 space-y-1 text-xs">
                 {g.members.map((m) => (
                   <li key={m.id} className="flex items-center justify-between rounded bg-gray-50 p-2">
@@ -141,14 +151,24 @@ export default function TontinePage() {
                   </li>
                 ))}
               </ul>
-              <Button
-                type="button"
-                className="mt-3 w-full"
-                variant="outline"
-                onClick={() => setGroups(advanceTontineRound(g.id, storeId))}
-              >
-                Tour suivant
-              </Button>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => remindGroup(g)}
+                >
+                  <MessageCircle className="mr-1 h-3 w-3" /> Rappel groupe
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => setGroups(advanceTontineRound(g.id, storeId))}
+                >
+                  Tour suivant
+                </Button>
+              </div>
             </section>
           );
         })}

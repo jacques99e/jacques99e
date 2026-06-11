@@ -1,15 +1,43 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export interface MomoSaleLineItem {
+  product_id?: string | null;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+}
+
 export interface MomoSaleSyncParams {
   storeId: string;
   amountFcfa: number;
   label: string;
   transactionId: string;
   reference?: string;
+  items?: MomoSaleLineItem[];
 }
 
 export function momoSaleExternalId(transactionId: string): string {
   return `sale-momo-${transactionId}`;
+}
+
+async function decrementStock(
+  supabase: SupabaseClient,
+  productId: string,
+  quantity: number
+) {
+  if (!productId || productId.startsWith("local-") || productId === "momo-link") return;
+  const { data: product } = await supabase
+    .from("products")
+    .select("stock_quantity")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product) return;
+  await supabase
+    .from("products")
+    .update({
+      stock_quantity: Math.max(0, Number(product.stock_quantity) - quantity),
+    })
+    .eq("id", productId);
 }
 
 /** Crée une vente caisse idempotente pour un lien MoMo payé. */
@@ -30,8 +58,19 @@ export async function syncMomoPaymentToSale(
     return { saleId: existing.id, created: false };
   }
 
-  const total = params.amountFcfa;
-  const productName = params.label.trim() || `MoMo ${params.reference || params.transactionId}`;
+  const lineItems: MomoSaleLineItem[] =
+    params.items?.length
+      ? params.items
+      : [
+          {
+            product_name:
+              params.label.trim() || `MoMo ${params.reference || params.transactionId}`,
+            quantity: 1,
+            unit_price: params.amountFcfa,
+          },
+        ];
+
+  const total = lineItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
 
   const { data: saleRow, error } = await supabase
     .from("sales")
@@ -54,14 +93,22 @@ export async function syncMomoPaymentToSale(
   }
 
   await supabase.from("sale_items").delete().eq("sale_id", saleRow.id);
-  await supabase.from("sale_items").insert({
-    sale_id: saleRow.id,
-    product_id: null,
-    product_name: productName,
-    quantity: 1,
-    unit_price: total,
-    subtotal: total,
-  });
+  await supabase.from("sale_items").insert(
+    lineItems.map((i) => ({
+      sale_id: saleRow.id,
+      product_id: i.product_id && !String(i.product_id).startsWith("local-") ? i.product_id : null,
+      product_name: i.product_name,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      subtotal: i.quantity * i.unit_price,
+    }))
+  );
+
+  for (const item of lineItems) {
+    if (item.product_id) {
+      await decrementStock(supabase, item.product_id, item.quantity);
+    }
+  }
 
   return { saleId: saleRow.id, created: true };
 }

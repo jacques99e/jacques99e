@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mic, MicOff, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, ShoppingBag, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,6 +114,15 @@ export default function VoiceSalesPage() {
               <ShoppingBag className="mr-1 h-4 w-4" /> Valider à la caisse
             </Link>
           </Button>
+          {amount && product ? (
+            <Button asChild variant="outline" className="w-full border-orange-300 text-orange-900">
+              <Link
+                href={`/sales/liens?label=${encodeURIComponent(product)}&amount=${amount}&phone=`}
+              >
+                <Smartphone className="mr-1 h-4 w-4" /> Envoyer lien MoMo
+              </Link>
+            </Button>
+          ) : null}
         </section>
       </main>
     </div>

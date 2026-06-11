@@ -84,6 +84,32 @@ export function applyMomoLinkStatuses(
   return updated;
 }
 
+export function isStaleMomoLink(createdAt: string): boolean {
+  const age = Date.now() - new Date(createdAt).getTime();
+  return age >= 24 * 60 * 60 * 1000;
+}
+
+export function momoLinkReminderMessage(params: {
+  storeName: string;
+  amountFcfa: number;
+  label: string;
+  reference: string;
+  publicUrl?: string;
+  checkoutUrl?: string;
+}): string {
+  const payLine = params.publicUrl
+    ? params.publicUrl
+    : params.checkoutUrl || "contactez le commerçant pour le lien";
+  return (
+    `⏰ Rappel paiement Wazo — ${params.storeName}\n` +
+    `Montant : ${params.amountFcfa.toLocaleString("fr-FR")} FCFA\n` +
+    `Motif : ${params.label}\n` +
+    `Réf. ${params.reference}\n\n` +
+    `Lien de paiement : ${payLine}\n\n` +
+    `Merci de régler dès que possible.`
+  );
+}
+
 export function momoLinkWhatsAppMessage(params: {
   storeName: string;
   amountFcfa: number;

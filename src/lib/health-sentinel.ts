@@ -64,6 +64,21 @@ export function vaccinePresets(): string[] {
   return VACCINE_PRESETS;
 }
 
+export function buildVaccineCampaignMessage(params: {
+  neighborhood: string;
+  vaccine: string;
+  dueDate: string;
+  organizer?: string;
+}): string {
+  return (
+    `💉 Campagne vaccinale — ${params.neighborhood}\n` +
+    `Vaccin : ${params.vaccine}\n` +
+    `Date : ${params.dueDate}\n` +
+    (params.organizer ? `Organisateur : ${params.organizer}\n` : "") +
+    `\nRendez-vous au centre de santé ou contactez votre agent de santé communautaire.`
+  );
+}
+
 export function getCommunitySignals(): CommunitySignal[] {
   if (typeof window === "undefined") return defaultSignals();
   try {

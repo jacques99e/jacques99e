@@ -26,11 +26,19 @@ export default function TourneePage() {
     if (store) void listDeliveries(store.id).then(setDeliveries);
   }, [store]);
 
+  const [optimized, setOptimized] = useState(false);
+
   const tour = useMemo(() => {
-    return deliveries
-      .filter((d) => d.status !== "delivered" && d.status !== "cancelled")
-      .sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
-  }, [deliveries]);
+    const active = deliveries.filter((d) => d.status !== "delivered" && d.status !== "cancelled");
+    const sorted = [...active].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+    if (!optimized) return sorted;
+    return [...sorted].sort((a, b) => {
+      const zoneA = (a.address || "").split(/[,\s]/)[0] || "";
+      const zoneB = (b.address || "").split(/[,\s]/)[0] || "";
+      if (zoneA !== zoneB) return zoneA.localeCompare(zoneB, "fr");
+      return (a.address || "").localeCompare(b.address || "", "fr");
+    });
+  }, [deliveries, optimized]);
 
   const shareRoute = () => {
     const lines = tour.map(
@@ -69,8 +77,20 @@ export default function TourneePage() {
             <p className="text-sm font-semibold">{tour.length} livraison(s) en cours</p>
           </div>
           <p className="mt-1 text-xs text-gray-500">
-            Ordre suggéré : en attente → récupérée → en transit
+            {optimized
+              ? "Ordre optimisé par zone et adresse"
+              : "Ordre suggéré : en attente → récupérée → en transit"}
           </p>
+          {tour.length > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={() => setOptimized((v) => !v)}
+            >
+              {optimized ? "Ordre par statut" : "Optimiser la tournée (zones)"}
+            </Button>
+          ) : null}
           {tour.length > 0 ? (
             <Button type="button" className="mt-3 w-full" onClick={shareRoute}>
               <MessageCircle className="mr-1 h-4 w-4" /> Partager la tournée (WhatsApp)

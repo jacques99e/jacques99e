@@ -61,6 +61,19 @@ function commerceScore(storeId?: string): { score: number; signals: string[]; ac
     actions.push({ label: "Relancer les dettes", href: "/sales/credit" });
   }
 
+  const momoSales = recentSales.filter((s) => s.payment_method === "momo");
+  if (momoSales.length > 0) {
+    const momoTotal = momoSales.reduce(
+      (sum, s) => sum + Number(s.total ?? s.total_amount ?? 0),
+      0
+    );
+    score += 8;
+    signals.push(
+      `${Math.round(momoTotal).toLocaleString("fr-FR")} FCFA via MoMo cette semaine (${momoSales.length} vente(s))`
+    );
+    actions.push({ label: "Liens MoMo PayDunya", href: "/sales/liens" });
+  }
+
   return { score: Math.max(0, Math.min(100, score)), signals, actions };
 }
 

@@ -92,3 +92,26 @@ export function advanceTontineRound(groupId: string, storeId?: string): TontineG
 export function tontinePotTotal(group: TontineGroup): number {
   return group.contributionFcfa * group.members.length;
 }
+
+export function getNextRoundDueDate(group: TontineGroup): string {
+  const start = new Date(group.createdAt);
+  const due = new Date(start);
+  due.setDate(start.getDate() + group.currentRound * group.cycleWeeks * 7);
+  return due.toISOString().slice(0, 10);
+}
+
+export function buildTontineGroupReminder(group: TontineGroup): string {
+  const beneficiary = group.members.find((m) => m.id === group.nextBeneficiaryId);
+  const unpaid = group.members.filter(
+    (m) => m.paidRounds < group.currentRound
+  );
+  return (
+    `📢 Tontine "${group.name}" — Tour ${group.currentRound}\n` +
+    `Cotisation : ${group.contributionFcfa.toLocaleString("fr-FR")} FCFA\n` +
+    `Bénéficiaire : ${beneficiary?.name ?? "—"}\n` +
+    `Échéance : ${getNextRoundDueDate(group)}\n` +
+    (unpaid.length
+      ? `En attente : ${unpaid.map((m) => m.name).join(", ")}`
+      : "Tous les membres sont à jour ✓")
+  );
+}

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Radar, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, Bell, Radar, TrendingDown, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { computePriceSignals, getDiseaseAlerts, getSowingWindow } from "@/lib/agri-radar";
 import { formatCurrency } from "@/lib/utils";
 
@@ -28,6 +29,11 @@ export default function AgriRadarPage() {
         <p className="rounded-2xl bg-emerald-50 p-4 text-xs text-emerald-900">
           Veille continentale : maladies, signaux prix et fenêtres de semis — avant vos concurrents.
         </p>
+        <Button type="button" variant="outline" className="w-full" asChild>
+          <Link href="/settings/notifications">
+            <Bell className="mr-1 h-4 w-4" /> Activer alertes push météo / maladies
+          </Link>
+        </Button>
 
         <select
           className="w-full rounded-xl border px-3 py-2 text-sm"

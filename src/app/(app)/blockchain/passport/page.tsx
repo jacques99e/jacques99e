@@ -6,6 +6,7 @@ import { ArrowLeft, Globe, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiFetch } from "@/lib/api-client";
 import { localStore } from "@/lib/db";
 import { listAssets } from "@/lib/blockchain";
 import { traceUrl } from "@/lib/blockchain-public";
@@ -32,21 +33,34 @@ export default function PassportPage() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!productName.trim() || !assetHash) return;
-    setPassports(
-      createPassport(
-        {
-          productName: productName.trim(),
-          assetHash,
-          cooperative: cooperative.trim() || "Coopérative locale",
-          harvestDate: harvestDate || new Date().toISOString().slice(0, 10),
-          region: region.trim() || "Afrique de l'Ouest",
-          certifications: ["Traçabilité Wazo", "Origine vérifiée"],
-          farmerStory: story.trim() || "Produit cultivé avec soin par des producteurs locaux.",
-          carbonEstimateKg: Math.round(2 + productName.length * 0.1),
+    const passportInput = {
+      productName: productName.trim(),
+      assetHash,
+      cooperative: cooperative.trim() || "Coopérative locale",
+      harvestDate: harvestDate || new Date().toISOString().slice(0, 10),
+      region: region.trim() || "Afrique de l'Ouest",
+      certifications: ["Traçabilité Wazo", "Origine vérifiée"],
+      farmerStory: story.trim() || "Produit cultivé avec soin par des producteurs locaux.",
+      carbonEstimateKg: Math.round(2 + productName.length * 0.1),
+    };
+    setPassports(createPassport(passportInput, storeId));
+    void apiFetch("/api/blockchain/passport-publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        store_id: storeId,
+        asset_hash: assetHash,
+        passport: {
+          productName: passportInput.productName,
+          cooperative: passportInput.cooperative,
+          region: passportInput.region,
+          harvestDate: passportInput.harvestDate,
+          certifications: passportInput.certifications,
+          farmerStory: passportInput.farmerStory,
+          carbonEstimateKg: passportInput.carbonEstimateKg,
         },
-        storeId
-      )
-    );
+      }),
+    });
     setProductName("");
     setStory("");
   };

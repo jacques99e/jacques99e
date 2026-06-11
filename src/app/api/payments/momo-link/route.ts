@@ -19,6 +19,14 @@ export async function POST(request: NextRequest) {
       reference?: string;
       local_link_id?: string;
       store_id?: string;
+      product_id?: string;
+      items?: Array<{
+        product_id?: string;
+        name?: string;
+        product_name?: string;
+        quantity?: number;
+        unit_price?: number;
+      }>;
     };
 
     const label = body.label?.trim();
@@ -74,6 +82,13 @@ export async function POST(request: NextRequest) {
     const returnPath = `${publicPath}?tx=${encodeURIComponent(transactionId)}&status=return`;
     const cancelPath = `${publicPath}?tx=${encodeURIComponent(transactionId)}&status=cancel`;
 
+    const saleItems = (body.items ?? []).map((i) => ({
+      product_id: i.product_id ?? null,
+      product_name: i.product_name || i.name || label,
+      quantity: Number(i.quantity ?? 1),
+      unit_price: Number(i.unit_price ?? 0),
+    }));
+
     const { error: insertError } = await auth.serviceSupabase.from("billing_payments").insert({
       store_id: storeId,
       user_id: auth.userId,
@@ -90,6 +105,8 @@ export async function POST(request: NextRequest) {
         label,
         customer_phone: phone || null,
         local_link_id: body.local_link_id ?? null,
+        product_id: body.product_id ?? saleItems[0]?.product_id ?? null,
+        items: saleItems.length ? saleItems : undefined,
       },
       updated_at: now,
     });
@@ -130,6 +147,8 @@ export async function POST(request: NextRequest) {
           label,
           customer_phone: phone || null,
           local_link_id: body.local_link_id ?? null,
+          product_id: body.product_id ?? saleItems[0]?.product_id ?? null,
+          items: saleItems.length ? saleItems : undefined,
           paydunya_token: checkout.token ?? null,
           paydunya: checkout.raw ?? null,
         },

@@ -17,6 +17,15 @@ export default function PublicTracePage() {
     description: string | null;
     recorded_at: string | null;
     verified: boolean;
+    passport?: {
+      cooperative?: string;
+      region?: string;
+      harvestDate?: string;
+      certifications?: string[];
+      farmerStory?: string;
+      carbonEstimateKg?: number;
+      productName?: string;
+    } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -59,6 +68,22 @@ export default function PublicTracePage() {
           <p className="font-semibold">{asset.name}</p>
           <p className="text-indigo-600">{asset.asset_type}</p>
           {asset.description ? <p className="mt-2 text-gray-600">{asset.description}</p> : null}
+          {asset.passport ? (
+            <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900">
+              <p className="font-bold">Passeport produit Wazo</p>
+              <p className="mt-1">Origine : {asset.passport.region} — {asset.passport.cooperative}</p>
+              <p>Récolte : {asset.passport.harvestDate}</p>
+              {asset.passport.certifications?.length ? (
+                <p>Certifications : {asset.passport.certifications.join(", ")}</p>
+              ) : null}
+              {asset.passport.carbonEstimateKg ? (
+                <p>Empreinte estimée : {asset.passport.carbonEstimateKg} kg CO₂e</p>
+              ) : null}
+              {asset.passport.farmerStory ? (
+                <p className="mt-2 italic">{asset.passport.farmerStory}</p>
+              ) : null}
+            </div>
+          ) : null}
           <p className="mt-3 break-all font-mono text-[10px] text-gray-400">{asset.hash_sha256}</p>
         </section>
         <p className="text-center text-xs"><Link href="/trace" className="underline">Autre vérification</Link></p>

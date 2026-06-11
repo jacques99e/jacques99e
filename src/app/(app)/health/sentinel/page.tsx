@@ -2,19 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, Shield } from "lucide-react";
+import { ArrowLeft, AlertTriangle, MessageCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { localStore } from "@/lib/db";
 import {
   addVaccination,
+  buildVaccineCampaignMessage,
   getCommunitySignals,
   readVaccinations,
   reportCommunitySymptom,
   toggleVaccinationDone,
   vaccinePresets,
 } from "@/lib/health-sentinel";
+import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
 
 export default function SentinelPage() {
   const storeId = localStore.get()?.id;
@@ -23,6 +25,7 @@ export default function SentinelPage() {
   const [patient, setPatient] = useState("");
   const [vaccine, setVaccine] = useState(vaccinePresets()[0]);
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [neighborhood, setNeighborhood] = useState("");
 
   const submitVax = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +90,34 @@ export default function SentinelPage() {
               </Button>
             ))}
           </div>
+        </section>
+
+        <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold">Campagne vaccinale (quartier)</h2>
+          <div>
+            <Label>Quartier / village</Label>
+            <Input
+              value={neighborhood}
+              onChange={(e) => setNeighborhood(e.target.value)}
+              placeholder="Adidogomé, Nyékonakpoé…"
+            />
+          </div>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!neighborhood.trim()}
+            onClick={() => {
+              const msg = buildVaccineCampaignMessage({
+                neighborhood: neighborhood.trim(),
+                vaccine,
+                dueDate,
+                organizer: localStore.get()?.name,
+              });
+              window.open(buildWhatsAppShareUrl(msg), "_blank", "noopener,noreferrer");
+            }}
+          >
+            <MessageCircle className="mr-1 h-4 w-4" /> Diffuser sur WhatsApp
+          </Button>
         </section>
 
         <form onSubmit={submitVax} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
