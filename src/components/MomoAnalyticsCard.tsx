@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Smartphone, TrendingUp } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useActiveStore } from "@/hooks/useActiveStore";
+import { downloadMomoReconciliationPdf } from "@/lib/momo-reconciliation";
 import { formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface MomoAnalytics {
   total_links: number;
@@ -18,10 +21,13 @@ interface MomoAnalytics {
 }
 
 export function MomoAnalyticsCard() {
+  const { activeStore } = useActiveStore();
+  const storeId = activeStore?.id;
   const [data, setData] = useState<MomoAnalytics | null>(null);
 
   useEffect(() => {
-    void apiFetch("/api/payments/momo-link/analytics")
+    if (!storeId) return;
+    void apiFetch(`/api/payments/momo-link/analytics?store_id=${encodeURIComponent(storeId)}`)
       .then((res) => res.json())
       .then((json: { success: boolean } & Partial<MomoAnalytics>) => {
         if (json.success) {
@@ -38,7 +44,14 @@ export function MomoAnalyticsCard() {
         }
       })
       .catch(() => undefined);
-  }, []);
+  }, [storeId]);
+
+  const exportReconciliation = async () => {
+    if (!storeId) return;
+    const res = await apiFetch(`/api/payments/momo-link/reconciliation?store_id=${encodeURIComponent(storeId)}`);
+    const json = (await res.json()) as { success: boolean; report?: Parameters<typeof downloadMomoReconciliationPdf>[0] };
+    if (json.success && json.report) await downloadMomoReconciliationPdf(json.report);
+  };
 
   if (!data || data.total_links === 0) return null;
 
@@ -97,6 +110,10 @@ export function MomoAnalyticsCard() {
           ))}
         </div>
       ) : null}
+
+      <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => void exportReconciliation()}>
+        Télécharger réconciliation MoMo / caisse (PDF)
+      </Button>
     </section>
   );
 }

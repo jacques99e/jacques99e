@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { requireAuthContext } from "@/lib/api-auth";
+import { resolveMomoStore } from "@/lib/momo-store";
 
 function mapPaymentRow(row: {
   amount: number;
@@ -40,28 +41,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
     }
 
-    const { data: ownedStore } = await auth.serviceSupabase
-      .from("stores")
-      .select("id, name")
-      .eq("owner_id", auth.userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!ownedStore?.id) {
-      return NextResponse.json({ success: false, error: "Boutique introuvable." }, { status: 404 });
-    }
-
-    const access = await checkStoreAccess(
+    const storeIdParam = request.nextUrl.searchParams.get("store_id");
+    const storeResolved = await resolveMomoStore(
       auth.serviceSupabase,
       auth.userId,
-      ownedStore.id,
+      storeIdParam,
       "read"
     );
-    if (!access.ok) {
+    if (!storeResolved.ok) {
       return NextResponse.json(
-        { success: false, error: access.error },
-        { status: access.status ?? 403 }
+        { success: false, error: storeResolved.error },
+        { status: storeResolved.status }
       );
     }
 
@@ -71,7 +61,7 @@ export async function GET(request: NextRequest) {
     let query = auth.serviceSupabase
       .from("billing_payments")
       .select("amount, status, payload, provider_tx_id, created_at, updated_at")
-      .eq("store_id", ownedStore.id)
+      .eq("store_id", storeResolved.storeId)
       .eq("method", "momo_link")
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -100,7 +90,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      store_name: ownedStore.name,
+      store_id: storeResolved.storeId,
+      store_name: storeResolved.storeName,
       pending_count: pending,
       paid_today_fcfa: paidToday,
       stale_pending_count: stalePending,

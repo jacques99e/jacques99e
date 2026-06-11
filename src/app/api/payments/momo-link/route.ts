@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { requireAuthContext } from "@/lib/api-auth";
+import { checkMomoLinkAccess } from "@/lib/momo-access";
+import { resolveMomoStore } from "@/lib/momo-store";
 import { createPaydunyaCheckoutInvoice } from "@/lib/paydunya-checkout";
 import { getPaymentEnvironmentLabel, getPaymentMode } from "@/lib/paydunya";
 
@@ -43,34 +45,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Montant invalide." }, { status: 400 });
     }
 
-    const { data: ownedStore } = await auth.serviceSupabase
-      .from("stores")
-      .select("id, name")
-      .eq("owner_id", auth.userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const storeId = body.store_id ?? ownedStore?.id;
-    if (!storeId) {
-      return NextResponse.json({ success: false, error: "Boutique introuvable." }, { status: 404 });
-    }
-
-    const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "write");
-    if (!access.ok) {
+    const storeResolved = await resolveMomoStore(
+      auth.serviceSupabase,
+      auth.userId,
+      body.store_id,
+      "write"
+    );
+    if (!storeResolved.ok) {
       return NextResponse.json(
-        { success: false, error: access.error ?? "Accès refusé." },
-        { status: access.status ?? 403 }
+        { success: false, error: storeResolved.error },
+        { status: storeResolved.status }
       );
     }
 
-    const { data: storeRow } = await auth.serviceSupabase
-      .from("stores")
-      .select("name")
-      .eq("id", storeId)
-      .maybeSingle();
+    const momoAccess = await checkMomoLinkAccess(
+      auth.serviceSupabase,
+      auth.userId,
+      storeResolved.storeId
+    );
+    if (!momoAccess.ok) {
+      return NextResponse.json(
+        { success: false, error: momoAccess.error },
+        { status: momoAccess.status ?? 403 }
+      );
+    }
 
-    const storeName = storeRow?.name || "Wazo Digital";
+    const storeId = storeResolved.storeId;
+    const storeName = storeResolved.storeName || "Wazo Digital";
     const transactionId = `WAZO-MOMO-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
     const mode = getPaymentMode();

@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
+import { useActiveStore } from "@/hooks/useActiveStore";
 import { syncStoreToCloud } from "@/lib/cloud-sync";
 import { momoLinkWhatsAppMessage } from "@/lib/momo-links";
 import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
@@ -42,6 +43,7 @@ interface LocalSale {
 export default function SalesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { activeStore } = useActiveStore();
   const [products, setProducts] = useState<LocalProduct[]>([]);
   const [voiceBanner, setVoiceBanner] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -143,8 +145,8 @@ export default function SalesPage() {
     if (cart.length === 0) return;
     setMomoLoading(true);
     try {
-      const store = localStore.get();
-      const storeId = store?.id;
+      const storeId = activeStore?.id || localStore.get()?.id;
+      const storeName = activeStore?.name || localStore.get()?.name || "Ma boutique";
       const cartLabel = cart.map((c) => `${c.name} x${c.quantity}`).join(", ");
       const res = await apiFetch("/api/payments/momo-link", {
         method: "POST",
@@ -170,7 +172,6 @@ export default function SalesPage() {
       };
       if (!res.ok || !json.success) return;
 
-      const storeName = store?.name || localStorage.getItem("store_name") || "Ma boutique";
       const msg = momoLinkWhatsAppMessage({
         storeName,
         amountFcfa: total,

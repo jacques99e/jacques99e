@@ -1,35 +1,25 @@
-import { NextResponse } from "next/server";
-import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuthContext } from "@/lib/api-auth";
+import { resolveMomoStore } from "@/lib/momo-store";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
     if (!auth.ok) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
     }
 
-    const { data: ownedStore } = await auth.serviceSupabase
-      .from("stores")
-      .select("id")
-      .eq("owner_id", auth.userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!ownedStore?.id) {
-      return NextResponse.json({ success: false, error: "Boutique introuvable." }, { status: 404 });
-    }
-
-    const access = await checkStoreAccess(
+    const storeIdParam = request.nextUrl.searchParams.get("store_id");
+    const storeResolved = await resolveMomoStore(
       auth.serviceSupabase,
       auth.userId,
-      ownedStore.id,
+      storeIdParam,
       "read"
     );
-    if (!access.ok) {
+    if (!storeResolved.ok) {
       return NextResponse.json(
-        { success: false, error: access.error },
-        { status: access.status ?? 403 }
+        { success: false, error: storeResolved.error },
+        { status: storeResolved.status }
       );
     }
 
@@ -40,7 +30,7 @@ export async function GET() {
     const { data: rows, error } = await auth.serviceSupabase
       .from("billing_payments")
       .select("amount, status, created_at, updated_at, payload")
-      .eq("store_id", ownedStore.id)
+      .eq("store_id", storeResolved.storeId)
       .eq("method", "momo_link")
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: true });
@@ -83,6 +73,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      store_id: storeResolved.storeId,
       period_days: 30,
       total_links: payments.length,
       paid_count: paid.length,

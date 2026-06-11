@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Smartphone, TrendingUp } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useActiveStore } from "@/hooks/useActiveStore";
 import { formatCurrency } from "@/lib/utils";
 
 interface MomoSummary {
@@ -20,10 +21,14 @@ interface MomoSummary {
 }
 
 export function MomoPaymentsCard() {
+  const { activeStore } = useActiveStore();
+  const storeId = activeStore?.id;
   const [summary, setSummary] = useState<MomoSummary | null>(null);
 
   useEffect(() => {
-    void apiFetch("/api/payments/momo-link/history?limit=10")
+    if (!storeId) return;
+    const load = () => {
+      void apiFetch(`/api/payments/momo-link/history?limit=10&store_id=${encodeURIComponent(storeId)}`)
       .then((res) => res.json())
       .then(
         (json: {
@@ -44,7 +49,12 @@ export function MomoPaymentsCard() {
         }
       )
       .catch(() => undefined);
-  }, []);
+    };
+    load();
+    const onChange = () => load();
+    window.addEventListener("wazo-store-changed", onChange);
+    return () => window.removeEventListener("wazo-store-changed", onChange);
+  }, [storeId]);
 
   if (!summary) return null;
   if (summary.pending_count === 0 && summary.paid_today_fcfa === 0 && summary.recent.length === 0) {

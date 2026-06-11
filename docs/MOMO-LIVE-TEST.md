@@ -38,8 +38,29 @@ Authorization: Bearer $CRON_SECRET
 
 ## Relance client
 
-- Lien **pending** depuis +24 h → bouton **Relancer** (WhatsApp)
+- Lien **pending** depuis +24 h → bouton **Relancer** (WhatsApp ou SMS si téléphone client renseigné)
 - Cron quotidien **09:00 UTC** (`vercel.json` → `/api/cron/momo-reminders`) notifie le marchand des liens en attente
+
+## SMS relance
+
+```bash
+POST /api/payments/momo-link/remind-sms
+{ "reference": "WZ…", "store_id": "…" }
+```
+
+## Réconciliation MoMo / caisse (PDF)
+
+```bash
+GET /api/payments/momo-link/reconciliation?store_id=…
+```
+
+Ou depuis **Dashboard** (widget analytics) ou **Liens MoMo** → bouton PDF.
+
+## Permissions équipe
+
+- **Paramètres → Équipe** : case « Liens MoMo » par employé / manager
+- Comptables : création de liens toujours bloquée
+- Migration Supabase : `010_momo_member_permissions.sql` (`allow_momo_links`)
 
 ### Cron Vercel
 

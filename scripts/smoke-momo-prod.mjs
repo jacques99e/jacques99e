@@ -8,8 +8,8 @@
 const APP = process.env.APP_URL || "https://wazo-digital.vercel.app";
 const LANDING = process.env.LANDING_URL || "https://landing-jacques99e.vercel.app";
 
-async function check(name, url, { expect = [200], headers } = {}) {
-  const res = await fetch(url, { headers, redirect: "manual" });
+async function check(name, url, { expect = [200], headers, method = "GET" } = {}) {
+  const res = await fetch(url, { headers, method, redirect: "manual" });
   const ok = expect.includes(res.status);
   const mark = ok ? "OK" : "FAIL";
   console.log(`${mark}  ${name} → ${res.status} ${url}`);
@@ -27,6 +27,8 @@ async function run() {
     ["history (sans auth → 401)", `${APP}/api/payments/momo-link/history`, { expect: [401] }],
     ["summary (sans auth → 401)", `${APP}/api/payments/momo-link/summary`, { expect: [401] }],
     ["analytics (sans auth → 401)", `${APP}/api/payments/momo-link/analytics`, { expect: [401] }],
+    ["reconciliation (sans auth → 401)", `${APP}/api/payments/momo-link/reconciliation`, { expect: [401] }],
+    ["remind-sms POST (sans auth → 401)", `${APP}/api/payments/momo-link/remind-sms`, { expect: [401], method: "POST" }],
     ["page paiement public", `${APP}/paiement/WZTEST`, { expect: [200, 404] }],
     ["landing #premium", `${LANDING}/`, { expect: [200] }],
   ];

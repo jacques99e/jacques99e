@@ -24,6 +24,13 @@ export const TEAM_PERMISSION_MATRIX: PermissionRow[] = [
     accountant: false,
   },
   {
+    label: "Liens MoMo PayDunya",
+    owner: true,
+    manager: true,
+    employee: true,
+    accountant: false,
+  },
+  {
     label: "Clients & relances",
     owner: true,
     manager: true,
