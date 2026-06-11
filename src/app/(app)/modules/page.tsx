@@ -11,10 +11,12 @@ import { useRole } from "@/hooks/useRole";
 import { localStore } from "@/lib/db";
 import { AllModulePortals } from "@/components/AllModulePortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
-import { ALL_MODULE_IDS, MODULE_LABELS } from "@/lib/modules/config";
+import { ALL_MODULE_IDS } from "@/lib/modules/config";
+import { useModuleLabelFn } from "@/hooks/useModuleLabel";
 
 export default function ModulesPage() {
   const { t } = useI18n();
+  const moduleLabel = useModuleLabelFn();
   const { user } = useAuth();
   const { canManageModules, role } = useRole(user?.id);
   const store = localStore.get();
@@ -24,8 +26,8 @@ export default function ModulesPage() {
   const filteredModuleIds = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return ALL_MODULE_IDS;
-    return ALL_MODULE_IDS.filter((id) => MODULE_LABELS[id].toLowerCase().includes(q));
-  }, [search]);
+    return ALL_MODULE_IDS.filter((id) => moduleLabel(id).toLowerCase().includes(q));
+  }, [search, moduleLabel]);
 
   return (
     <>
@@ -65,7 +67,7 @@ export default function ModulesPage() {
           </p>
         ) : null}
         <p className="text-xs text-gray-400 pt-2">
-          {t("modules.active")}: {modules.map((id) => MODULE_LABELS[id]).join(", ")}
+          {t("modules.active")}: {modules.map((id) => moduleLabel(id)).join(", ")}
         </p>
       </main>
     </>

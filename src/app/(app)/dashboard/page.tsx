@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Store, AlertCircle, BarChart3, Blocks } from "lucide-react";
-import { getOrderedActiveModules, MODULE_LABELS, MODULES } from "@/lib/modules/config";
+import { getOrderedActiveModules, MODULES } from "@/lib/modules/config";
+import { useI18n } from "@/contexts/I18nContext";
+import { useModuleLabelFn } from "@/hooks/useModuleLabel";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardHero } from "@/components/DashboardHero";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
@@ -61,6 +63,8 @@ interface LocalClient {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useI18n();
+  const moduleLabel = useModuleLabelFn();
   const { user, supabase } = useAuth();
   const cachedStore = localStore.get();
   const { modules: activeModules, primaryModule } = useModule(cachedStore?.id);
@@ -133,7 +137,7 @@ export default function DashboardPage() {
         if (localName?.trim()) {
           setStoreName(localName);
         }
-        setOfflineInfo("Mode hors ligne - données locales");
+        setOfflineInfo(t("dashboard.offlineLocal"));
       }
     };
     void initStore();
@@ -238,7 +242,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <AppHeader title={greeting} subtitle="Tableau de bord" />
+      <AppHeader title={greeting} subtitle={t("dashboard.subtitle")} />
       <main className="app-page animate-fade-in pb-6">
         <DashboardHero
           storeName={greeting}
@@ -481,7 +485,7 @@ export default function DashboardPage() {
         ) : null}
 
         <section className="app-card p-4">
-          <h2 className="mb-3 text-sm font-bold text-gray-800">Modules</h2>
+          <h2 className="mb-3 text-sm font-bold text-gray-800">{t("dashboard.modulesTitle")}</h2>
           <div className="grid grid-cols-3 gap-2.5 text-xs">
             {dashboardModules.map((moduleId) => {
               const config = MODULES[moduleId];
@@ -498,7 +502,7 @@ export default function DashboardPage() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <span className="font-medium leading-tight text-gray-700 group-hover:text-wazo-green">
-                    {MODULE_LABELS[moduleId]}
+                    {moduleLabel(moduleId)}
                   </span>
                 </Link>
               );
@@ -506,19 +510,19 @@ export default function DashboardPage() {
             <Link
               href="/modules"
               className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-200 p-3 text-center text-gray-400 transition hover:border-wazo-green/30 hover:text-wazo-green"
-              title="Gérer les modules"
+              title={t("dashboard.manageModules")}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
                 <Blocks className="h-5 w-5" />
               </div>
-              <span className="font-medium">Plus</span>
+              <span className="font-medium">{t("dashboard.more")}</span>
             </Link>
           </div>
         </section>
 
         {dashboardModules.length > 0 ? (
         <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">Actions rapides</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("dashboard.quickActions")}</h2>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {dashboardModules.map((moduleId) => {
               const mod = MODULES[moduleId];
@@ -529,7 +533,7 @@ export default function DashboardPage() {
                   href={to}
                   className="rounded-xl border border-[#075E54]/20 bg-[#075E54]/5 px-3 py-2 text-sm font-medium text-[#075E54] transition hover:bg-[#075E54]/10"
                 >
-                  {MODULE_LABELS[moduleId]}: créer
+                  {moduleLabel(moduleId)}: {t("dashboard.create")}
                 </Link>
               );
             })}

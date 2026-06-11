@@ -11,9 +11,10 @@ import {
   isGuidedOnboardingDone,
   markGuidedOnboardingDone,
 } from "@/lib/guided-onboarding";
-import { MODULE_LABELS } from "@/lib/modules/config";
+import { useI18n } from "@/contexts/I18nContext";
 
 export function GuidedOnboarding() {
+  const { t } = useI18n();
   const storeId = localStore.get()?.id;
   const { modules, loading } = useModule(storeId);
   const steps = getGuidedStepsForModules(modules);
@@ -32,7 +33,7 @@ export function GuidedOnboarding() {
 
   const step = steps[index];
   const isLast = index >= steps.length - 1;
-  const moduleLabel = MODULE_LABELS[step.moduleId];
+  const moduleLabel = t(`modules.${step.moduleId}.title`);
 
   const finish = () => {
     markGuidedOnboardingDone();
@@ -50,12 +51,12 @@ export function GuidedOnboarding() {
           <div className="flex items-center gap-2 text-[#075E54]">
             <Sparkles className="h-5 w-5" />
             <span className="text-xs font-semibold uppercase tracking-wide">
-              Première connexion · {index + 1}/{steps.length}
+              {t("guided.firstLogin")} · {index + 1}/{steps.length}
             </span>
           </div>
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t("guided.close")}
             className="rounded p-1 text-gray-400 hover:bg-gray-100"
             onClick={finish}
           >

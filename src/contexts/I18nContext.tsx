@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { t as translate, languages } from "@/i18n";
 import { localLang } from "@/lib/db";
 import type { Language } from "@/types";
@@ -22,18 +22,25 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (saved) setLangState(saved);
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
+
   const setLang = (l: Language) => {
     setLangState(l);
     localLang.set(l);
   };
 
-  const t = (key: string) => translate(key, lang);
+  const t = useCallback((key: string) => translate(key, lang), [lang]);
 
-  return (
-    <I18nContext.Provider value={{ lang, setLang, t, languages }}>
-      {children}
-    </I18nContext.Provider>
+  const value = useMemo(
+    () => ({ lang, setLang, t, languages }),
+    [lang, t]
   );
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {

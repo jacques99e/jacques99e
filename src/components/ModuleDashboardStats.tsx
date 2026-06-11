@@ -11,7 +11,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { MODULE_LABELS, MODULES } from "@/lib/modules/config";
+import { MODULES } from "@/lib/modules/config";
+import { useI18n } from "@/contexts/I18nContext";
+import { useModuleLabelFn } from "@/hooks/useModuleLabel";
 import { listParcels } from "@/lib/agriculture";
 import { listAssets } from "@/lib/blockchain";
 import { listCourses } from "@/lib/education";
@@ -35,6 +37,8 @@ interface StatRow {
 }
 
 export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsProps) {
+  const { t } = useI18n();
+  const moduleLabel = useModuleLabelFn();
   const [rows, setRows] = useState<StatRow[]>([]);
 
   useEffect(() => {
@@ -123,19 +127,19 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
     return () => {
       cancelled = true;
     };
-  }, [storeId, modules]);
+  }, [storeId, modules, t, moduleLabel]);
 
   if (rows.length === 0) return null;
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-bold text-gray-800">Vos indicateurs</h2>
+      <h2 className="text-sm font-bold text-gray-800">{t("dashboard.yourStats")}</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {rows.map((row) => (
           <Link key={row.moduleId} href={row.href}>
             <StatCard
               icon={row.icon}
-              label={MODULE_LABELS[row.moduleId]}
+              label={moduleLabel(row.moduleId)}
               value={row.value}
               hint={row.hint}
               accent={row.accent}

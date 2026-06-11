@@ -3,20 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Blocks,
-  GraduationCap,
-  HeartPulse,
   Home,
-  Leaf,
   MessageCircle,
   Package,
   ShoppingBag,
-  Truck,
   User,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertBadge } from "@/components/AlertBadge";
+import { useI18n } from "@/contexts/I18nContext";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useModule } from "@/hooks/useModule";
 import { localStore } from "@/lib/db";
@@ -31,62 +27,61 @@ interface NavLink {
   highlight?: boolean;
 }
 
-const MODULE_NAV: Record<
-  ModuleId,
-  { href: string; icon: LucideIcon; label: string; highlight?: boolean }
-> = {
-  commerce: { href: "/products", icon: Package, label: "Produits" },
-  agriculture: { href: "/agriculture", icon: Leaf, label: "Agriculture" },
-  health: { href: "/health", icon: HeartPulse, label: "Santé" },
-  logistics: { href: "/logistics", icon: Truck, label: "Livraisons" },
-  education: { href: "/education", icon: GraduationCap, label: "Cours" },
-  blockchain: { href: "/blockchain", icon: Blocks, label: "Actifs" },
-};
+function moduleNavLabel(moduleId: ModuleId, t: (key: string) => string): string {
+  if (moduleId === "logistics") return t("nav.logistics");
+  if (moduleId === "education") return t("nav.courses");
+  if (moduleId === "blockchain") return t("nav.assets");
+  return t(`modules.${moduleId}.title`);
+}
 
-function buildNavLinks(modules: ModuleId[], stockAlerts: number, clientAlerts: number): NavLink[] {
+function buildNavLinks(
+  modules: ModuleId[],
+  stockAlerts: number,
+  clientAlerts: number,
+  t: (key: string) => string
+): NavLink[] {
   const links: NavLink[] = [
-    { href: "/dashboard", icon: Home, label: "Accueil", badge: stockAlerts + clientAlerts },
+    { href: "/dashboard", icon: Home, label: t("nav.home"), badge: stockAlerts + clientAlerts },
   ];
 
   if (modules.includes("commerce")) {
     links.push(
-      { href: "/products", icon: Package, label: "Produits", badge: stockAlerts },
-      { href: "/sales", icon: ShoppingBag, label: "Ventes", badge: 0, highlight: true }
+      { href: "/products", icon: Package, label: t("nav.products"), badge: stockAlerts },
+      { href: "/sales", icon: ShoppingBag, label: t("nav.sales"), badge: 0, highlight: true }
     );
   } else {
     const primary = modules[0] ?? "commerce";
-    const primaryNav = MODULE_NAV[primary];
+    const primaryIcon = MODULES[primary].icon;
     links.push({
-      href: primaryNav.href,
-      icon: primaryNav.icon,
-      label: primaryNav.label,
+      href: MODULES[primary].path,
+      icon: primaryIcon,
+      label: moduleNavLabel(primary, t),
       badge: 0,
       highlight: true,
     });
 
     const secondary = modules.find((id) => id !== primary);
     if (secondary) {
-      const secondaryNav = MODULE_NAV[secondary];
       links.push({
-        href: secondaryNav.href,
-        icon: secondaryNav.icon,
-        label: secondaryNav.label,
+        href: MODULES[secondary].path,
+        icon: MODULES[secondary].icon,
+        label: moduleNavLabel(secondary, t),
         badge: 0,
       });
     } else {
       const mod = MODULES[primary];
       links.push({
         href: mod.addPath ?? mod.path,
-        icon: primaryNav.icon,
-        label: "Créer",
+        icon: primaryIcon,
+        label: t("nav.create"),
         badge: 0,
       });
     }
   }
 
   links.push(
-    { href: "/messages", icon: MessageCircle, label: "Messages", badge: 0 },
-    { href: "/profile", icon: User, label: "Profil", badge: clientAlerts }
+    { href: "/messages", icon: MessageCircle, label: t("nav.messages"), badge: 0 },
+    { href: "/profile", icon: User, label: t("nav.profile"), badge: clientAlerts }
   );
 
   return links.slice(0, 5);
@@ -94,10 +89,11 @@ function buildNavLinks(modules: ModuleId[], stockAlerts: number, clientAlerts: n
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const { summary } = useAlerts();
   const storeId = localStore.get()?.id;
   const { modules } = useModule(storeId);
-  const links = buildNavLinks(modules, summary.stockAlerts, summary.clientAlerts);
+  const links = buildNavLinks(modules, summary.stockAlerts, summary.clientAlerts, t);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 safe-bottom">

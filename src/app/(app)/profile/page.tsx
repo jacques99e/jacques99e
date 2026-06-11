@@ -50,7 +50,7 @@ export default function ProfilePage() {
       <AppHeader title={t("nav.profile")} />
       <main className="app-page pb-6">
         <section className="app-card p-4 dark:bg-gray-800">
-          <p className="text-xs text-gray-500">Compte connecté</p>
+          <p className="text-xs text-gray-500">{t("profile.connected")}</p>
           <p className="text-sm font-semibold dark:text-white">{user?.phone ?? "Utilisateur"}</p>
         </section>
 
@@ -77,7 +77,7 @@ export default function ProfilePage() {
         </section>
 
         <section className="app-card p-4 dark:bg-gray-800">
-          <p className="text-xs text-gray-500">Rôle</p>
+          <p className="text-xs text-gray-500">{t("profile.role")}</p>
           <p className="text-sm font-semibold dark:text-white">{role ?? "owner"}</p>
         </section>
 
@@ -96,13 +96,13 @@ export default function ProfilePage() {
               href="/insights"
               className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
             >
-              Insights Pro — pilotage avancé →
+              {t("profile.insightsPro")} →
             </Link>
             <Link
               href="/analytics"
               className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
             >
-              Analytics →
+              {t("profile.analytics")} →
             </Link>
           </>
         ) : null}
@@ -113,13 +113,13 @@ export default function ProfilePage() {
               href="/settings/business"
               className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
             >
-              Paramètres métier (seuils, WhatsApp) →
+              {t("profile.businessSettings")} →
             </Link>
             <Link
               href="/settings/notifications"
               className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
             >
-              Notifications, sync cloud & e-mail →
+              {t("profile.notifications")} →
             </Link>
           </>
         ) : null}
@@ -129,7 +129,7 @@ export default function ProfilePage() {
             href="/settings/team"
             className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
           >
-            Équipe & rôles →
+            {t("profile.team")} →
           </Link>
         ) : null}
 
@@ -138,7 +138,7 @@ export default function ProfilePage() {
             href="/clients"
             className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
           >
-            Mini CRM Clients →
+            {t("profile.crm")} →
           </Link>
         ) : null}
 
@@ -146,14 +146,14 @@ export default function ProfilePage() {
           href="/help"
           className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
         >
-          Centre d'aide →
+          {t("profile.helpCenter")} →
         </Link>
 
         <Link
           href="/billing"
           className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
         >
-          Abonnement →
+          {t("profile.billing")} →
         </Link>
 
         {store && hasCommerce && (
@@ -167,7 +167,7 @@ export default function ProfilePage() {
               <Button asChild variant="outline" size="sm">
                 <a href={storefrontUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="h-4 w-4" />
-                  Ouvrir
+                  {t("profile.open")}
                 </a>
               </Button>
             </div>
