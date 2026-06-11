@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { headers } from "next/headers";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, createServiceSupabase } from "@/lib/supabase/server";
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
@@ -59,6 +59,11 @@ export async function requireAuthContext(): Promise<AuthContextResult> {
   }
 
   return { ok: false, status: 401, error: "Session expirée. Veuillez vous reconnecter." };
+}
+
+/** Client service role pour lectures/écritures après checkStoreAccess (bypass RLS). */
+export async function getAdminSupabase(): Promise<SupabaseClient> {
+  return createServiceSupabase();
 }
 
 export async function checkStoreAccess(
