@@ -143,67 +143,77 @@ export default function DashboardPage() {
     const productsRaw = localStorage.getItem("wazo_products");
     const products = productsRaw ? (JSON.parse(productsRaw) as LocalProduct[]) : [];
     const storeId = localStore.get()?.id;
-    const sales = readLocalSales(storeId || undefined) as LocalSale[];
-    const clientsRaw = localStorage.getItem(
-      storeId ? `wazo_clients_${storeId}` : "wazo_clients"
-    );
-    void (clientsRaw ? (JSON.parse(clientsRaw) as LocalClient[]) : []);
 
-    const getStock = (p: LocalProduct) => p.stock ?? p.stock_quantity ?? 0;
-    const getSaleDate = (s: LocalSale) => s.date || s.created_at || "";
-    const getSaleTotal = (s: LocalSale) => Number(s.total ?? s.total_amount ?? 0);
+    const applySalesStats = (sales: LocalSale[]) => {
+      const getStock = (p: LocalProduct) => p.stock ?? p.stock_quantity ?? 0;
+      const getSaleDate = (s: LocalSale) => s.date || s.created_at || "";
+      const getSaleTotal = (s: LocalSale) => Number(s.total ?? s.total_amount ?? 0);
 
-    const today = new Date().toISOString().slice(0, 10);
-    const salesToday = sales.filter((sale) => getSaleDate(sale).slice(0, 10) === today);
-    setTodaySalesCount(salesToday.length);
-    setTodayTotal(salesToday.reduce((sum, sale) => sum + getSaleTotal(sale), 0));
+      const today = new Date().toISOString().slice(0, 10);
+      const salesToday = sales.filter((sale) => getSaleDate(sale).slice(0, 10) === today);
+      setTodaySalesCount(salesToday.length);
+      setTodayTotal(salesToday.reduce((sum, sale) => sum + getSaleTotal(sale), 0));
 
-    const todayDate = new Date();
-    const weekStart = new Date(todayDate);
-    weekStart.setDate(todayDate.getDate() - 6);
-    weekStart.setHours(0, 0, 0, 0);
-    const weeklySales = sales.filter((sale) => {
-      const raw = getSaleDate(sale);
-      if (!raw) return false;
-      const d = new Date(raw);
-      return !Number.isNaN(d.getTime()) && d >= weekStart && d <= todayDate;
-    });
-    const weeklyTotal = weeklySales.reduce((sum, sale) => sum + getSaleTotal(sale), 0);
-    setWeekTotal(weeklyTotal);
-    setWeekSalesCount(weeklySales.length);
-    setAvgBasket(weeklySales.length > 0 ? weeklyTotal / weeklySales.length : 0);
-
-    setDifferentProductsCount(products.length);
-    setTotalStock(products.reduce((sum, product) => sum + getStock(product), 0));
-    setOutOfStockCount(products.filter((product) => getStock(product) <= 0).length);
-    const stockThreshold = getLowStockThreshold();
-    const lowStock = products
-      .map((product) => ({ id: product.id, name: product.name, stock: getStock(product) }))
-      .filter((product) => product.stock > 0 && product.stock <= stockThreshold)
-      .sort((a, b) => a.stock - b.stock);
-    setLowStockCount(lowStock.length);
-    setLowStockProducts(lowStock.slice(0, 5));
-
-    const sortedLatest = [...sales].sort((a, b) => {
-      return new Date(getSaleDate(b)).getTime() - new Date(getSaleDate(a)).getTime();
-    });
-    setLatestSales(sortedLatest.slice(0, 5));
-
-    const soldByProduct = new Map<string, number>();
-    sales.forEach((sale) => {
-      (sale.items || []).forEach((item) => {
-        const name = item.name || item.product_name || "Produit";
-        const qty = Number(item.quantity || 0);
-        soldByProduct.set(name, (soldByProduct.get(name) || 0) + qty);
+      const todayDate = new Date();
+      const weekStart = new Date(todayDate);
+      weekStart.setDate(todayDate.getDate() - 6);
+      weekStart.setHours(0, 0, 0, 0);
+      const weeklySales = sales.filter((sale) => {
+        const raw = getSaleDate(sale);
+        if (!raw) return false;
+        const d = new Date(raw);
+        return !Number.isNaN(d.getTime()) && d >= weekStart && d <= todayDate;
       });
-    });
-    const topProducts = [...soldByProduct.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([name, sold]) => ({ name, sold }));
-    setPopularProducts(topProducts);
+      const weeklyTotal = weeklySales.reduce((sum, sale) => sum + getSaleTotal(sale), 0);
+      setWeekTotal(weeklyTotal);
+      setWeekSalesCount(weeklySales.length);
+      setAvgBasket(weeklySales.length > 0 ? weeklyTotal / weeklySales.length : 0);
 
-    notifyAlertsChanged();
+      setDifferentProductsCount(products.length);
+      setTotalStock(products.reduce((sum, product) => sum + getStock(product), 0));
+      setOutOfStockCount(products.filter((product) => getStock(product) <= 0).length);
+      const stockThreshold = getLowStockThreshold();
+      const lowStock = products
+        .map((product) => ({ id: product.id, name: product.name, stock: getStock(product) }))
+        .filter((product) => product.stock > 0 && product.stock <= stockThreshold)
+        .sort((a, b) => a.stock - b.stock);
+      setLowStockCount(lowStock.length);
+      setLowStockProducts(lowStock.slice(0, 5));
+
+      const sortedLatest = [...sales].sort((a, b) => {
+        return new Date(getSaleDate(b)).getTime() - new Date(getSaleDate(a)).getTime();
+      });
+      setLatestSales(sortedLatest.slice(0, 5));
+
+      const soldByProduct = new Map<string, number>();
+      sales.forEach((sale) => {
+        (sale.items || []).forEach((item) => {
+          const name = item.name || item.product_name || "Produit";
+          const qty = Number(item.quantity || 0);
+          soldByProduct.set(name, (soldByProduct.get(name) || 0) + qty);
+        });
+      });
+      const topProducts = [...soldByProduct.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, sold]) => ({ name, sold }));
+      setPopularProducts(topProducts);
+
+      notifyAlertsChanged();
+    };
+
+    void (async () => {
+      if (storeId) {
+        try {
+          const { pullSalesFromCloud } = await import("@/lib/cloud-sync");
+          await pullSalesFromCloud(storeId, []);
+        } catch {
+          /* hors ligne */
+        }
+      }
+      if (cancelled) return;
+      applySalesStats(readLocalSales(storeId || undefined) as LocalSale[]);
+    })();
 
     const loadBilling = async () => {
       try {

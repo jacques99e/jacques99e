@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
 import { localStore } from "@/lib/db";
-import { appendLocalSale } from "@/lib/local-sales";
+import { pullSalesFromCloud } from "@/lib/cloud-sync";
 import {
   applyMomoLinkStatuses,
   createMomoLink,
@@ -56,29 +56,11 @@ export default function MomoLinksPage() {
         const old = current.find((c) => c.id === l.id);
         return old?.status === "pending";
       });
-      for (const paid of newlyPaid) {
-        if (storeId) {
-          appendLocalSale(storeId, {
-            id: `sale-momo-${paid.transactionId}`,
-            store_id: storeId,
-            items: [
-              {
-                product_id: "momo-link",
-                name: paid.label,
-                quantity: 1,
-                unit_price: paid.amountFcfa,
-                line_total: paid.amountFcfa,
-              },
-            ],
-            total: paid.amountFcfa,
-            date: new Date().toISOString(),
-            payment_method: "momo",
-            payment_status: "completed",
-          });
-        }
-      }
-      if (newlyPaid.length) {
-        setEnvLabel(`${newlyPaid.length} paiement(s) PayDunya confirmé(s)`);
+      if (newlyPaid.length && storeId) {
+        await pullSalesFromCloud(storeId, []);
+        setEnvLabel(
+          `${newlyPaid.length} paiement(s) confirmé(s) — vente enregistrée en caisse`
+        );
       }
       return updated;
     } catch {

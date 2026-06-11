@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/billing";
-import { notifyStoreOnMomoPayment } from "@/lib/momo-notify";
+import { finalizeMomoLinkPayment } from "@/lib/finalize-momo-link";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 function extractTransactionId(payload: Record<string, unknown>, fallback: string | null): string | null {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const serviceSupabase = await createServiceSupabase();
     const { data: payment, error: paymentError } = await serviceSupabase
       .from("billing_payments")
-      .select("id,store_id,plan,provider,payload,amount,status")
+      .select("id,store_id,plan,provider,payload,amount,status,provider_tx_id")
       .eq("provider_tx_id", txId)
       .maybeSingle();
 
@@ -56,6 +56,44 @@ export async function POST(request: NextRequest) {
 
     const success = isSuccessfulPayment(payload);
     const now = new Date().toISOString();
+    const paymentPayload = (payment.payload ?? {}) as { source?: string };
+    const isMomoLink = paymentPayload.source === "momo_link";
+
+    if (isMomoLink) {
+      if (success) {
+        await finalizeMomoLinkPayment(
+          serviceSupabase,
+          {
+            id: payment.id,
+            store_id: payment.store_id,
+            amount: payment.amount,
+            status: payment.status,
+            payload: payment.payload,
+            provider_tx_id: txId,
+          },
+          { paydunya_callback: payload }
+        );
+      } else {
+        await serviceSupabase
+          .from("billing_payments")
+          .update({
+            status: "failed",
+            payload: {
+              ...(payment.payload as Record<string, unknown>),
+              paydunya_callback: payload,
+            },
+            updated_at: now,
+          })
+          .eq("id", payment.id);
+      }
+
+      return NextResponse.json({
+        success: true,
+        transaction_id: txId,
+        status: success ? "succeeded" : "failed",
+      });
+    }
+
     await serviceSupabase
       .from("billing_payments")
       .update({
@@ -65,25 +103,7 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", payment.id);
 
-    const paymentPayload = (payment.payload ?? {}) as {
-      source?: string;
-      label?: string;
-      momo_reference?: string;
-      customer_phone?: string | null;
-    };
-    const isMomoLink = paymentPayload.source === "momo_link";
-
-    if (success && isMomoLink && payment.status !== "succeeded") {
-      await notifyStoreOnMomoPayment(serviceSupabase, {
-        storeId: payment.store_id,
-        amountFcfa: Number(payment.amount),
-        label: paymentPayload.label ?? "Paiement MoMo",
-        reference: paymentPayload.momo_reference ?? txId,
-        customerPhone: paymentPayload.customer_phone,
-      });
-    }
-
-    if (success && !isMomoLink) {
+    if (success) {
       const periodEnd = addDays(new Date().toISOString().slice(0, 10), 30);
       await serviceSupabase.from("billing_subscriptions").upsert(
         {
@@ -119,4 +139,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ success: true, message: "Callback abonnement actif." });
 }
-
