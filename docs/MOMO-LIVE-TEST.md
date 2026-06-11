@@ -39,4 +39,20 @@ Authorization: Bearer $CRON_SECRET
 ## Relance client
 
 - Lien **pending** depuis +24 h → bouton **Relancer** (WhatsApp)
-- Cron quotidien notifie le marchand des liens en attente
+- Cron quotidien **09:00 UTC** (`vercel.json` → `/api/cron/momo-reminders`) notifie le marchand des liens en attente
+
+### Cron Vercel
+
+Le job est déclaré dans `vercel.json`. Vercel envoie automatiquement  
+`Authorization: Bearer <CRON_SECRET>` si la variable `CRON_SECRET` est définie en Production.
+
+Test manuel :
+
+```bash
+curl -s -H "Authorization: Bearer VOTRE_CRON_SECRET" \
+  https://wazo-digital.vercel.app/api/cron/momo-reminders
+```
+
+Réponse attendue : `{ "success": true, "total_stale_pending": N, ... }`
+
+Sans secret : HTTP **401**.

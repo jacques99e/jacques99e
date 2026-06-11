@@ -25,6 +25,7 @@ import {
   moduleOpsLabels,
   type ModuleOpsSnapshot,
 } from "@/lib/modules/analytics";
+import { MomoAnalyticsCard } from "@/components/MomoAnalyticsCard";
 import { formatCurrency } from "@/lib/utils";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
 
@@ -221,6 +222,8 @@ export default function AnalyticsPage() {
             ]}
           />
         ) : null}
+
+        {hasCommerce ? <MomoAnalyticsCard /> : null}
 
         {opsRows.length > 0 ? (
           <ModuleStatGrid
