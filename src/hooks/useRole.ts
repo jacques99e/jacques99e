@@ -12,7 +12,6 @@ type RoleState = {
   canManageSettings: boolean;
   canManageTeam: boolean;
   canWriteSales: boolean;
-  canCreateMomoLinks: boolean;
 };
 
 export function useRole(
@@ -61,7 +60,6 @@ export function useRole(
       canManageSettings: isStoreOwner || isManager,
       canManageTeam: isStoreOwner,
       canWriteSales: isStoreOwner || isManager || isEmployee,
-      canCreateMomoLinks: isStoreOwner || isManager || isEmployee,
     };
   }, [role, loading, storeMembershipRole]);
 }

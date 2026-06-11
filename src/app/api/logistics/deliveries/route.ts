@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkStoreAccess, getAdminSupabase, requireAuthContext } from "@/lib/api-auth";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 
 function trackingCode() {
   return `WZ${Date.now().toString(36).toUpperCase()}`;
@@ -17,8 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("deliveries")
     .select("*")
     .eq("store_id", storeId)
@@ -41,8 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("deliveries")
     .insert({ ...body, tracking_code: trackingCode(), status: "pending" })
     .select()
@@ -62,8 +60,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data: delivery, error: deliveryError } = await admin
+  const { data: delivery, error: deliveryError } = await auth.serviceSupabase
     .from("deliveries")
     .select("store_id")
     .eq("id", id)
@@ -81,7 +78,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("deliveries")
     .update({ status, signature_data, updated_at: new Date().toISOString() })
     .eq("id", id)

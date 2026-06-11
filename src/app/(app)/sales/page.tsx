@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { CreditCard, Loader2, Mic, Minus, Plus, Smartphone, Trash2, Users } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Minus, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiFetch } from "@/lib/api-client";
-import { useActiveStore } from "@/hooks/useActiveStore";
 import { syncStoreToCloud } from "@/lib/cloud-sync";
-import { momoLinkWhatsAppMessage } from "@/lib/momo-links";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
 import { readLocalProducts, writeLocalProducts, type LocalProduct } from "@/lib/local-products";
 import { appendLocalSale } from "@/lib/local-sales";
 import { localStore } from "@/lib/db";
@@ -42,10 +37,7 @@ interface LocalSale {
 
 export default function SalesPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { activeStore } = useActiveStore();
   const [products, setProducts] = useState<LocalProduct[]>([]);
-  const [voiceBanner, setVoiceBanner] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -53,46 +45,11 @@ export default function SalesPage() {
     total: number;
     whatsappLink: string;
     paymentMethod: string;
-    momoPublicUrl?: string;
   } | null>(null);
-  const [momoLoading, setMomoLoading] = useState(false);
 
   useEffect(() => {
     setProducts(readLocalProducts());
   }, []);
-
-  useEffect(() => {
-    if (searchParams.get("voice") !== "1") return;
-    const productName = searchParams.get("product")?.trim();
-    const qty = Math.max(1, Number(searchParams.get("qty") || 1));
-    const amount = Number(searchParams.get("amount") || 0);
-    if (!productName) return;
-
-    const catalog = readLocalProducts();
-    const match = catalog.find((p) => p.name.toLowerCase().includes(productName.toLowerCase()));
-    if (match && match.stock > 0) {
-      setCart([
-        {
-          productId: match.id,
-          name: match.name,
-          unitPrice: match.price,
-          quantity: Math.min(qty, match.stock),
-        },
-      ]);
-      setVoiceBanner(`Vente vocale : ${match.name}`);
-    } else {
-      const unitPrice = amount > 0 ? Math.round(amount / qty) : amount;
-      setCart([
-        {
-          productId: `voice-${Date.now()}`,
-          name: productName,
-          unitPrice: unitPrice || 0,
-          quantity: qty,
-        },
-      ]);
-      setVoiceBanner(`Vente vocale : ${productName}`);
-    }
-  }, [searchParams]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -141,59 +98,6 @@ export default function SalesPage() {
     setCart((prev) => prev.filter((item) => item.productId !== productId));
   };
 
-  const createMomoLinkFromCart = async () => {
-    if (cart.length === 0) return;
-    setMomoLoading(true);
-    try {
-      const storeId = activeStore?.id || localStore.get()?.id;
-      const storeName = activeStore?.name || localStore.get()?.name || "Ma boutique";
-      const cartLabel = cart.map((c) => `${c.name} x${c.quantity}`).join(", ");
-      const res = await apiFetch("/api/payments/momo-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          label: cartLabel,
-          amount: total,
-          store_id: storeId,
-          items: cart.map((c) => ({
-            product_id: c.productId.startsWith("voice-") ? null : c.productId,
-            name: c.name,
-            quantity: c.quantity,
-            unit_price: c.unitPrice,
-          })),
-        }),
-      });
-      const json = (await res.json()) as {
-        success: boolean;
-        error?: string;
-        public_url?: string;
-        reference?: string;
-        checkout_url?: string;
-      };
-      if (!res.ok || !json.success) return;
-
-      const msg = momoLinkWhatsAppMessage({
-        storeName,
-        amountFcfa: total,
-        label: cartLabel,
-        reference: json.reference ?? "",
-        publicUrl: json.public_url,
-        checkoutUrl: json.checkout_url,
-      });
-
-      setConfirmation({
-        total,
-        whatsappLink: buildWhatsAppShareUrl(msg),
-        paymentMethod: "momo_link",
-        momoPublicUrl: json.public_url,
-      });
-      setCart([]);
-      setPaymentMethod("cash");
-    } finally {
-      setMomoLoading(false);
-    }
-  };
-
   const finalizeSale = () => {
     if (cart.length === 0) return;
 
@@ -240,11 +144,9 @@ export default function SalesPage() {
     setConfirmation({ total: sale.total, whatsappLink, paymentMethod });
     setCart([]);
     setPaymentMethod("cash");
-    if (paymentMethod !== "momo_link") {
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 3000);
-    }
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 3000);
   };
 
   const startNewSale = () => {
@@ -256,53 +158,17 @@ export default function SalesPage() {
     <>
       <AppHeader title="Caisse" subtitle="Enregistrer une vente" />
       <main className="app-page flex flex-col gap-3 pb-44">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Link
-            href="/sales/voice"
-            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-900"
-          >
-            <Mic className="h-4 w-4 shrink-0" /> Voix
-          </Link>
-          <Link
-            href="/sales/liens"
-            className="flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-orange-900"
-          >
-            <Smartphone className="h-4 w-4 shrink-0" /> Liens MoMo
-          </Link>
-          <Link
-            href="/sales/credit"
-            className="flex items-center gap-2 rounded-xl border border-[#075E54]/20 bg-[#075E54]/5 px-3 py-2 text-xs font-medium text-[#075E54]"
-          >
-            <CreditCard className="h-4 w-4 shrink-0" /> Crédit
-          </Link>
-          <Link
-            href="/sales/tontine"
-            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900"
-          >
-            <Users className="h-4 w-4 shrink-0" /> Tontine
-          </Link>
-        </div>
-        {voiceBanner ? (
-          <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-800">{voiceBanner}</p>
-        ) : null}
         {confirmation && (
           <section className="app-card space-y-3 border-green-200 bg-green-50/50 p-4">
             <p className="text-sm font-medium text-green-700">
               Vente enregistrée avec succès ! Total: {formatCurrency(confirmation.total)}
             </p>
             <p className="text-xs text-gray-600">
-              {confirmation.paymentMethod === "momo_link"
-                ? "Lien MoMo créé — envoyez-le au client pour encaisser."
-                : `Méthode de paiement: ${confirmation.paymentMethod === "cash" ? "Espèces" : confirmation.paymentMethod}`}
+              Méthode de paiement: {confirmation.paymentMethod === "cash" ? "Espèces" : confirmation.paymentMethod}
             </p>
-            {confirmation.momoPublicUrl ? (
-              <p className="break-all text-[10px] text-gray-500">{confirmation.momoPublicUrl}</p>
-            ) : null}
             <Button asChild className="w-full" variant="outline">
               <a href={confirmation.whatsappLink} target="_blank" rel="noreferrer">
-                {confirmation.paymentMethod === "momo_link"
-                  ? "Envoyer le lien MoMo (WhatsApp)"
-                  : "Partager le reçu via WhatsApp"}
+                Partager le reçu via WhatsApp
               </a>
             </Button>
             <Button variant="orange" className="w-full" onClick={startNewSale}>
@@ -388,24 +254,6 @@ export default function SalesPage() {
               </div>
               <Button variant="orange" size="lg" className="w-full" onClick={finalizeSale}>
                 Finaliser la vente
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="w-full border-orange-300 text-orange-900"
-                disabled={momoLoading}
-                onClick={() => void createMomoLinkFromCart()}
-              >
-                {momoLoading ? (
-                  <>
-                    <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Création lien MoMo…
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="mr-1 h-4 w-4" /> Envoyer lien MoMo (panier)
-                  </>
-                )}
               </Button>
             </div>
             </div>

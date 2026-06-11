@@ -17,19 +17,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: access.error }, { status: access.status });
   }
 
-  let { data, error } = await auth.serviceSupabase
+  const { data, error } = await auth.serviceSupabase
     .from("store_members")
-    .select("id, role, allow_momo_links, created_at, profiles(id, phone, full_name)")
+    .select("id, role, created_at, profiles(id, phone, full_name)")
     .eq("store_id", storeId);
-
-  if (error?.code === "42703" || error?.message?.includes("allow_momo_links")) {
-    const fallback = await auth.serviceSupabase
-      .from("store_members")
-      .select("id, role, created_at, profiles(id, phone, full_name)")
-      .eq("store_id", storeId);
-    data = (fallback.data || []).map((m) => ({ ...m, allow_momo_links: true }));
-    error = fallback.error;
-  }
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -147,49 +138,6 @@ export async function DELETE(request: Request) {
     .delete()
     .eq("id", memberId)
     .eq("store_id", storeId);
-
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
-}
-
-export async function PATCH(request: Request) {
-  const auth = await requireAuthContext();
-  if (!auth.ok) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
-  }
-
-  const body = (await request.json()) as {
-    store_id?: string;
-    member_id?: string;
-    allow_momo_links?: boolean;
-  };
-
-  if (!body.store_id || !body.member_id || typeof body.allow_momo_links !== "boolean") {
-    return NextResponse.json(
-      { success: false, error: "store_id, member_id et allow_momo_links requis" },
-      { status: 400 }
-    );
-  }
-
-  const { data: store } = await auth.serviceSupabase
-    .from("stores")
-    .select("id")
-    .eq("id", body.store_id)
-    .eq("owner_id", auth.userId)
-    .maybeSingle();
-
-  if (!store) {
-    return NextResponse.json({ success: false, error: "Accès refusé" }, { status: 403 });
-  }
-
-  const { error } = await auth.serviceSupabase
-    .from("store_members")
-    .update({ allow_momo_links: body.allow_momo_links })
-    .eq("id", body.member_id)
-    .eq("store_id", body.store_id);
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

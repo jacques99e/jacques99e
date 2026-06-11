@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
 import { readLocalProducts, type LocalProduct, writeLocalProducts } from "@/lib/local-products";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
-import { ModulePremiumEdge } from "@/components/ModulePremiumEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
@@ -102,7 +101,6 @@ export default function ProductsPage() {
 
         <ModulePublicPortals moduleId="commerce" />
         <ModuleCompetitiveEdge moduleId="commerce" />
-        <ModulePremiumEdge moduleId="commerce" />
 
         <ModuleMenuLink
           href="/sales/credit"

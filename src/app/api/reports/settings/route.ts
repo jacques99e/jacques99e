@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkStoreAccess, getAdminSupabase, requireAuthContext } from "@/lib/api-auth";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   const auth = await requireAuthContext();
@@ -18,8 +18,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: access.error }, { status: access.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("store_report_settings")
     .select("*")
     .eq("store_id", storeId)
@@ -61,8 +60,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: false, error: access.error }, { status: access.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("store_report_settings")
     .upsert({
       store_id: body.store_id,

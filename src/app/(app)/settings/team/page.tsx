@@ -21,7 +21,6 @@ import {
 interface MemberRow {
   id: string;
   role: string;
-  allow_momo_links?: boolean | null;
   profiles: { phone: string | null; full_name: string | null } | null;
 }
 
@@ -79,20 +78,6 @@ export default function TeamSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const toggleMomo = async (memberId: string, allow: boolean) => {
-    if (!activeStore?.id) return;
-    await apiFetch("/api/team/members", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        store_id: activeStore.id,
-        member_id: memberId,
-        allow_momo_links: allow,
-      }),
-    });
-    await load();
   };
 
   const remove = async (memberId: string) => {
@@ -224,21 +209,9 @@ export default function TeamSettingsPage() {
                   {m.profiles?.phone ? ` · ${m.profiles.phone}` : ""}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-1">
-                {m.role === "employee" || m.role === "manager" ? (
-                  <label className="flex items-center gap-1 text-[10px] text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={m.allow_momo_links !== false}
-                      onChange={(e) => void toggleMomo(m.id, e.target.checked)}
-                    />
-                    Liens MoMo
-                  </label>
-                ) : null}
-                <Button size="sm" variant="outline" onClick={() => void remove(m.id)}>
-                  Retirer
-                </Button>
-              </div>
+              <Button size="sm" variant="outline" onClick={() => void remove(m.id)}>
+                Retirer
+              </Button>
             </div>
           ))}
           {members.length === 0 ? (

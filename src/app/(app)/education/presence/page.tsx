@@ -6,7 +6,6 @@ import { ArrowLeft, Check, Download, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api-client";
 import { localStore } from "@/lib/db";
 import { downloadSimplePdf } from "@/lib/export";
 import {
@@ -56,32 +55,14 @@ export default function AttendancePage() {
   };
 
   const exportPdf = async () => {
-    const sessionRecords = records.filter(
-      (r) => r.courseTitle === courseTitle && r.sessionDate === sessionDate
-    );
-    const lines = sessionRecords.map(
-      (r) => `${r.studentName} — ${r.present ? "Présent" : "Absent"}`
-    );
+    const lines = records
+      .filter((r) => r.courseTitle === courseTitle && r.sessionDate === sessionDate)
+      .map((r) => `${r.studentName} — ${r.present ? "Présent" : "Absent"}`);
     await downloadSimplePdf(
       `Présence — ${courseTitle}`,
       [`Session du ${sessionDate}`, "", ...lines],
       `presence-${sessionDate}.pdf`
     );
-    if (storeId && sessionRecords.length) {
-      void apiFetch("/api/education/attendance-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          store_id: storeId,
-          course_title: courseTitle,
-          session_date: sessionDate,
-          records: sessionRecords.map((r) => ({
-            student_name: r.studentName,
-            present: r.present,
-          })),
-        }),
-      });
-    }
   };
 
   return (

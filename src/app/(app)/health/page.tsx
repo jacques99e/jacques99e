@@ -11,7 +11,6 @@ import { localStore } from "@/lib/db";
 import { HealthTodayPanel } from "@/components/health/HealthTodayPanel";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
-import { ModulePremiumEdge } from "@/components/ModulePremiumEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { listPatients, listAppointments } from "@/lib/health";
@@ -52,7 +51,6 @@ export default function HealthPage() {
         />
         <ModulePublicPortals moduleId="health" />
         <ModuleCompetitiveEdge moduleId="health" />
-        <ModulePremiumEdge moduleId="health" />
 
         {store ? <HealthTodayPanel storeId={store.id} /> : null}
 

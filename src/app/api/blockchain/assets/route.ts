@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkStoreAccess, getAdminSupabase, requireAuthContext } from "@/lib/api-auth";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { sha256 } from "@/lib/crypto";
 
 export async function GET(request: NextRequest) {
@@ -14,8 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("blockchain_assets")
     .select("*")
     .eq("store_id", storeId)
@@ -42,8 +41,7 @@ export async function POST(request: NextRequest) {
   const hash_sha256 = await sha256(
     JSON.stringify({ store_id, name, asset_type, description, metadata, t: Date.now() })
   );
-  const admin = await getAdminSupabase();
-  const { data, error } = await admin
+  const { data, error } = await auth.serviceSupabase
     .from("blockchain_assets")
     .insert({ store_id, name, asset_type, description, metadata, hash_sha256, latitude, longitude })
     .select()

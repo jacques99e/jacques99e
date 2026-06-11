@@ -37,33 +37,3 @@ export async function sendWeeklyReportEmail(params: {
   }
   return { ok: true };
 }
-
-export async function sendTransactionEmail(params: {
-  to: string;
-  storeName: string;
-  subject: string;
-  amountFcfa: number;
-  label: string;
-  reference: string;
-  customerPhone?: string | null;
-}): Promise<{ ok: boolean; error?: string }> {
-  const amount = params.amountFcfa.toLocaleString("fr-FR");
-  const html = `
-    <h2>Paiement Mobile Money confirmé</h2>
-    <p><strong>${params.storeName}</strong></p>
-    <p>Montant : <strong>${amount} FCFA</strong></p>
-    <p>Motif : ${params.label}</p>
-    <p>Référence : ${params.reference}</p>
-    ${params.customerPhone ? `<p>Client : ${params.customerPhone}</p>` : ""}
-    <p><a href="https://wazo-digital.vercel.app/sales/liens">Voir dans Wazo Digital</a></p>
-  `;
-  const text = `Paiement ${amount} FCFA — ${params.label} (réf. ${params.reference})`;
-
-  return sendWeeklyReportEmail({
-    to: params.to,
-    storeName: params.storeName,
-    subject: params.subject,
-    html,
-    text,
-  });
-}
