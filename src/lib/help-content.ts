@@ -22,6 +22,7 @@ export const HELP_LINKS: HelpLink[] = [
   { href: "/sales/credit", label: "Carnet crédit clients", modules: ["commerce"] },
   { href: "/sales/voice", label: "Caisse vocale", modules: ["commerce"] },
   { href: "/sales/tontine", label: "Tontine digitale", modules: ["commerce"] },
+  { href: "/sales/liens", label: "Liens paiement MoMo", modules: ["commerce"] },
   { href: "/clients", label: "Mini CRM clients", modules: ["commerce"] },
   { href: "/health", label: "Module santé", modules: ["health"] },
   { href: "/health/pharmacie", label: "Mini pharmacie", modules: ["health"] },

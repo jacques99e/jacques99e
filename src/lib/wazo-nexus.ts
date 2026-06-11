@@ -40,6 +40,15 @@ export const WAZO_PREMIUM_TOOLS: PremiumTool[] = [
     badge: "Afrique",
   },
   {
+    id: "momo-links",
+    moduleId: "commerce",
+    title: "Liens MoMo",
+    tagline: "Encaisser à distance",
+    description: "Demande de paiement WhatsApp avec référence unique Orange / MTN / Moov",
+    href: "/sales/liens",
+    badge: "MoMo",
+  },
+  {
     id: "radar",
     moduleId: "agriculture",
     title: "Agri Radar",

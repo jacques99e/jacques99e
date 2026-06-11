@@ -1,19 +1,26 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Crown, Zap } from "lucide-react";
+import { Crown, Download, Lightbulb, Zap } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
 import { localStore } from "@/lib/db";
+import { downloadSimplePdf } from "@/lib/export";
+import { copilotTipsForModules } from "@/lib/nexus-copilot";
 import { premiumToolsForModules } from "@/lib/wazo-nexus";
 import { computeWazoScore } from "@/lib/wazo-score";
 import { MODULE_LABELS } from "@/lib/modules/config";
 
 export default function NexusPage() {
   const store = localStore.get();
+  const storeName = store?.name || "Ma boutique";
   const { modules } = useModule(store?.id);
   const score = computeWazoScore(modules);
   const tools = premiumToolsForModules(modules).filter((t) => t.id !== "nexus");
+  const tips = useMemo(() => copilotTipsForModules(modules, 3), [modules]);
+  const [exporting, setExporting] = useState(false);
 
   return (
     <>
@@ -39,6 +46,52 @@ export default function NexusPage() {
               </div>
             ))}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full border-white/30 bg-white/10 text-white hover:bg-white/20"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadSimplePdf(
+                  `Wazo Nexus — ${storeName}`,
+                  [
+                    `Score : ${score.overall}/100 (${score.grade})`,
+                    `Date : ${new Date().toLocaleDateString("fr-FR")}`,
+                    "",
+                    "Modules :",
+                    ...Object.entries(score.modules).map(
+                      ([id, val]) => `- ${MODULE_LABELS[id as keyof typeof MODULE_LABELS]} : ${val}`
+                    ),
+                    "",
+                    "Signaux :",
+                    ...score.signals.map((s) => `• ${s}`),
+                    "",
+                    "Conseils Copilot :",
+                    ...tips.map((t) => `• ${t}`),
+                  ],
+                  `nexus-${new Date().toISOString().slice(0, 10)}.pdf`
+                );
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            <Download className="mr-1 h-4 w-4" />
+            {exporting ? "Export…" : "Exporter le rapport PDF"}
+          </Button>
+        </section>
+
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-900">
+            <Lightbulb className="h-4 w-4" /> Copilot Wazo
+          </h3>
+          <ul className="space-y-1 text-xs text-amber-950">
+            {tips.map((t) => (
+              <li key={t}>• {t}</li>
+            ))}
+          </ul>
         </section>
 
         {score.signals.length > 0 ? (

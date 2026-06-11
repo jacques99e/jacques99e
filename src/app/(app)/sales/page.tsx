@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { CreditCard, Mic, Minus, Plus, Smartphone, Trash2, Users } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,9 @@ interface LocalSale {
 
 export default function SalesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<LocalProduct[]>([]);
+  const [voiceBanner, setVoiceBanner] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -50,6 +53,39 @@ export default function SalesPage() {
   useEffect(() => {
     setProducts(readLocalProducts());
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("voice") !== "1") return;
+    const productName = searchParams.get("product")?.trim();
+    const qty = Math.max(1, Number(searchParams.get("qty") || 1));
+    const amount = Number(searchParams.get("amount") || 0);
+    if (!productName) return;
+
+    const catalog = readLocalProducts();
+    const match = catalog.find((p) => p.name.toLowerCase().includes(productName.toLowerCase()));
+    if (match && match.stock > 0) {
+      setCart([
+        {
+          productId: match.id,
+          name: match.name,
+          unitPrice: match.price,
+          quantity: Math.min(qty, match.stock),
+        },
+      ]);
+      setVoiceBanner(`Vente vocale : ${match.name}`);
+    } else {
+      const unitPrice = amount > 0 ? Math.round(amount / qty) : amount;
+      setCart([
+        {
+          productId: `voice-${Date.now()}`,
+          name: productName,
+          unitPrice: unitPrice || 0,
+          quantity: qty,
+        },
+      ]);
+      setVoiceBanner(`Vente vocale : ${productName}`);
+    }
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -158,6 +194,35 @@ export default function SalesPage() {
     <>
       <AppHeader title="Caisse" subtitle="Enregistrer une vente" />
       <main className="app-page flex flex-col gap-3 pb-44">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Link
+            href="/sales/voice"
+            className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-900"
+          >
+            <Mic className="h-4 w-4 shrink-0" /> Voix
+          </Link>
+          <Link
+            href="/sales/liens"
+            className="flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-orange-900"
+          >
+            <Smartphone className="h-4 w-4 shrink-0" /> Liens MoMo
+          </Link>
+          <Link
+            href="/sales/credit"
+            className="flex items-center gap-2 rounded-xl border border-[#075E54]/20 bg-[#075E54]/5 px-3 py-2 text-xs font-medium text-[#075E54]"
+          >
+            <CreditCard className="h-4 w-4 shrink-0" /> Crédit
+          </Link>
+          <Link
+            href="/sales/tontine"
+            className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900"
+          >
+            <Users className="h-4 w-4 shrink-0" /> Tontine
+          </Link>
+        </div>
+        {voiceBanner ? (
+          <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-800">{voiceBanner}</p>
+        ) : null}
         {confirmation && (
           <section className="app-card space-y-3 border-green-200 bg-green-50/50 p-4">
             <p className="text-sm font-medium text-green-700">
