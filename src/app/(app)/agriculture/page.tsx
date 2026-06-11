@@ -4,6 +4,7 @@ import { BookOpen, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } fr
 import { AppHeader } from "@/components/AppHeader";
 import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModulePremiumEdge } from "@/components/ModulePremiumEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { useI18n } from "@/contexts/I18nContext";
@@ -19,6 +20,7 @@ export default function AgriculturePage() {
       <main className="app-page animate-fade-in space-y-3 pb-6">
         <ModulePublicPortals moduleId="agriculture" />
         <ModuleCompetitiveEdge moduleId="agriculture" />
+        <ModulePremiumEdge moduleId="agriculture" />
         <AgricultureInsights />
 
         <ModuleMenuLink

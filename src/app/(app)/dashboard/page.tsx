@@ -7,6 +7,7 @@ import { Store, AlertCircle, BarChart3, Blocks } from "lucide-react";
 import { getOrderedActiveModules, MODULE_LABELS, MODULES } from "@/lib/modules/config";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardHero } from "@/components/DashboardHero";
+import { WazoNexusCard } from "@/components/WazoNexusCard";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
@@ -247,6 +248,7 @@ export default function DashboardPage() {
           todayTotal={todayTotal}
           todaySalesCount={todaySalesCount}
         />
+        <WazoNexusCard activeModules={activeModules} />
         {offlineInfo ? (
           <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">{offlineInfo}</p>
         ) : null}

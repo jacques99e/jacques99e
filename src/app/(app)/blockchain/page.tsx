@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
+import { ModulePremiumEdge } from "@/components/ModulePremiumEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
@@ -58,6 +59,7 @@ export default function BlockchainPage() {
         />
         <ModulePublicPortals moduleId="blockchain" />
         <ModuleCompetitiveEdge moduleId="blockchain" />
+        <ModulePremiumEdge moduleId="blockchain" />
 
         <ModuleMenuLink
           href="/blockchain/qr"
