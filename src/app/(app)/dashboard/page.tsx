@@ -64,7 +64,8 @@ interface LocalClient {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const dateLocale = lang === "fr" ? "fr-FR" : lang === "en" ? "en-US" : lang;
   const moduleLabel = useModuleLabelFn();
   const { user, supabase } = useAuth();
   const cachedStore = localStore.get();
@@ -195,7 +196,7 @@ export default function DashboardPage() {
     const soldByProduct = new Map<string, number>();
     sales.forEach((sale) => {
       (sale.items || []).forEach((item) => {
-        const name = item.name || item.product_name || "Produit";
+        const name = item.name || item.product_name || t("common.product");
         const qty = Number(item.quantity || 0);
         soldByProduct.set(name, (soldByProduct.get(name) || 0) + qty);
       });
@@ -416,21 +417,26 @@ export default function DashboardPage() {
               <div className="app-card p-4 sm:col-span-2">
                 <div className="mb-2 flex items-center gap-2 text-gray-600">
                   <AlertCircle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm font-semibold">Produits en rupture</span>
+                  <span className="text-sm font-semibold">{t("dashboard.commerce.outOfStock")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-2xl font-bold text-[#075E54]">{outOfStockCount}</p>
                   {outOfStockCount > 0 && <span className="h-2.5 w-2.5 rounded-full bg-red-500" />}
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  {lowStockCount} produit(s) avec stock faible (seuil: {getLowStockThreshold()} unites)
+                  {t("dashboard.commerce.lowStockDetail", {
+                    count: lowStockCount,
+                    threshold: getLowStockThreshold(),
+                  })}
                 </p>
                 {lowStockProducts.length > 0 ? (
                   <ul className="mt-2 space-y-1 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
                     {lowStockProducts.map((p) => (
                       <li key={p.id} className="flex items-center justify-between">
                         <span>{p.name}</span>
-                        <span className="font-semibold">{p.stock} restant(s)</span>
+                        <span className="font-semibold">
+                          {t("dashboard.commerce.remaining", { stock: p.stock })}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -439,7 +445,7 @@ export default function DashboardPage() {
                   href="/products"
                   className="mt-2 inline-block rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100"
                 >
-                  Reapprovisionner les produits
+                  {t("dashboard.commerce.restock")}
                 </Link>
               </div>
             </section>
@@ -447,10 +453,10 @@ export default function DashboardPage() {
             <section className="rounded-2xl bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2 text-gray-700">
                 <BarChart3 className="h-4 w-4 text-[#075E54]" />
-                <h2 className="text-sm font-semibold">Dernières ventes</h2>
+                <h2 className="text-sm font-semibold">{t("dashboard.commerce.latestSales")}</h2>
               </div>
               {latestSales.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucune vente réalisée pour le moment</p>
+                <p className="text-sm text-gray-500">{t("dashboard.commerce.noSales")}</p>
               ) : (
                 <ul className="space-y-2">
                   {latestSales.map((sale) => {
@@ -465,10 +471,12 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-xs text-gray-500">
                             {saleDate
-                              ? new Date(saleDate).toLocaleString("fr-FR")
-                              : "Date inconnue"}
+                              ? new Date(saleDate).toLocaleString(dateLocale)
+                              : t("dashboard.commerce.unknownDate")}
                           </p>
-                          <p className="text-sm font-medium">{saleItemsCount} article(s)</p>
+                          <p className="text-sm font-medium">
+                            {t("dashboard.commerce.items", { count: saleItemsCount })}
+                          </p>
                         </div>
                         <p className="text-sm font-bold text-[#075E54]">{formatCurrency(amount)}</p>
                       </li>
@@ -479,15 +487,17 @@ export default function DashboardPage() {
             </section>
 
             <section className="rounded-2xl bg-white p-4 shadow-sm">
-              <h2 className="mb-3 text-sm font-semibold text-gray-700">Produits populaires</h2>
+              <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("dashboard.commerce.popular")}</h2>
               {popularProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">Faites votre première vente pour voir les statistiques</p>
+                <p className="text-sm text-gray-500">{t("dashboard.commerce.noPopular")}</p>
               ) : (
                 <ul className="space-y-2">
                   {popularProducts.map((product) => (
                     <li key={product.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
                       <span className="text-sm font-medium">{product.name}</span>
-                      <span className="text-xs font-semibold text-[#075E54]">{product.sold} vendu(s)</span>
+                      <span className="text-xs font-semibold text-[#075E54]">
+                        {t("dashboard.commerce.sold", { count: product.sold })}
+                      </span>
                     </li>
                   ))}
                 </ul>
