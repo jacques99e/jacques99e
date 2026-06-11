@@ -118,10 +118,6 @@ export function getOnboardingTasks(vertical?: BusinessVertical): OnboardingTaskD
   return ONBOARDING_BY_VERTICAL[v];
 }
 
-export function isTaskDone(taskId: string): boolean {
-  return Boolean(readProgress()[taskId]);
-}
-
 export function setTaskDone(taskId: string, done: boolean) {
   if (typeof window === "undefined") return;
   const next = { ...readProgress(), [taskId]: done };

@@ -7,7 +7,7 @@ export interface GuidedStep {
 
 const GUIDED_DONE_KEY = "wazo_guided_onboarding_done";
 
-export const GUIDED_STEPS_BY_MODULE: Record<ModuleId, GuidedStep> = {
+const GUIDED_STEPS_BY_MODULE: Record<ModuleId, GuidedStep> = {
   commerce: { href: "/products/add" },
   health: { href: "/health/patients/new" },
   agriculture: { href: "/agriculture/parcels/new" },
@@ -36,11 +36,6 @@ export function isGuidedOnboardingDone(): boolean {
 export function markGuidedOnboardingDone() {
   if (typeof window === "undefined") return;
   localStorage.setItem(GUIDED_DONE_KEY, "1");
-}
-
-export function resetGuidedOnboarding() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(GUIDED_DONE_KEY);
 }
 
 export type GuidedStepWithModule = GuidedStep & { moduleId: ModuleId };

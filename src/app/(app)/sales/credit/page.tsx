@@ -15,7 +15,7 @@ import {
   totalOutstanding,
   type CreditEntryType,
 } from "@/lib/commerce-credit";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { formatCurrency } from "@/lib/utils";
 
 export default function CreditLedgerPage() {

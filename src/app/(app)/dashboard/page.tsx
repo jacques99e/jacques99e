@@ -227,7 +227,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, supabase, router]);
+  }, [user, supabase, router, t]);
 
   const selectVertical = (vertical: BusinessVertical) => {
     setBusinessVertical(vertical);

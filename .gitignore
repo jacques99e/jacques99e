@@ -4,6 +4,8 @@ out
 .env
 .env.local
 .env.vercel.production
+.env.vercel.prod
+.env.vercel.tmp
 *.log
 .DS_Store
 public/sw.js

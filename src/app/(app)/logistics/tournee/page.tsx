@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import { listDeliveries } from "@/lib/logistics";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { trackingUrl } from "@/lib/logistics-public";
 import type { Delivery } from "@/types";
 

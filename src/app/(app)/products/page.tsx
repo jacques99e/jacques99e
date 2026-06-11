@@ -13,7 +13,7 @@ import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 

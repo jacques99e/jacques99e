@@ -16,7 +16,7 @@ import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { formationUrl } from "@/lib/education-public";
 import { listCourses } from "@/lib/education";
 import { shareCourseInvite } from "@/lib/module-share";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import type { Course } from "@/types";
 
 export default function EducationPage() {

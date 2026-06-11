@@ -17,7 +17,7 @@ import { useI18n } from "@/contexts/I18nContext";
 import { uploadCourseVideo } from "@/lib/course-media";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { generateCertificatePdfWithQr, issueCertificateToken } from "@/lib/certificate";
 import {
   createCourseModule,

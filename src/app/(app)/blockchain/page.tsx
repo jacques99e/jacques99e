@@ -14,7 +14,7 @@ import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { traceUrl } from "@/lib/blockchain-public";
 import { shareTraceLink } from "@/lib/module-share";
-import { buildWhatsAppShareUrl } from "@/lib/module-local-tools";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { listAssets, listLedger, verifyAssetHash } from "@/lib/blockchain";
 import type { BlockchainAsset, BlockchainLedgerEntry } from "@/types";
 
