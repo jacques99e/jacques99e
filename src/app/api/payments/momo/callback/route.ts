@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/billing";
+import { notifyStoreOnMomoPayment } from "@/lib/momo-notify";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 function extractTransactionId(payload: Record<string, unknown>, fallback: string | null): string | null {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     const serviceSupabase = await createServiceSupabase();
     const { data: payment, error: paymentError } = await serviceSupabase
       .from("billing_payments")
-      .select("id,store_id,plan,provider,payload")
+      .select("id,store_id,plan,provider,payload,amount,status")
       .eq("provider_tx_id", txId)
       .maybeSingle();
 
@@ -64,8 +65,23 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", payment.id);
 
-    const paymentPayload = (payment.payload ?? {}) as { source?: string };
+    const paymentPayload = (payment.payload ?? {}) as {
+      source?: string;
+      label?: string;
+      momo_reference?: string;
+      customer_phone?: string | null;
+    };
     const isMomoLink = paymentPayload.source === "momo_link";
+
+    if (success && isMomoLink && payment.status !== "succeeded") {
+      await notifyStoreOnMomoPayment(serviceSupabase, {
+        storeId: payment.store_id,
+        amountFcfa: Number(payment.amount),
+        label: paymentPayload.label ?? "Paiement MoMo",
+        reference: paymentPayload.momo_reference ?? txId,
+        customerPhone: paymentPayload.customer_phone,
+      });
+    }
 
     if (success && !isMomoLink) {
       const periodEnd = addDays(new Date().toISOString().slice(0, 10), 30);

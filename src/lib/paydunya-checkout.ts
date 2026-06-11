@@ -29,6 +29,59 @@ function appBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://wazo-digital.vercel.app").replace(/\/$/, "");
 }
 
+export function getPaydunyaConfirmUrl(mode: PaymentMode, token: string): string {
+  const base =
+    mode === "live"
+      ? "https://app.paydunya.com/api/v1"
+      : "https://app.paydunya.com/sandbox-api/v1";
+  return `${base}/checkout-invoice/confirm/${encodeURIComponent(token)}`;
+}
+
+export interface PaydunyaConfirmResult {
+  ok: boolean;
+  status?: "completed" | "pending" | "cancelled" | string;
+  responseCode?: string;
+  raw?: Record<string, unknown>;
+  error?: string;
+}
+
+export async function confirmPaydunyaInvoice(token: string): Promise<PaydunyaConfirmResult> {
+  const mode = getPaymentMode();
+  const apiKey = process.env.PAYMENT_API_KEY?.trim();
+  if (!apiKey || mode === "simulate") {
+    return { ok: false, error: "Confirmation indisponible en simulation." };
+  }
+
+  const keyError = validatePaydunyaKeys();
+  if (keyError || !hasPaydunyaCredentials()) {
+    return { ok: false, error: keyError ?? "Clés PayDunya incomplètes." };
+  }
+
+  try {
+    const res = await fetch(getPaydunyaConfirmUrl(mode, token), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "PAYDUNYA-MASTER-KEY": apiKey,
+        "PAYDUNYA-PRIVATE-KEY": process.env.PAYMENT_SECRET_KEY || "",
+        "PAYDUNYA-TOKEN": process.env.PAYMENT_TOKEN || "",
+      },
+    });
+    const data = (await res.json()) as Record<string, unknown>;
+    const status = String(data.status ?? "").toLowerCase();
+    const responseCode = String(data.response_code ?? "");
+    const completed = status === "completed" || responseCode === "00";
+    return {
+      ok: completed,
+      status: status || undefined,
+      responseCode,
+      raw: data,
+    };
+  } catch {
+    return { ok: false, error: "Impossible de confirmer auprès de PayDunya." };
+  }
+}
+
 export function buildPaydunyaCallbackUrl(transactionId: string): string {
   const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET?.trim() ?? "";
   const query = new URLSearchParams({ tx: transactionId });

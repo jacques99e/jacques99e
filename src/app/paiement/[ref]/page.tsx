@@ -50,9 +50,24 @@ export default function PublicPaymentPage() {
     }
   };
 
+  const paydunyaToken = searchParams.get("token");
+  const returnTx = searchParams.get("tx");
+
   useEffect(() => {
     void load();
   }, [ref]);
+
+  useEffect(() => {
+    if (!paydunyaToken && !returnTx) return;
+    void fetch("/api/payments/momo-link/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: paydunyaToken || undefined,
+        transaction_id: returnTx || undefined,
+      }),
+    }).then(() => load());
+  }, [paydunyaToken, returnTx, ref]);
 
   useEffect(() => {
     if (payment?.status !== "pending") return;

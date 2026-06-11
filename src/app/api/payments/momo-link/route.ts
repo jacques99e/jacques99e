@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
           label,
           customer_phone: phone || null,
           local_link_id: body.local_link_id ?? null,
+          paydunya_token: checkout.token ?? null,
           paydunya: checkout.raw ?? null,
         },
         updated_at: new Date().toISOString(),
