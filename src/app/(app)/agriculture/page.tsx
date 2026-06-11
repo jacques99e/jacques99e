@@ -15,7 +15,7 @@ export default function AgriculturePage() {
 
   return (
     <>
-      <AppHeader title={t("modules.agriculture.title")} subtitle="Module" />
+      <AppHeader title={t("modules.agriculture.title")} subtitle={t("hub.module")} />
       <main className="app-page animate-fade-in space-y-3 pb-6">
         <ModulePublicPortals moduleId="agriculture" />
         <ModuleCompetitiveEdge moduleId="agriculture" />
@@ -24,43 +24,43 @@ export default function AgriculturePage() {
         <ModuleMenuLink
           href="/agriculture/calendrier"
           icon={Calendar}
-          title="Calendrier cultural"
-          description="Semis, traitements et récolte par culture"
+          title={t("agri.menu.calendrier.title")}
+          description={t("agri.menu.calendrier.desc")}
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
           href="/agriculture/cultures"
           icon={Sprout}
-          title="Suivi des cultures"
-          description="Parcelles, stades et suivi du semis"
+          title={t("agri.menu.cultures.title")}
+          description={t("agri.menu.cultures.desc")}
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
           href="/agriculture/intrants"
           icon={BookOpen}
-          title="Journal des intrants"
-          description="Engrais, pesticides, eau"
+          title={t("agri.menu.intrants.title")}
+          description={t("agri.menu.intrants.desc")}
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
           href="/agriculture/marches"
           icon={TrendingUp}
-          title="Prix des marchés"
-          description="Cacao, café, maïs, anacarde…"
+          title={t("agri.menu.marches.title")}
+          description={t("agri.menu.marches.desc")}
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
           href="/agriculture/rendement"
           icon={Calculator}
-          title="Calculateur de rendement"
-          description="kg récoltés / hectare et revenus"
+          title={t("agri.menu.rendement.title")}
+          description={t("agri.menu.rendement.desc")}
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
           href="/products/add?category=Agriculture"
           icon={ShoppingBasket}
-          title="Vendre ma récolte"
-          description="Créer rapidement un produit agricole"
+          title={t("agri.menu.sell.title")}
+          description={t("agri.menu.sell.desc")}
           iconClassName={iconStyle}
         />
       </main>

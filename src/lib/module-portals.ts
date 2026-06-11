@@ -2,9 +2,7 @@ import type { ModuleId } from "@/types";
 
 export interface ModulePortalLink {
   moduleId: ModuleId;
-  label: string;
   path: string;
-  description: string;
 }
 
 function appBaseUrl(): string {
@@ -17,31 +15,19 @@ export function portalFullUrl(path: string, slug?: string): string {
   return slug ? `${base}${path.replace("[slug]", slug)}` : `${base}${path}`;
 }
 
+export function portalLabelKey(moduleId: ModuleId): string {
+  return `portal.${moduleId}.label`;
+}
+
+export function portalDescKey(moduleId: ModuleId): string {
+  return `portal.${moduleId}.desc`;
+}
+
 export const MODULE_PUBLIC_PORTALS: ModulePortalLink[] = [
-  {
-    moduleId: "commerce",
-    label: "Boutique en ligne",
-    path: "/boutique/[slug]",
-    description: "Vitrine publique — commandes WhatsApp",
-  },
-  {
-    moduleId: "education",
-    label: "Portail formation",
-    path: "/formation",
-    description: "Accès cours par code invitation",
-  },
-  {
-    moduleId: "logistics",
-    label: "Suivi colis",
-    path: "/suivi",
-    description: "Client suit sa livraison",
-  },
-  {
-    moduleId: "blockchain",
-    label: "Traçabilité",
-    path: "/trace",
-    description: "Vérifier un actif par hash",
-  },
+  { moduleId: "commerce", path: "/boutique/[slug]" },
+  { moduleId: "education", path: "/formation" },
+  { moduleId: "logistics", path: "/suivi" },
+  { moduleId: "blockchain", path: "/trace" },
 ];
 
 export function portalsForModule(moduleId: ModuleId): ModulePortalLink[] {

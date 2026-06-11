@@ -2,58 +2,31 @@ import { ALL_MODULE_IDS } from "@/lib/modules/config";
 import type { ModuleId } from "@/types";
 
 export interface GuidedStep {
-  title: string;
-  description: string;
   href: string;
-  cta: string;
 }
 
 const GUIDED_DONE_KEY = "wazo_guided_onboarding_done";
 
 export const GUIDED_STEPS_BY_MODULE: Record<ModuleId, GuidedStep> = {
-  commerce: {
-    title: "Commerce & caisse",
-    description:
-      "Ajoutez vos produits, encaissez en Mobile Money, gérez le crédit client et partagez votre catalogue WhatsApp.",
-    href: "/products/add",
-    cta: "Ajouter un produit",
-  },
-  health: {
-    title: "Santé & rendez-vous",
-    description:
-      "Créez un patient, gérez la mini pharmacie, planifiez un RDV et activez les rappels WhatsApp.",
-    href: "/health/patients/new",
-    cta: "Créer un patient",
-  },
-  agriculture: {
-    title: "Agriculture",
-    description:
-      "Planifiez le calendrier cultural, notez les prix marchés et calculez le rendement avant la vente.",
-    href: "/agriculture/parcels/new",
-    cta: "Ajouter une parcelle",
-  },
-  logistics: {
-    title: "Logistique",
-    description:
-      "Créez une livraison, organisez la tournée du jour et envoyez le lien /suivi par WhatsApp.",
-    href: "/logistics/deliveries/new",
-    cta: "Nouvelle livraison",
-  },
-  education: {
-    title: "Formation",
-    description:
-      "Publiez un cours, enregistrez les présences et partagez le portail /formation à vos apprenants.",
-    href: "/education/courses/new",
-    cta: "Créer un cours",
-  },
-  blockchain: {
-    title: "Traçabilité",
-    description:
-      "Enregistrez un actif, imprimez le QR sur vos étiquettes et partagez le lien /trace.",
-    href: "/blockchain/assets/new",
-    cta: "Enregistrer un actif",
-  },
+  commerce: { href: "/products/add" },
+  health: { href: "/health/patients/new" },
+  agriculture: { href: "/agriculture/parcels/new" },
+  logistics: { href: "/logistics/deliveries/new" },
+  education: { href: "/education/courses/new" },
+  blockchain: { href: "/blockchain/assets/new" },
 };
+
+export function guidedTitleKey(moduleId: ModuleId): string {
+  return `guided.${moduleId}.title`;
+}
+
+export function guidedDescKey(moduleId: ModuleId): string {
+  return `guided.${moduleId}.desc`;
+}
+
+export function guidedCtaKey(moduleId: ModuleId): string {
+  return `guided.${moduleId}.cta`;
+}
 
 export function isGuidedOnboardingDone(): boolean {
   if (typeof window === "undefined") return true;

@@ -2,223 +2,64 @@ import type { ModuleId } from "@/types";
 
 export interface ModuleLocalTool {
   id: string;
-  title: string;
-  description: string;
   href: string;
   /** wa.me, tel:, ou chemin interne */
   external?: boolean;
 }
 
+export function toolTitleKey(moduleId: ModuleId, toolId: string): string {
+  return `tools.${moduleId}.${toolId}.title`;
+}
+
+export function toolDescKey(moduleId: ModuleId, toolId: string): string {
+  return `tools.${moduleId}.${toolId}.desc`;
+}
+
 export const MODULE_LOCAL_TOOLS: Record<ModuleId, ModuleLocalTool[]> = {
   commerce: [
-    {
-      id: "momo",
-      title: "Encaisser Mobile Money",
-      description: "Caisse avec Orange, MTN, Moov, espèces",
-      href: "/sales",
-    },
-    {
-      id: "whatsapp",
-      title: "Catalogue WhatsApp",
-      description: "Partager vos produits aux clients",
-      href: "/products",
-    },
-    {
-      id: "crm",
-      title: "Relance clients",
-      description: "SMS / WhatsApp depuis le mini CRM",
-      href: "/clients",
-    },
-    {
-      id: "vitrine",
-      title: "Vitrine en ligne",
-      description: "Lien boutique sans appli à installer",
-      href: "/profile",
-    },
-    {
-      id: "credit",
-      title: "Carnet crédit",
-      description: "Dettes clients et relance WhatsApp",
-      href: "/sales/credit",
-    },
+    { id: "momo", href: "/sales" },
+    { id: "whatsapp", href: "/products" },
+    { id: "crm", href: "/clients" },
+    { id: "vitrine", href: "/profile" },
+    { id: "credit", href: "/sales/credit" },
   ],
   agriculture: [
-    {
-      id: "meteo",
-      title: "Météo & conseils",
-      description: "Alertes pluie et calendrier cultural",
-      href: "/agriculture/cultures",
-    },
-    {
-      id: "intrants",
-      title: "Carnet intrants",
-      description: "Engrais, semences, eau — suivi des coûts",
-      href: "/agriculture/intrants",
-    },
-    {
-      id: "marches",
-      title: "Prix marchés",
-      description: "Cacao, café, maïs — prix indicatifs CI",
-      href: "/agriculture/marches",
-    },
-    {
-      id: "rendement",
-      title: "Calcul rendement",
-      description: "kg/ha et estimation revenus",
-      href: "/agriculture/rendement",
-    },
-    {
-      id: "vente",
-      title: "Vendre la récolte",
-      description: "Mettre la récolte en vente rapidement",
-      href: "/products/add?category=Agriculture",
-    },
-    {
-      id: "calendrier",
-      title: "Calendrier cultural",
-      description: "Semis, traitements et récolte planifiés",
-      href: "/agriculture/calendrier",
-    },
+    { id: "meteo", href: "/agriculture/cultures" },
+    { id: "intrants", href: "/agriculture/intrants" },
+    { id: "marches", href: "/agriculture/marches" },
+    { id: "rendement", href: "/agriculture/rendement" },
+    { id: "vente", href: "/products/add?category=Agriculture" },
+    { id: "calendrier", href: "/agriculture/calendrier" },
   ],
   health: [
-    {
-      id: "patient",
-      title: "Dossier patient",
-      description: "Antécédents, groupe sanguin, allergies",
-      href: "/health/patients/new",
-    },
-    {
-      id: "rdv",
-      title: "Rendez-vous",
-      description: "Planning consultations",
-      href: "/health/appointments/new",
-    },
-    {
-      id: "ordonnance",
-      title: "Ordonnance PDF",
-      description: "Document à imprimer ou envoyer",
-      href: "/health",
-    },
-    {
-      id: "teleconsult",
-      title: "Téléconsultation",
-      description: "Appel / WhatsApp avec le patient",
-      href: "/clients",
-    },
-    {
-      id: "pharmacie",
-      title: "Mini pharmacie",
-      description: "Stock médicaments et alertes rupture",
-      href: "/health/pharmacie",
-    },
+    { id: "patient", href: "/health/patients/new" },
+    { id: "rdv", href: "/health/appointments/new" },
+    { id: "ordonnance", href: "/health" },
+    { id: "teleconsult", href: "/clients" },
+    { id: "pharmacie", href: "/health/pharmacie" },
   ],
   logistics: [
-    {
-      id: "new",
-      title: "Nouvelle livraison",
-      description: "Code suivi + destinataire",
-      href: "/logistics/deliveries/new",
-    },
-    {
-      id: "track",
-      title: "Portail suivi client",
-      description: "Lien public pour le destinataire",
-      href: "/suivi",
-    },
-    {
-      id: "pod",
-      title: "Preuve de livraison",
-      description: "Signature et photo à la réception",
-      href: "/logistics",
-    },
-    {
-      id: "cod",
-      title: "Paiement à la livraison",
-      description: "Encaissement MoMo à la remise",
-      href: "/sales",
-    },
-    {
-      id: "tournee",
-      title: "Tournée du jour",
-      description: "Itinéraire et partage groupé WhatsApp",
-      href: "/logistics/tournee",
-    },
+    { id: "new", href: "/logistics/deliveries/new" },
+    { id: "track", href: "/suivi" },
+    { id: "pod", href: "/logistics" },
+    { id: "cod", href: "/sales" },
+    { id: "tournee", href: "/logistics/tournee" },
   ],
   education: [
-    {
-      id: "video",
-      title: "Cours avec vidéos",
-      description: "YouTube ou fichier — faible consommation data",
-      href: "/education",
-    },
-    {
-      id: "cert",
-      title: "Certificats PDF",
-      description: "Attestation de fin de formation",
-      href: "/education",
-    },
-    {
-      id: "portal",
-      title: "Portail formation",
-      description: "Lien public /formation pour apprenants",
-      href: "/formation",
-    },
-    {
-      id: "invite",
-      title: "Code invitation",
-      description: "Inscrire des apprenants par lien",
-      href: "/education/courses/new",
-    },
-    {
-      id: "offline",
-      title: "Mode hors ligne",
-      description: "Contenus texte disponibles sans réseau",
-      href: "/education",
-    },
-    {
-      id: "presence",
-      title: "Feuille de présence",
-      description: "Émargement par cours + export PDF",
-      href: "/education/presence",
-    },
+    { id: "video", href: "/education" },
+    { id: "cert", href: "/education" },
+    { id: "portal", href: "/formation" },
+    { id: "invite", href: "/education/courses/new" },
+    { id: "offline", href: "/education" },
+    { id: "presence", href: "/education/presence" },
   ],
   blockchain: [
-    {
-      id: "asset",
-      title: "Traçabilité produit",
-      description: "Enregistrer origine et lot",
-      href: "/blockchain/assets/new",
-    },
-    {
-      id: "coop",
-      title: "Contrat coopérative",
-      description: "Accords producteurs / acheteurs",
-      href: "/blockchain/contracts",
-    },
-    {
-      id: "verify",
-      title: "Vérification publique",
-      description: "Portail /trace pour acheteurs",
-      href: "/trace",
-    },
-    {
-      id: "ledger",
-      title: "Registre vérifiable",
-      description: "Historique infalsifiable",
-      href: "/blockchain",
-    },
-    {
-      id: "export",
-      title: "Export conformité",
-      description: "Preuves pour bailleurs ou export",
-      href: "/blockchain",
-    },
-    {
-      id: "qr",
-      title: "QR étiquettes",
-      description: "Code scannable pour portail /trace",
-      href: "/blockchain/qr",
-    },
+    { id: "asset", href: "/blockchain/assets/new" },
+    { id: "coop", href: "/blockchain/contracts" },
+    { id: "verify", href: "/trace" },
+    { id: "ledger", href: "/blockchain" },
+    { id: "export", href: "/blockchain" },
+    { id: "qr", href: "/blockchain/qr" },
   ],
 };
 

@@ -6,7 +6,6 @@ export type BusinessVertical = ModuleId;
 
 export interface OnboardingTaskDef {
   id: string;
-  label: string;
   href: string;
 }
 
@@ -14,56 +13,55 @@ const VERTICAL_KEY = "wazo_business_vertical";
 const PROGRESS_KEY = "wazo_onboarding_progress";
 const LEGACY_KEY = "wazo_onboarding_tasks";
 
-export const BUSINESS_VERTICAL_LABELS: Record<BusinessVertical, string> = {
-  commerce: "Commerce & vente",
-  health: "Santé & soins",
-  agriculture: "Agriculture & récolte",
-  logistics: "Logistique & livraisons",
-  education: "Éducation & formation",
-  blockchain: "Blockchain & traçabilité",
-};
-
 export const ONBOARDING_VERTICAL_ORDER: BusinessVertical[] = ALL_MODULE_IDS;
+
+export function verticalLabelKey(vertical: BusinessVertical): string {
+  return `onboarding.vertical.${vertical}`;
+}
+
+export function taskLabelKey(taskId: string): string {
+  return `onboarding.task.${taskId}`;
+}
 
 export const ONBOARDING_BY_VERTICAL: Record<BusinessVertical, OnboardingTaskDef[]> = {
   commerce: [
-    { id: "product", label: "Ajouter un premier produit", href: "/products/add" },
-    { id: "sale", label: "Enregistrer une première vente", href: "/sales" },
-    { id: "catalog", label: "Partager le catalogue WhatsApp", href: "/products" },
-    { id: "vitrine", label: "Copier le lien boutique publique", href: "/profile" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "product", href: "/products/add" },
+    { id: "sale", href: "/sales" },
+    { id: "catalog", href: "/products" },
+    { id: "vitrine", href: "/profile" },
+    { id: "billing", href: "/billing" },
   ],
   health: [
-    { id: "patient", label: "Créer un premier patient", href: "/health/patients/new" },
-    { id: "appointment", label: "Planifier un rendez-vous", href: "/health/appointments/new" },
-    { id: "remind", label: "Envoyer un rappel WhatsApp ou SMS", href: "/health/appointments" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "patient", href: "/health/patients/new" },
+    { id: "appointment", href: "/health/appointments/new" },
+    { id: "remind", href: "/health/appointments" },
+    { id: "billing", href: "/billing" },
   ],
   agriculture: [
-    { id: "parcel", label: "Enregistrer une parcelle", href: "/agriculture/parcels/new" },
-    { id: "marches", label: "Noter les prix du marché local", href: "/agriculture/marches" },
-    { id: "rendement", label: "Calculer le rendement kg/ha", href: "/agriculture/rendement" },
-    { id: "sale", label: "Vendre la récolte", href: "/products/add?category=Agriculture" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "parcel", href: "/agriculture/parcels/new" },
+    { id: "marches", href: "/agriculture/marches" },
+    { id: "rendement", href: "/agriculture/rendement" },
+    { id: "sale", href: "/products/add?category=Agriculture" },
+    { id: "billing", href: "/billing" },
   ],
   logistics: [
-    { id: "delivery", label: "Créer une première livraison", href: "/logistics/deliveries/new" },
-    { id: "suivi", label: "Envoyer le lien suivi au client", href: "/logistics" },
-    { id: "portal", label: "Tester le portail public /suivi", href: "/suivi" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "delivery", href: "/logistics/deliveries/new" },
+    { id: "suivi", href: "/logistics" },
+    { id: "portal", href: "/suivi" },
+    { id: "billing", href: "/billing" },
   ],
   education: [
-    { id: "course", label: "Créer un premier cours public", href: "/education/courses/new" },
-    { id: "video", label: "Ajouter une leçon vidéo", href: "/education" },
-    { id: "portal", label: "Partager le portail /formation", href: "/formation" },
-    { id: "cert", label: "Certificat QR à 100 %", href: "/education" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "course", href: "/education/courses/new" },
+    { id: "video", href: "/education" },
+    { id: "portal", href: "/formation" },
+    { id: "cert", href: "/education" },
+    { id: "billing", href: "/billing" },
   ],
   blockchain: [
-    { id: "asset", label: "Enregistrer un premier actif", href: "/blockchain/assets/new" },
-    { id: "trace", label: "Partager le lien /trace", href: "/trace" },
-    { id: "contract", label: "Créer un contrat numérique", href: "/blockchain/contracts" },
-    { id: "billing", label: "Configurer l'abonnement", href: "/billing" },
+    { id: "asset", href: "/blockchain/assets/new" },
+    { id: "trace", href: "/trace" },
+    { id: "contract", href: "/blockchain/contracts" },
+    { id: "billing", href: "/billing" },
   ],
 };
 

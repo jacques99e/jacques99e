@@ -42,7 +42,7 @@ export default function BlockchainPage() {
 
   return (
     <>
-      <AppHeader title={t("modules.blockchain.title")} subtitle="Module" />
+      <AppHeader title={t("modules.blockchain.title")} subtitle={t("hub.module")} />
       <main className="app-page space-y-4 pb-6">
         <ModuleStatGrid
           columns={3}

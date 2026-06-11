@@ -37,7 +37,7 @@ export default function EducationPage() {
 
   return (
     <>
-      <AppHeader title={t("modules.education.title")} subtitle="Module" />
+      <AppHeader title={t("modules.education.title")} subtitle={t("hub.module")} />
       <main className="app-page space-y-4 pb-6">
         <ModuleStatGrid
           items={[

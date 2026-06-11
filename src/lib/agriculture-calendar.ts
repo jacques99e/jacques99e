@@ -9,13 +9,44 @@ export interface CulturalTask {
 
 const KEY = "wazo_cultural_calendar";
 
-const PRESET_TASKS: Record<string, string[]> = {
-  Maïs: ["Préparation sol", "Semis", "Premier désherbage", "Fertilisation NPK", "Récolte"],
-  Cacao: ["Taille ombrière", "Traitement cabosse", "Récolte cabosses mûres", "Séchage / fermentation"],
-  Café: ["Taille", "Traitement antiparasitaire", "Récolte cerises", "Séchage"],
-  Anacarde: ["Taille", "Traitement maladie", "Récolte pommes", "Séchage noix"],
-  Riz: ["Préparation rizière", "Repiquage", "Fertilisation", "Récolte"],
+export const CROP_IDS = ["maize", "cocoa", "coffee", "cashew", "rice", "other"] as const;
+export type CropId = (typeof CROP_IDS)[number];
+
+const PRESET_TASK_KEYS: Record<string, string[]> = {
+  maize: [
+    "calendar.preset.maize.soilPrep",
+    "calendar.preset.maize.sowing",
+    "calendar.preset.maize.weeding",
+    "calendar.preset.maize.fertilizer",
+    "calendar.preset.maize.harvest",
+  ],
+  cocoa: [
+    "calendar.preset.cocoa.pruning",
+    "calendar.preset.cocoa.treatment",
+    "calendar.preset.cocoa.harvest",
+    "calendar.preset.cocoa.drying",
+  ],
+  coffee: [
+    "calendar.preset.coffee.pruning",
+    "calendar.preset.coffee.treatment",
+    "calendar.preset.coffee.harvest",
+    "calendar.preset.coffee.drying",
+  ],
+  cashew: [
+    "calendar.preset.cashew.pruning",
+    "calendar.preset.cashew.treatment",
+    "calendar.preset.cashew.harvest",
+    "calendar.preset.cashew.drying",
+  ],
+  rice: [
+    "calendar.preset.rice.prep",
+    "calendar.preset.rice.transplant",
+    "calendar.preset.rice.fertilizer",
+    "calendar.preset.rice.harvest",
+  ],
 };
+
+const PRESET_OFFSETS = [7, 21, 45, 70, 100];
 
 function storageKey(storeId?: string): string {
   return storeId ? `${KEY}_${storeId}` : KEY;
@@ -49,26 +80,26 @@ export function addCulturalTask(
   return updated;
 }
 
-export function toggleCulturalTask(
-  id: string,
-  storeId?: string
-): CulturalTask[] {
-  const rows = readCulturalTasks(storeId);
-  const updated = rows.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
-  writeCulturalTasks(updated, storeId);
-  return updated;
+export function toggleCulturalTask(taskId: string, storeId?: string): CulturalTask[] {
+  const rows = readCulturalTasks(storeId).map((t) =>
+    t.id === taskId ? { ...t, done: !t.done } : t
+  );
+  writeCulturalTasks(rows, storeId);
+  return rows;
 }
 
-export function presetTasksForCrop(crop: string): string[] {
-  return PRESET_TASKS[crop] ?? ["Semis / plantation", "Entretien", "Traitement", "Récolte"];
-}
-
-export function upcomingTasks(tasks: CulturalTask[], days = 14): CulturalTask[] {
+export function upcomingTasks(tasks: CulturalTask[]): CulturalTask[] {
   const today = new Date().toISOString().slice(0, 10);
-  const limit = new Date();
-  limit.setDate(limit.getDate() + days);
-  const max = limit.toISOString().slice(0, 10);
   return tasks
-    .filter((t) => !t.done && t.dueDate >= today && t.dueDate <= max)
+    .filter((t) => !t.done && t.dueDate >= today)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+
+export function presetTasksForCrop(cropId: string): { key: string; offsetDays: number }[] {
+  const keys = PRESET_TASK_KEYS[cropId] ?? [];
+  return keys.map((key, i) => ({ key, offsetDays: PRESET_OFFSETS[i] ?? (i + 1) * 14 }));
+}
+
+export function cropLabelKey(cropId: string): string {
+  return `crops.${cropId}`;
 }

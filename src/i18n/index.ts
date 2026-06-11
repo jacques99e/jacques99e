@@ -18,8 +18,18 @@ export const languages: { code: Language; label: string }[] = [
   { code: "wo", label: "Wolof" },
 ];
 
-export function t(key: string, lang: Language = "fr"): string {
-  return dictionaries[lang]?.[key] ?? dictionaries.fr[key] ?? key;
+export function t(
+  key: string,
+  lang: Language = "fr",
+  vars?: Record<string, string | number>
+): string {
+  let text = dictionaries[lang]?.[key] ?? dictionaries.fr[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+    }
+  }
+  return text;
 }
 
 export { dictionaries };

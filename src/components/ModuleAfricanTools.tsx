@@ -20,195 +20,73 @@ import {
   UserCheck,
   QrCode,
 } from "lucide-react";
+import { toolDescKey, toolTitleKey } from "@/lib/module-local-tools";
+import { useI18n } from "@/contexts/I18nContext";
 import type { ModuleId } from "@/types";
 
 interface ToolItem {
-  title: string;
-  description: string;
+  id: string;
   href: string;
   icon: LucideIcon;
 }
 
 const TOOLS_BY_MODULE: Record<ModuleId, ToolItem[]> = {
   commerce: [
-    {
-      title: "Caisse & Mobile Money",
-      description: "Orange, MTN, Moov, espèces — reçu WhatsApp",
-      href: "/sales",
-      icon: Smartphone,
-    },
-    {
-      title: "Vitrine WhatsApp",
-      description: "Partager votre boutique en ligne",
-      href: "/profile",
-      icon: MessageCircle,
-    },
-    {
-      title: "Stock & alertes",
-      description: "Produits, ruptures, seuils",
-      href: "/products",
-      icon: Package,
-    },
-    {
-      title: "Carnet crédit",
-      description: "Dettes clients + relance WhatsApp",
-      href: "/sales/credit",
-      icon: CreditCard,
-    },
+    { id: "momo", href: "/sales", icon: Smartphone },
+    { id: "vitrine", href: "/profile", icon: MessageCircle },
+    { id: "whatsapp", href: "/products", icon: Package },
+    { id: "credit", href: "/sales/credit", icon: CreditCard },
   ],
   agriculture: [
-    {
-      title: "Prix du marché",
-      description: "Noter les prix locaux (marché, coopérative)",
-      href: "/agriculture/marches",
-      icon: TrendingUp,
-    },
-    {
-      title: "Météo & conseils",
-      description: "Alertes pluie et saison",
-      href: "/agriculture",
-      icon: CloudSun,
-    },
-    {
-      title: "Vendre la récolte",
-      description: "Mettre un produit en vente rapidement",
-      href: "/products/add?category=Agriculture",
-      icon: Package,
-    },
-    {
-      title: "Calendrier cultural",
-      description: "Semis, traitements et récolte",
-      href: "/agriculture/calendrier",
-      icon: Calendar,
-    },
+    { id: "marches", href: "/agriculture/marches", icon: TrendingUp },
+    { id: "meteo", href: "/agriculture", icon: CloudSun },
+    { id: "vente", href: "/products/add?category=Agriculture", icon: Package },
+    { id: "calendrier", href: "/agriculture/calendrier", icon: Calendar },
   ],
   health: [
-    {
-      title: "Rappels patients",
-      description: "WhatsApp pour rendez-vous et suivi",
-      href: "/health/appointments",
-      icon: MessageCircle,
-    },
-    {
-      title: "Dossier patient",
-      description: "Constantes, ordonnances, historique",
-      href: "/health",
-      icon: Stethoscope,
-    },
-    {
-      title: "Mini CRM contacts",
-      description: "Familles et accompagnants",
-      href: "/clients",
-      icon: Stethoscope,
-    },
-    {
-      title: "Mini pharmacie",
-      description: "Stock médicaments et alertes",
-      href: "/health/pharmacie",
-      icon: Pill,
-    },
+    { id: "rdv", href: "/health/appointments", icon: MessageCircle },
+    { id: "patient", href: "/health", icon: Stethoscope },
+    { id: "contacts", href: "/clients", icon: Stethoscope },
+    { id: "pharmacie", href: "/health/pharmacie", icon: Pill },
   ],
   logistics: [
-    {
-      title: "Suivi livraison",
-      description: "Code tracking + WhatsApp destinataire",
-      href: "/suivi",
-      icon: Truck,
-    },
-    {
-      title: "Nouvelle livraison",
-      description: "Colis, adresse, téléphone",
-      href: "/logistics/deliveries/new",
-      icon: Truck,
-    },
-    {
-      title: "Clients livraison",
-      description: "Destinataires récurrents",
-      href: "/clients",
-      icon: MessageCircle,
-    },
-    {
-      title: "Tournée du jour",
-      description: "Itinéraire + partage WhatsApp",
-      href: "/logistics/tournee",
-      icon: Map,
-    },
+    { id: "track", href: "/suivi", icon: Truck },
+    { id: "new", href: "/logistics/deliveries/new", icon: Truck },
+    { id: "recipients", href: "/clients", icon: MessageCircle },
+    { id: "tournee", href: "/logistics/tournee", icon: Map },
   ],
   education: [
-    {
-      title: "Vidéos de cours",
-      description: "YouTube, Vimeo ou fichier MP4",
-      href: "/education",
-      icon: Video,
-    },
-    {
-      title: "Certificats PDF",
-      description: "Délivrer après formation",
-      href: "/education",
-      icon: GraduationCap,
-    },
-    {
-      title: "Portail formation",
-      description: "Lien public /formation pour élèves",
-      href: "/formation",
-      icon: MessageCircle,
-    },
-    {
-      title: "Feuille de présence",
-      description: "Émargement + export PDF",
-      href: "/education/presence",
-      icon: UserCheck,
-    },
+    { id: "video", href: "/education", icon: Video },
+    { id: "cert", href: "/education", icon: GraduationCap },
+    { id: "portal", href: "/formation", icon: MessageCircle },
+    { id: "presence", href: "/education/presence", icon: UserCheck },
   ],
   blockchain: [
-    {
-      title: "Vérification publique",
-      description: "Portail /trace pour acheteurs",
-      href: "/trace",
-      icon: Shield,
-    },
-    {
-      title: "Traçabilité actifs",
-      description: "Coopérative, stock, certification",
-      href: "/blockchain",
-      icon: Shield,
-    },
-    {
-      title: "Contrats numériques",
-      description: "Accords producteurs / acheteurs",
-      href: "/blockchain/contracts",
-      icon: Shield,
-    },
-    {
-      title: "Preuve d'origine",
-      description: "Hash et grand livre",
-      href: "/blockchain/assets/new",
-      icon: Shield,
-    },
-    {
-      title: "QR étiquettes",
-      description: "Code scannable /trace",
-      href: "/blockchain/qr",
-      icon: QrCode,
-    },
+    { id: "verify", href: "/trace", icon: Shield },
+    { id: "asset", href: "/blockchain", icon: Shield },
+    { id: "coop", href: "/blockchain/contracts", icon: Shield },
+    { id: "qr", href: "/blockchain/qr", icon: QrCode },
   ],
 };
 
 export function ModuleAfricanTools({ moduleId }: { moduleId: ModuleId }) {
+  const { t } = useI18n();
   const tools = TOOLS_BY_MODULE[moduleId];
   if (!tools?.length) return null;
 
   return (
     <section className="space-y-2">
       <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Outils utiles en Afrique
+        {t("africanTools.title")}
       </h2>
       <div className="grid gap-2">
         {tools.map((tool) => {
           const Icon = tool.icon;
+          const titleKey = toolTitleKey(moduleId, tool.id);
+          const descKey = toolDescKey(moduleId, tool.id);
           return (
             <Link
-              key={tool.href + tool.title}
+              key={tool.href + tool.id}
               href={tool.href}
               className="flex items-center gap-3 rounded-xl border border-[#075E54]/10 bg-white p-3 shadow-sm transition hover:border-[#075E54]/30 dark:bg-gray-800"
             >
@@ -216,8 +94,8 @@ export function ModuleAfricanTools({ moduleId }: { moduleId: ModuleId }) {
                 <Icon className="h-5 w-5 text-[#075E54]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{tool.title}</p>
-                <p className="text-xs text-gray-500">{tool.description}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{t(titleKey)}</p>
+                <p className="text-xs text-gray-500">{t(descKey)}</p>
               </div>
             </Link>
           );

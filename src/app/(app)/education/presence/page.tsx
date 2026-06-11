@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Download, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import { downloadSimplePdf } from "@/lib/export";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/lib/education-attendance";
 
 export default function AttendancePage() {
+  const { t } = useI18n();
   const storeId = localStore.get()?.id;
   const [records, setRecords] = useState(() => readAttendance(storeId));
   const [courseTitle, setCourseTitle] = useState("");
@@ -57,10 +59,12 @@ export default function AttendancePage() {
   const exportPdf = async () => {
     const lines = records
       .filter((r) => r.courseTitle === courseTitle && r.sessionDate === sessionDate)
-      .map((r) => `${r.studentName} — ${r.present ? "Présent" : "Absent"}`);
+      .map((r) =>
+        `${r.studentName} — ${r.present ? t("presence.present") : t("presence.absent")}`
+      );
     await downloadSimplePdf(
-      `Présence — ${courseTitle}`,
-      [`Session du ${sessionDate}`, "", ...lines],
+      `${t("presence.title")} — ${courseTitle}`,
+      [`${t("presence.session")} ${sessionDate}`, "", ...lines],
       `presence-${sessionDate}.pdf`
     );
   };
@@ -69,7 +73,7 @@ export default function AttendancePage() {
     <div className="min-h-screen bg-[#F5F5F0] pb-24">
       <header className="bg-violet-700 px-4 py-4 text-white shadow-sm">
         <div className="mx-auto flex max-w-lg items-center justify-between">
-          <h1 className="text-lg font-semibold">Feuille de présence</h1>
+          <h1 className="text-lg font-semibold">{t("presence.title")}</h1>
           <Link href="/education" className="text-sm text-white/90">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -78,21 +82,21 @@ export default function AttendancePage() {
 
       <main className="mx-auto max-w-lg space-y-4 p-4">
         <form onSubmit={submit} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold">Nouvelle session</h2>
+          <h2 className="text-sm font-semibold">{t("presence.newSession")}</h2>
           <div>
-            <Label>Cours</Label>
+            <Label>{t("presence.course")}</Label>
             <Input value={courseTitle} onChange={(e) => setCourseTitle(e.target.value)} required />
           </div>
           <div>
-            <Label>Date</Label>
+            <Label>{t("presence.date")}</Label>
             <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} required />
           </div>
           <div>
-            <Label>Apprenant</Label>
+            <Label>{t("presence.studentName")}</Label>
             <Input value={studentName} onChange={(e) => setStudentName(e.target.value)} required />
           </div>
           <Button type="submit" className="w-full">
-            <UserCheck className="mr-1 h-4 w-4" /> Marquer présent
+            <UserCheck className="mr-1 h-4 w-4" /> {t("presence.markPresent")}
           </Button>
         </form>
 
@@ -117,7 +121,7 @@ export default function AttendancePage() {
                     onClick={() => setRecords(toggleAttendance(r.id, storeId))}
                   >
                     <Check className="h-3 w-3" />
-                    {r.present ? "Présent" : "Absent"}
+                    {r.present ? t("presence.present") : t("presence.absent")}
                   </Button>
                 </li>
               ))}
@@ -127,7 +131,7 @@ export default function AttendancePage() {
 
         {sessions.length > 0 ? (
           <section className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold">Historique sessions</h2>
+            <h2 className="mb-2 text-sm font-semibold">{t("presence.history")}</h2>
             <ul className="space-y-2 text-xs">
               {sessions.slice(0, 10).map((s) => (
                 <li key={`${s.title}-${s.date}`} className="flex justify-between rounded-lg bg-violet-50 p-2">
@@ -135,7 +139,7 @@ export default function AttendancePage() {
                     {s.date} — {s.title}
                   </span>
                   <span className="font-medium text-violet-700">
-                    {s.present}/{s.total} ({s.rate}%)
+                    {t("presence.rate", { present: s.present, total: s.total, pct: s.rate })}
                   </span>
                 </li>
               ))}

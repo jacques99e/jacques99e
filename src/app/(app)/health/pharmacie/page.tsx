@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowLeft, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/contexts/I18nContext";
 import { localStore } from "@/lib/db";
 import {
   addPharmacyItem,
@@ -16,16 +17,18 @@ import {
 } from "@/lib/health-pharmacy";
 
 export default function PharmacyPage() {
+  const { t } = useI18n();
   const storeId = localStore.get()?.id;
   const [items, setItems] = useState(() => readPharmacyStock(storeId));
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("10");
-  const [unit, setUnit] = useState("boîtes");
+  const [unit, setUnit] = useState("");
   const [minStock, setMinStock] = useState("5");
   const [expiryDate, setExpiryDate] = useState("");
 
   const low = useMemo(() => lowStockItems(items), [items]);
   const expiring = useMemo(() => expiringSoon(items), [items]);
+  const defaultUnit = t("pharmacy.units");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +38,7 @@ export default function PharmacyPage() {
         {
           name: name.trim(),
           quantity: Number(quantity) || 0,
-          unit: unit.trim() || "unités",
+          unit: unit.trim() || defaultUnit,
           minStock: Number(minStock) || 5,
           expiryDate: expiryDate || null,
           note: "",
@@ -50,7 +53,7 @@ export default function PharmacyPage() {
     <div className="min-h-screen bg-[#F5F5F0] pb-24">
       <header className="bg-rose-700 px-4 py-4 text-white shadow-sm">
         <div className="mx-auto flex max-w-lg items-center justify-between">
-          <h1 className="text-lg font-semibold">Mini pharmacie</h1>
+          <h1 className="text-lg font-semibold">{t("pharmacy.title")}</h1>
           <Link href="/health" className="text-sm text-white/90">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -62,56 +65,62 @@ export default function PharmacyPage() {
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-4 w-4" />
-              <h2 className="text-sm font-semibold">Alertes</h2>
+              <h2 className="text-sm font-semibold">{t("pharmacy.alerts")}</h2>
             </div>
             {low.length > 0 ? (
               <p className="mt-1 text-xs text-amber-900">
-                Stock bas : {low.map((i) => i.name).join(", ")}
+                {t("pharmacy.lowStockList", { names: low.map((i) => i.name).join(", ") })}
               </p>
             ) : null}
             {expiring.length > 0 ? (
               <p className="mt-1 text-xs text-amber-900">
-                Expiration proche : {expiring.map((i) => i.name).join(", ")}
+                {t("pharmacy.expiringList", { names: expiring.map((i) => i.name).join(", ") })}
               </p>
             ) : null}
           </section>
         )}
 
         <form onSubmit={submit} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold">Ajouter un médicament</h2>
+          <h2 className="text-sm font-semibold">{t("pharmacy.addItem")}</h2>
           <div>
-            <Label>Nom</Label>
+            <Label>{t("pharmacy.name")}</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Quantité</Label>
+              <Label>{t("pharmacy.quantity")}</Label>
               <Input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </div>
             <div>
-              <Label>Unité</Label>
-              <Input value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <Label>{t("pharmacy.unit")}</Label>
+              <Input
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder={defaultUnit}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Seuil alerte</Label>
+              <Label>{t("pharmacy.alertThreshold")}</Label>
               <Input type="number" min="0" value={minStock} onChange={(e) => setMinStock(e.target.value)} />
             </div>
             <div>
-              <Label>Expiration</Label>
+              <Label>{t("pharmacy.expiration")}</Label>
               <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
             </div>
           </div>
           <Button type="submit" className="w-full">
-            <Plus className="mr-1 h-4 w-4" /> Ajouter
+            <Plus className="mr-1 h-4 w-4" /> {t("pharmacy.add")}
           </Button>
         </form>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold">Stock ({items.length})</h2>
+          <h2 className="mb-2 text-sm font-semibold">
+            {t("pharmacy.stock", { count: items.length })}
+          </h2>
           {items.length === 0 ? (
-            <p className="text-xs text-gray-500">Aucun médicament enregistré.</p>
+            <p className="text-xs text-gray-500">{t("pharmacy.empty")}</p>
           ) : (
             <ul className="space-y-2">
               {items.map((item) => (
@@ -120,7 +129,7 @@ export default function PharmacyPage() {
                     <p className="font-medium">{item.name}</p>
                     <p className="text-xs text-gray-500">
                       {item.quantity} {item.unit}
-                      {item.expiryDate ? ` — exp. ${item.expiryDate}` : ""}
+                      {item.expiryDate ? ` — ${t("pharmacy.expSuffix")} ${item.expiryDate}` : ""}
                     </p>
                   </div>
                   <div className="flex gap-1">

@@ -8,6 +8,9 @@ import { useModule } from "@/hooks/useModule";
 import { localStore } from "@/lib/db";
 import {
   getGuidedStepsForModules,
+  guidedCtaKey,
+  guidedDescKey,
+  guidedTitleKey,
   isGuidedOnboardingDone,
   markGuidedOnboardingDone,
 } from "@/lib/guided-onboarding";
@@ -68,24 +71,26 @@ export function GuidedOnboarding() {
           <p className="mb-1 text-xs font-medium text-[#FF6F00]">{moduleLabel}</p>
         ) : null}
         <h2 id="guided-title" className="text-lg font-bold">
-          {step.title}
+          {t(guidedTitleKey(step.moduleId))}
         </h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{step.description}</p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          {t(guidedDescKey(step.moduleId))}
+        </p>
 
         <div className="mt-5 flex flex-col gap-2">
           <Button asChild className="w-full bg-[#075E54]">
             <Link href={step.href} onClick={isLast ? finish : undefined}>
-              {step.cta}
+              {t(guidedCtaKey(step.moduleId))}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           {!isLast ? (
             <Button variant="outline" className="w-full" onClick={() => setIndex((i) => i + 1)}>
-              Étape suivante
+              {t("guided.next")}
             </Button>
           ) : (
             <Button variant="outline" className="w-full" onClick={finish}>
-              Terminer la visite guidée
+              {t("guided.finish")}
             </Button>
           )}
           <button
@@ -93,7 +98,7 @@ export function GuidedOnboarding() {
             className="text-center text-xs text-gray-500 hover:underline"
             onClick={finish}
           >
-            Passer pour l&apos;instant
+            {t("guided.skip")}
           </button>
         </div>
       </div>

@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { advantagesForModule } from "@/lib/module-advantages";
+import {
+  advantageDescKey,
+  advantageTitleKey,
+  advantagesForModule,
+} from "@/lib/module-advantages";
+import { useI18n } from "@/contexts/I18nContext";
 import type { ModuleId } from "@/types";
 
 interface ModuleCompetitiveEdgeProps {
@@ -11,6 +16,7 @@ interface ModuleCompetitiveEdgeProps {
 }
 
 export function ModuleCompetitiveEdge({ moduleId, maxItems = 4 }: ModuleCompetitiveEdgeProps) {
+  const { t } = useI18n();
   const items = advantagesForModule(moduleId).slice(0, maxItems);
   if (!items.length) return null;
 
@@ -19,15 +25,19 @@ export function ModuleCompetitiveEdge({ moduleId, maxItems = 4 }: ModuleCompetit
       <div className="mb-3 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-amber-600" />
         <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-          Avantage Wazo
+          {t("competitive.title")}
         </h2>
       </div>
       <ul className="space-y-2">
         {items.map((item) => {
           const content = (
             <>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">{item.description}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {t(advantageTitleKey(moduleId, item.id))}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {t(advantageDescKey(moduleId, item.id))}
+              </p>
             </>
           );
           if (item.href) {

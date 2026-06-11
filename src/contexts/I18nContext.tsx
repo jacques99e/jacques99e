@@ -8,7 +8,7 @@ import type { Language } from "@/types";
 interface I18nContextValue {
   lang: Language;
   setLang: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   languages: typeof languages;
 }
 
@@ -33,7 +33,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     localLang.set(l);
   };
 
-  const t = useCallback((key: string) => translate(key, lang), [lang]);
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => translate(key, lang, vars),
+    [lang]
+  );
 
   const value = useMemo(
     () => ({ lang, setLang, t, languages }),

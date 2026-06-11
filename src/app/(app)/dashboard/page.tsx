@@ -21,7 +21,6 @@ import { useModule } from "@/hooks/useModule";
 import { notifyAlertsChanged } from "@/lib/alerts";
 import { getLowStockThreshold } from "@/lib/business-settings";
 import {
-  BUSINESS_VERTICAL_LABELS,
   ONBOARDING_VERTICAL_ORDER,
   type BusinessVertical,
   getBusinessVertical,
@@ -29,6 +28,8 @@ import {
   inferVerticalFromModules,
   setBusinessVertical,
   setTaskDone,
+  taskLabelKey,
+  verticalLabelKey,
 } from "@/lib/onboarding";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
 import { localStore } from "@/lib/db";
@@ -75,7 +76,7 @@ export default function DashboardPage() {
     : activeModules;
   const visibleVerticals = ONBOARDING_VERTICAL_ORDER.filter((v) => activeModules.includes(v));
   const { summary: alerts } = useAlerts();
-  const [storeName, setStoreName] = useState("Votre boutique");
+  const [storeName, setStoreName] = useState("");
   const [offlineInfo, setOfflineInfo] = useState("");
   const [todayTotal, setTodayTotal] = useState(0);
   const [todaySalesCount, setTodaySalesCount] = useState(0);
@@ -89,7 +90,7 @@ export default function DashboardPage() {
   const [avgBasket, setAvgBasket] = useState(0);
   const [latestSales, setLatestSales] = useState<LocalSale[]>([]);
   const [popularProducts, setPopularProducts] = useState<Array<{ name: string; sold: number }>>([]);
-  const greeting = storeName || "Ma boutique";
+  const greeting = storeName || t("dashboard.myStore");
   const [businessVertical, setBusinessVerticalState] = useState<BusinessVertical>(() =>
     getBusinessVertical()
   );
@@ -126,7 +127,7 @@ export default function DashboardPage() {
           router.replace("/setup");
           return;
         }
-        setStoreName(data.name || "Votre boutique");
+        setStoreName(data.name || t("dashboard.defaultStore"));
         localStorage.setItem("store_name", data.name || "");
         localStorage.setItem("store_slug", data.slug || "");
         localStorage.setItem("store_setup_complete", "true");
@@ -256,28 +257,36 @@ export default function DashboardPage() {
         ) : null}
         {(hasCommerce && alerts.total > 0) ? (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-red-800">Alertes actives ({alerts.total})</h2>
+            <h2 className="text-sm font-semibold text-red-800">
+              {t("dashboard.alerts.title")} ({alerts.total})
+            </h2>
             <ul className="mt-2 space-y-1 text-xs text-red-700">
               {alerts.stockAlerts > 0 ? (
                 <li>
-                  Stock: {alerts.outOfStock} rupture(s), {alerts.lowStock} stock faible
+                  {t("dashboard.alerts.stock", {
+                    out: alerts.outOfStock,
+                    low: alerts.lowStock,
+                  })}
                 </li>
               ) : null}
               {alerts.clientAlerts > 0 ? (
                 <li>
-                  Clients: {alerts.followUpsToday} relance(s) aujourd&apos;hui, {alerts.followUpsOverdue} en retard
+                  {t("dashboard.alerts.clients", {
+                    today: alerts.followUpsToday,
+                    overdue: alerts.followUpsOverdue,
+                  })}
                 </li>
               ) : null}
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
               {alerts.stockAlerts > 0 ? (
                 <Link href="/products" className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-800">
-                  Gerer le stock
+                  {t("dashboard.alerts.manageStock")}
                 </Link>
               ) : null}
               {alerts.clientAlerts > 0 ? (
                 <Link href="/clients" className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-800">
-                  Traiter les relances
+                  {t("dashboard.alerts.manageFollowups")}
                 </Link>
               ) : null}
             </div>
@@ -293,30 +302,34 @@ export default function DashboardPage() {
                   : "bg-green-50 text-green-700"
             }`}
           >
-            <p className="font-semibold">Abonnement: {billing.plan.toUpperCase()}</p>
+            <p className="font-semibold">
+              {t("dashboard.billing.label")}: {billing.plan.toUpperCase()}
+            </p>
             <p>
               {normalizeBillingStatus(billing) === "expired"
-                ? "Essai expire. Activez un plan pour eviter les limitations."
+                ? t("dashboard.billing.expired")
                 : normalizeBillingStatus(billing) === "trial"
-                  ? `Essai gratuit en cours (${getTrialDaysLeft(billing)} jour(s) restants).`
-                  : `Abonnement actif jusqu'au ${billing.current_period_end ?? "-"}.`}
+                  ? t("dashboard.billing.trial", { days: getTrialDaysLeft(billing) })
+                  : t("dashboard.billing.active", {
+                      date: billing.current_period_end ?? "-",
+                    })}
             </p>
             <Link href="/billing" className="mt-1 inline-block underline">
-              Gerer l'abonnement
+              {t("dashboard.billing.manage")}
             </Link>
           </section>
         ) : null}
         <section className="rounded-2xl bg-white p-4 shadow-sm" key={onboardingTick}>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Onboarding métier</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{t("onboarding.title")}</h2>
             <span className="text-xs font-semibold text-[#075E54]">
               {doneCount}/{onboarding.total}
             </span>
           </div>
           <p className="mb-2 text-xs text-gray-500">
             {visibleVerticals.length > 1
-              ? "Choisissez votre activité principale :"
-              : "Votre parcours de démarrage :"}
+              ? t("onboarding.pickVertical")
+              : t("onboarding.yourPath")}
           </p>
           {visibleVerticals.length > 1 ? (
           <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -331,7 +344,7 @@ export default function DashboardPage() {
                     : "bg-gray-100 text-gray-700"
                 }`}
               >
-                {BUSINESS_VERTICAL_LABELS[vertical]}
+                {t(verticalLabelKey(vertical))}
               </button>
             ))}
           </div>
@@ -347,7 +360,7 @@ export default function DashboardPage() {
                 />
                 <span>
                   <Link href={task.href} className="font-medium text-[#075E54] underline">
-                    {task.label}
+                    {t(taskLabelKey(task.id))}
                   </Link>
                 </span>
               </label>
@@ -356,14 +369,14 @@ export default function DashboardPage() {
           <div className="mt-3 grid grid-cols-2 gap-2">
             {hasCommerce ? (
               <Link href="/clients" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
-                Ouvrir mini CRM
+                {t("onboarding.openCrm")}
               </Link>
             ) : null}
             <Link href="/help" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
-              Centre d'aide
+              {t("onboarding.helpCenter")}
             </Link>
             <Link href="/billing" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
-              Abonnement
+              {t("onboarding.billing")}
             </Link>
             <Button
               type="button"
@@ -376,7 +389,7 @@ export default function DashboardPage() {
                 void downloadWeeklyReportPdf(storeName).finally(() => setReportLoading(false));
               }}
             >
-              {reportLoading ? "PDF..." : "Rapport hebdo PDF"}
+              {reportLoading ? t("onboarding.weeklyReportLoading") : t("onboarding.weeklyReport")}
             </Button>
           </div>
         </section>
@@ -385,15 +398,18 @@ export default function DashboardPage() {
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <StatCard
                 icon={Store}
-                label="Stock total"
+                label={t("dashboard.stats.totalStock")}
                 value={String(totalStock)}
-                hint={`${differentProductsCount} produit(s) différent(s)`}
+                hint={t("dashboard.stats.productsHint", { count: differentProductsCount })}
               />
               <StatCard
                 icon={BarChart3}
-                label="7 derniers jours"
+                label={t("dashboard.stats.last7days")}
                 value={formatCurrency(weekTotal)}
-                hint={`${weekSalesCount} vente(s) · panier ${formatCurrency(avgBasket)}`}
+                hint={t("dashboard.stats.salesHint", {
+                  count: weekSalesCount,
+                  avg: formatCurrency(avgBasket),
+                })}
                 accent="sky"
               />
 

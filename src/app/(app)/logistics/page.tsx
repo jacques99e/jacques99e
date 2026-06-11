@@ -58,7 +58,7 @@ export default function LogisticsPage() {
 
   return (
     <>
-      <AppHeader title={t("modules.logistics.title")} subtitle="Module" />
+      <AppHeader title={t("modules.logistics.title")} subtitle={t("hub.module")} />
       <main className="app-page space-y-4 pb-6">
         <ModuleStatGrid
           columns={3}

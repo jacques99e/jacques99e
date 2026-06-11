@@ -57,9 +57,9 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
         next.push({
           moduleId: "health",
           icon: HeartPulse,
-          label: "Patients",
+          label: t("stats.patients"),
           value: String(patients.length),
-          hint: `${todayCount} RDV aujourd'hui`,
+          hint: t("stats.patientsHint", { count: todayCount }),
           href: MODULES.health.path,
           accent: "red",
         });
@@ -73,9 +73,9 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
         next.push({
           moduleId: "logistics",
           icon: Truck,
-          label: "Livraisons",
+          label: t("stats.deliveries"),
           value: String(deliveries.length),
-          hint: `${active} en cours`,
+          hint: t("stats.deliveriesHint", { count: active }),
           href: MODULES.logistics.path,
           accent: "sky",
         });
@@ -86,9 +86,11 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
         next.push({
           moduleId: "education",
           icon: GraduationCap,
-          label: "Cours",
+          label: t("stats.courses"),
           value: String(courses.length),
-          hint: `${courses.filter((c) => c.is_public).length} public(s)`,
+          hint: t("stats.coursesHint", {
+            count: courses.filter((c) => c.is_public).length,
+          }),
           href: MODULES.education.path,
           accent: "orange",
         });
@@ -99,9 +101,9 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
         next.push({
           moduleId: "blockchain",
           icon: Blocks,
-          label: "Actifs",
+          label: t("stats.assets"),
           value: String(assets.length),
-          hint: "Traçabilité enregistrée",
+          hint: t("stats.assetsHint"),
           href: MODULES.blockchain.path,
           accent: "sky",
         });
@@ -112,9 +114,9 @@ export function ModuleDashboardStats({ storeId, modules }: ModuleDashboardStatsP
         next.push({
           moduleId: "agriculture",
           icon: Leaf,
-          label: "Parcelles",
+          label: t("stats.parcels"),
           value: String(parcels.length),
-          hint: "Cultures, intrants & marchés",
+          hint: t("stats.parcelsHint"),
           href: MODULES.agriculture.path,
           accent: "green",
         });
