@@ -10,6 +10,12 @@ import { PushAlertsRunner } from "@/components/PushAlertsRunner";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
+import {
+  billingCheckoutPath,
+  isPaidVitrinePlan,
+  readPendingPlan,
+  readPendingPlanPay,
+} from "@/lib/modules/preference";
 import { loadUserStore } from "@/lib/store";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -33,9 +39,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (cancelled) return;
       if (!store) {
         router.replace("/setup");
-      } else {
-        setStoreReady(true);
+        return;
       }
+
+      const pendingPlan = readPendingPlan();
+      const wantsPay = readPendingPlanPay();
+      if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
+        router.replace(billingCheckoutPath(pendingPlan));
+        return;
+      }
+
+      setStoreReady(true);
     })();
 
     return () => {

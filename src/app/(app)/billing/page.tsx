@@ -18,7 +18,7 @@ import {
   paymentFcfaForPlan,
   vitrinePlanByBillingId,
 } from "@/lib/vitrine-plans";
-import { applyPendingPlan } from "@/lib/modules/preference";
+import { applyPendingPlan, applyPendingPlanPay } from "@/lib/modules/preference";
 import { apiFetch } from "@/lib/api-client";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 
@@ -79,14 +79,30 @@ export default function BillingPage() {
   };
 
   useEffect(() => {
-    void loadSubscription();
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
-    const pending = applyPendingPlan();
-    const billingPlan = mapVitrinePlanToBilling(pending);
-    if (!billingPlan || billingPlan === "starter") return;
-    void selectPlan(billingPlan, true);
+    const runCheckoutIntent = async () => {
+      await loadSubscription();
+      if (cancelled) return;
+
+      const pending =
+        applyPendingPlan() ?? searchParams.get("plan");
+      const autoPay = applyPendingPlanPay() || searchParams.get("pay") === "1";
+      const billingPlan = mapVitrinePlanToBilling(pending);
+      if (!billingPlan || billingPlan === "starter") return;
+
+      if (autoPay && paymentFcfaForPlan(billingPlan) > 0) {
+        await payPlan(billingPlan);
+      } else {
+        await selectPlan(billingPlan, true);
+      }
+    };
+
+    void runCheckoutIntent();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- checkout intent once on mount
   }, []);
 
   useEffect(() => {
@@ -282,25 +298,30 @@ export default function BillingPage() {
                   ))}
                 </ul>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    variant={active ? "outline" : plan.popular ? "default" : "outline"}
-                    size="sm"
-                    className={plan.popular && !active ? "bg-[#FF6F00] hover:bg-[#FF6F00]/90" : ""}
-                    onClick={() => void selectPlan(plan.billingId)}
-                    disabled={savingPlan === plan.billingId}
-                  >
-                    {savingPlan === plan.billingId ? "..." : active ? "Plan actuel" : plan.cta}
-                  </Button>
                   {plan.paymentFcfa > 0 ? (
                     <Button
+                      variant={active ? "outline" : plan.popular ? "default" : "outline"}
                       size="sm"
-                      variant="outline"
+                      className={plan.popular && !active ? "bg-[#FF6F00] hover:bg-[#FF6F00]/90" : ""}
                       onClick={() => void payPlan(plan.billingId)}
-                      disabled={payingPlan === plan.billingId}
+                      disabled={payingPlan === plan.billingId || active}
                     >
-                      {payingPlan === plan.billingId ? "..." : "Payer par MoMo"}
+                      {payingPlan === plan.billingId
+                        ? "..."
+                        : active
+                          ? "Plan actuel"
+                          : `Payer — ${plan.cta}`}
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button
+                      variant={active ? "outline" : "outline"}
+                      size="sm"
+                      onClick={() => void selectPlan(plan.billingId)}
+                      disabled={savingPlan === plan.billingId || active}
+                    >
+                      {savingPlan === plan.billingId ? "..." : active ? "Plan actuel" : plan.cta}
+                    </Button>
+                  )}
                 </div>
               </article>
             );

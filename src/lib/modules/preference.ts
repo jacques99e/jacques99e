@@ -5,6 +5,12 @@ import type { ModuleId } from "@/types";
 
 const PENDING_KEY = "wazo_pending_module";
 const PENDING_PLAN_KEY = "wazo_pending_plan";
+const PENDING_PLAN_PAY_KEY = "wazo_pending_plan_pay";
+
+export function isPaidVitrinePlan(plan: string | null | undefined): boolean {
+  const normalized = plan?.toLowerCase();
+  return normalized === "pro" || normalized === "business";
+}
 
 export function readPendingModule(): ModuleId | null {
   if (typeof window === "undefined") return null;
@@ -53,4 +59,30 @@ export function applyPendingPlan(): string | null {
     sessionStorage.removeItem(PENDING_PLAN_KEY);
   }
   return pending;
+}
+
+export function savePendingPlanPay(shouldPay = true) {
+  if (typeof window === "undefined") return;
+  if (shouldPay) sessionStorage.setItem(PENDING_PLAN_PAY_KEY, "1");
+  else sessionStorage.removeItem(PENDING_PLAN_PAY_KEY);
+}
+
+export function readPendingPlanPay(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    sessionStorage.getItem(PENDING_PLAN_PAY_KEY) === "1" ||
+    new URLSearchParams(window.location.search).get("pay") === "1"
+  );
+}
+
+export function applyPendingPlanPay(): boolean {
+  const pay = readPendingPlanPay();
+  if (pay && typeof window !== "undefined") {
+    sessionStorage.removeItem(PENDING_PLAN_PAY_KEY);
+  }
+  return pay;
+}
+
+export function billingCheckoutPath(plan: string): string {
+  return `/billing?plan=${encodeURIComponent(plan)}&pay=1`;
 }

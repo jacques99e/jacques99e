@@ -5,7 +5,12 @@ import { supabase } from "@/lib/supabase/client";
 import { localAuth } from "@/lib/db";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { getLandingLoginUrl } from "@/lib/public-urls";
-import { applyPendingModule, savePendingPlan } from "@/lib/modules/preference";
+import {
+  applyPendingModule,
+  isPaidVitrinePlan,
+  savePendingPlan,
+  savePendingPlanPay,
+} from "@/lib/modules/preference";
 
 function readTokensFromHash(): { accessToken: string; refreshToken: string } | null {
   const hash = window.location.hash.startsWith("#")
@@ -47,8 +52,12 @@ export default function AuthReceivePage() {
             phone: data.session.user.phone,
           });
           applyPendingModule();
-          const pendingPlan = new URLSearchParams(window.location.search).get("plan");
+          const params = new URLSearchParams(window.location.search);
+          const pendingPlan = params.get("plan");
           if (pendingPlan) savePendingPlan(pendingPlan);
+          if (params.get("pay") === "1" || (pendingPlan && isPaidVitrinePlan(pendingPlan))) {
+            savePendingPlanPay(true);
+          }
           goDashboard();
           return;
         }

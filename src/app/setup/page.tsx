@@ -10,7 +10,13 @@ import { useI18n } from "@/contexts/I18nContext";
 import { ModuleCard } from "@/components/ModuleCard";
 import { localModules, localStore } from "@/lib/db";
 import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
-import { applyPendingModule } from "@/lib/modules/preference";
+import {
+  applyPendingModule,
+  billingCheckoutPath,
+  isPaidVitrinePlan,
+  readPendingPlan,
+  readPendingPlanPay,
+} from "@/lib/modules/preference";
 import { setBusinessVertical } from "@/lib/onboarding";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
@@ -220,7 +226,13 @@ export default function SetupPage() {
         }
       }
 
-      router.push("/dashboard");
+      const pendingPlan = readPendingPlan();
+      const wantsPay = readPendingPlanPay();
+      if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
+        router.push(billingCheckoutPath(pendingPlan));
+      } else {
+        router.push("/dashboard");
+      }
     } catch (e) {
       const message = mapErrorToUserMessage(e, t("common.error"));
       setError(message);
