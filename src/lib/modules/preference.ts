@@ -85,6 +85,8 @@ export function applyPendingPlanPay(): boolean {
 }
 
 export function billingCheckoutPath(plan: string): string {
-  if (plan === "business") return billingPayHref("business");
+  const normalized = plan.toLowerCase();
+  if (normalized === "business") return billingPayHref("business");
+  if (normalized === "pro") return billingPayHref("pro");
   return billingPayHref("pro");
 }

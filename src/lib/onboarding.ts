@@ -1,8 +1,8 @@
-import { billingPayHref } from "@/lib/billing-checkout";
+import { BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { ALL_MODULE_IDS } from "@/lib/modules/config";
 import type { ModuleId } from "@/types";
 
-const BILLING_UPGRADE_HREF = billingPayHref("pro");
+const BILLING_UPGRADE_HREF = BILLING_MANAGE_HREF;
 
 /** Secteur d'activité = module principal pour l'onboarding métier */
 export type BusinessVertical = ModuleId;

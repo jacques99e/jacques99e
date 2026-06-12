@@ -87,9 +87,12 @@ export default function BillingPage() {
       const currentSub = await loadSubscription();
       if (cancelled) return;
 
-      const pending =
-        applyPendingPlan() ?? searchParams.get("plan");
-      const autoPay = applyPendingPlanPay() || searchParams.get("pay") === "1";
+      const urlPlan = searchParams.get("plan");
+      const urlPay = searchParams.get("pay") === "1";
+      if (!urlPlan && !urlPay) return;
+
+      const pending = urlPlan ?? applyPendingPlan();
+      if (urlPay) applyPendingPlanPay();
       const billingPlan = mapVitrinePlanToBilling(pending);
       if (!billingPlan || billingPlan === "starter") return;
 
@@ -99,7 +102,7 @@ export default function BillingPage() {
         currentStatus === "active" &&
         Boolean(currentSub.current_period_end);
 
-      if (autoPay && paymentFcfaForPlan(billingPlan) > 0 && !alreadyOnPlan) {
+      if (urlPay && paymentFcfaForPlan(billingPlan) > 0 && !alreadyOnPlan) {
         await payPlan(billingPlan);
       } else if (!alreadyOnPlan) {
         await selectPlan(billingPlan, true);

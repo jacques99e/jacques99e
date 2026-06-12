@@ -13,7 +13,7 @@ import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { getTrialDaysLeft, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
-import { billingDashboardHref, billingPayHref } from "@/lib/billing-checkout";
+import { billingDashboardHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
@@ -385,7 +385,7 @@ export default function DashboardPage() {
               {t("onboarding.helpCenter")}
             </Link>
             <Link
-              href={billingPayHref("pro")}
+              href={BILLING_MANAGE_HREF}
               className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100"
             >
               {t("onboarding.billing")}

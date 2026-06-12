@@ -2,9 +2,14 @@ import { normalizeBillingStatus, type BillingPlanId, type BillingSubscription } 
 
 export const BILLING_MANAGE_HREF = "/billing";
 
+/** Page abonnement avec plan présélectionné, sans lancer le paiement. */
+export function billingChooseHref(plan: "pro" | "business" = "pro"): string {
+  return `/billing?plan=${encodeURIComponent(plan)}`;
+}
+
 /** Ouvre la page abonnement et lance le paiement MoMo (comme sur la vitrine). */
 export function billingPayHref(plan: "pro" | "business" = "pro"): string {
-  return `/billing?plan=${encodeURIComponent(plan)}&pay=1`;
+  return `${billingChooseHref(plan)}&pay=1`;
 }
 
 export function billingPayHrefForPlan(plan: BillingPlanId): string {
