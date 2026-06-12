@@ -12,6 +12,7 @@ import { languages } from "@/i18n";
 import { localModules } from "@/lib/db";
 import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
 import { savePendingModule } from "@/lib/modules/preference";
+import { ensureUserProfile } from "@/lib/ensure-profile";
 import { setBusinessVertical } from "@/lib/onboarding";
 import type { Language, ModuleId } from "@/types";
 
@@ -24,6 +25,7 @@ function RegisterForm() {
   const [language, setLanguage] = useState<Language>("fr");
   const [selectedModules, setSelectedModules] = useState<ModuleId[]>(() => localModules.get());
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fromUrl = searchParams.get("module");
@@ -46,19 +48,33 @@ function RegisterForm() {
       return;
     }
     setLoading(true);
+    setError("");
     try {
       const modules = normalizeModuleIds(selectedModules);
       localModules.save(modules);
       setBusinessVertical(modules[0]);
-      await supabase.from("profiles").upsert({
-        id: user.id,
-        phone: user.phone,
-        full_name: shopName,
-        preferred_language: language,
-        active_modules: modules,
-      });
+      const profileResult = await ensureUserProfile(supabase, user.id, user.phone);
+      if (!profileResult.ok) {
+        setError(profileResult.error);
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: shopName,
+          language,
+          active_modules: modules,
+        })
+        .eq("id", user.id);
+      if (updateError) throw updateError;
+
       setLang(language);
       router.push("/setup");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Impossible d'enregistrer votre profil pour le moment."
+      );
     } finally {
       setLoading(false);
     }
@@ -109,6 +125,7 @@ function RegisterForm() {
               ))}
             </select>
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? t("common.loading") : t("setup.continue")}
           </Button>

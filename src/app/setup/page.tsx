@@ -12,7 +12,9 @@ import { localModules, localStore } from "@/lib/db";
 import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
 import { applyPendingModule } from "@/lib/modules/preference";
 import { setBusinessVertical } from "@/lib/onboarding";
+import { ensureUserProfile } from "@/lib/ensure-profile";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
+import { getLandingLoginUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
 import type { ModuleId, Store } from "@/types";
 
@@ -47,13 +49,24 @@ export default function SetupPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
 
     let cancelled = false;
     const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (!session?.user) {
+        window.location.href = getLandingLoginUrl();
+        return;
+      }
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data, error: fetchError } = await supabase
           .from("stores")
@@ -142,17 +155,9 @@ export default function SetupPage() {
       }
 
       if (user) {
-        // La table stores possede une FK owner_id -> profiles.id. Si le profil
-        // n'existe pas encore (trigger d'inscription absent en base), l'insertion
-        // de la boutique echoue avec une violation de cle etrangere (23503).
-        // On garantit donc la presence du profil avant de creer la boutique.
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert({ id: user.id, phone: user.phone ?? null }, { onConflict: "id" });
-        if (profileError) {
-          setError(
-            mapErrorToUserMessage(profileError, "Impossible de preparer votre profil pour le moment.")
-          );
+        const profileResult = await ensureUserProfile(supabase, user.id, user.phone);
+        if (!profileResult.ok) {
+          setError(profileResult.error);
           setSubmitting(false);
           return;
         }
