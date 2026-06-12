@@ -89,7 +89,7 @@ export const MODULE_LABELS: Record<ModuleId, string> = {
   health: "Santé",
   logistics: "Logistique",
   education: "Éducation",
-  blockchain: "Blockchain",
+  blockchain: "Traçabilité",
 };
 
 const LEGACY_MODULE_IDS: Record<string, ModuleId> = {

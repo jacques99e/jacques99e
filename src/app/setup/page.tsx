@@ -240,8 +240,10 @@ export default function SetupPage() {
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-wazo-green/10 text-2xl">
             🏪
           </div>
-          <h1 className="text-2xl font-bold text-wazo-green">Votre activité</h1>
-          <p className="mt-1 text-sm text-gray-600">Un seul nom suffit pour démarrer</p>
+          <h1 className="text-2xl font-bold text-wazo-green">Configurez votre activité</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            2 minutes — comme promis sur la vitrine. Caisse MoMo, modules et mode hors ligne inclus.
+          </p>
         </div>
         {offlineInfo && (
           <p className="rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700">

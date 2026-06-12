@@ -4,6 +4,7 @@ import { setBusinessVertical } from "@/lib/onboarding";
 import type { ModuleId } from "@/types";
 
 const PENDING_KEY = "wazo_pending_module";
+const PENDING_PLAN_KEY = "wazo_pending_plan";
 
 export function readPendingModule(): ModuleId | null {
   if (typeof window === "undefined") return null;
@@ -30,4 +31,26 @@ export function applyPendingModule(): ModuleId | null {
     sessionStorage.removeItem(PENDING_KEY);
   }
   return modules[0];
+}
+
+export function savePendingPlan(planId: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PENDING_PLAN_KEY, planId);
+}
+
+export function readPendingPlan(): string | null {
+  if (typeof window === "undefined") return null;
+  return (
+    sessionStorage.getItem(PENDING_PLAN_KEY) ??
+    new URLSearchParams(window.location.search).get("plan")
+  );
+}
+
+export function applyPendingPlan(): string | null {
+  const pending = readPendingPlan();
+  if (!pending) return null;
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(PENDING_PLAN_KEY);
+  }
+  return pending;
 }

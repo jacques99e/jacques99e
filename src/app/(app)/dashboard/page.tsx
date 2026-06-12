@@ -13,6 +13,7 @@ import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { getTrialDaysLeft, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -304,7 +305,7 @@ export default function DashboardPage() {
             }`}
           >
             <p className="font-semibold">
-              {t("dashboard.billing.label")}: {billing.plan.toUpperCase()}
+              {t("dashboard.billing.label")}: {vitrinePlanByBillingId(billing.plan).title}
             </p>
             <p>
               {normalizeBillingStatus(billing) === "expired"
@@ -312,6 +313,7 @@ export default function DashboardPage() {
                 : normalizeBillingStatus(billing) === "trial"
                   ? t("dashboard.billing.trial", { days: getTrialDaysLeft(billing) })
                   : t("dashboard.billing.active", {
+                      plan: vitrinePlanByBillingId(billing.plan).title,
                       date: billing.current_period_end ?? "-",
                     })}
             </p>

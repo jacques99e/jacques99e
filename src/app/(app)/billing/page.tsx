@@ -5,43 +5,22 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { PLAN_LIMITS, getTrialDaysLeft, normalizeBillingStatus, type BillingPlanId, type BillingSubscription } from "@/lib/billing";
+import {
+  PLAN_LIMITS,
+  getTrialDaysLeft,
+  normalizeBillingStatus,
+  type BillingPlanId,
+  type BillingSubscription,
+} from "@/lib/billing";
+import {
+  VITRINE_PLANS,
+  mapVitrinePlanToBilling,
+  paymentFcfaForPlan,
+  vitrinePlanByBillingId,
+} from "@/lib/vitrine-plans";
+import { applyPendingPlan } from "@/lib/modules/preference";
 import { apiFetch } from "@/lib/api-client";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
-
-type PlanId = BillingPlanId;
-
-interface Plan {
-  id: PlanId;
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-}
-
-const plans: Plan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "9 900 FCFA / mois",
-    description: "Pour démarrer rapidement.",
-    features: ["Modules essentiels", "Exports CSV/PDF", "Support standard"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "24 900 FCFA / mois",
-    description: "Le meilleur choix PME.",
-    features: ["Tous les modules", "Mini CRM + relances", "Support prioritaire"],
-  },
-  {
-    id: "business",
-    name: "Business",
-    price: "Sur devis",
-    description: "Pour équipes et multi-sites.",
-    features: ["Accompagnement dédié", "Onboarding équipe", "SLA avancé"],
-  },
-];
 
 interface BillingApiResponse {
   success: boolean;
@@ -66,15 +45,15 @@ export default function BillingPage() {
   const [subscription, setSubscription] = useState<BillingSubscription>(emptySubscription);
   const [trialDaysLeft, setTrialDaysLeft] = useState(14);
   const [loading, setLoading] = useState(true);
-  const [savingPlan, setSavingPlan] = useState<PlanId | null>(null);
-  const [payingPlan, setPayingPlan] = useState<PlanId | null>(null);
+  const [savingPlan, setSavingPlan] = useState<BillingPlanId | null>(null);
+  const [payingPlan, setPayingPlan] = useState<BillingPlanId | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [paymentEnvironment, setPaymentEnvironment] = useState("");
   const [paydunyaReady, setPaydunyaReady] = useState(false);
 
   const currentPlan = subscription.plan;
-  const current = useMemo(() => plans.find((plan) => plan.id === currentPlan) ?? plans[0], [currentPlan]);
+  const current = useMemo(() => vitrinePlanByBillingId(currentPlan), [currentPlan]);
   const currentStatus = normalizeBillingStatus(subscription);
   const limits = PLAN_LIMITS[currentPlan];
 
@@ -86,7 +65,7 @@ export default function BillingPage() {
       const response = await apiFetch(`/api/billing/subscription${qs}`, { cache: "no-store" });
       const data = (await response.json()) as BillingApiResponse & { error?: string };
       if (!response.ok || !data.success || !data.subscription) {
-        throw new Error(data.error || "Impossible de recuperer votre abonnement.");
+        throw new Error(data.error || "Impossible de récupérer votre abonnement.");
       }
       setSubscription(data.subscription);
       setTrialDaysLeft(data.trial_days_left ?? getTrialDaysLeft(data.subscription));
@@ -104,24 +83,33 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
+    const pending = applyPendingPlan();
+    const billingPlan = mapVitrinePlanToBilling(pending);
+    if (!billingPlan || billingPlan === "starter") return;
+    void selectPlan(billingPlan, true);
+  }, []);
+
+  useEffect(() => {
     const tx = searchParams.get("tx");
     const status = searchParams.get("status");
     if (!tx) return;
     if (status === "cancelled") {
-      setNotice("Paiement annule. Vous pouvez reessayer.");
+      setNotice("Paiement annulé. Vous pouvez réessayer.");
       return;
     }
-    setNotice("Retour de PayDunya detecte. Verification de votre abonnement...");
+    setNotice("Retour de paiement détecté. Vérification de votre abonnement...");
     const timer = setTimeout(() => {
       void loadSubscription(tx);
     }, 2000);
     return () => clearTimeout(timer);
   }, [searchParams]);
 
-  const selectPlan = async (id: PlanId) => {
+  const selectPlan = async (id: BillingPlanId, silent = false) => {
     setSavingPlan(id);
-    setError("");
-    setNotice("");
+    if (!silent) {
+      setError("");
+      setNotice("");
+    }
     try {
       const response = await apiFetch("/api/billing/subscription", {
         method: "POST",
@@ -130,26 +118,32 @@ export default function BillingPage() {
       });
       const data = (await response.json()) as BillingApiResponse & { error?: string };
       if (!response.ok || !data.success || !data.subscription) {
-        throw new Error(data.error || "Impossible de mettre a jour le plan.");
+        throw new Error(data.error || "Impossible de mettre à jour le plan.");
       }
       setSubscription(data.subscription);
       setTrialDaysLeft(data.trial_days_left ?? getTrialDaysLeft(data.subscription));
-      setNotice(`Plan ${id.toUpperCase()} selectionne.`);
+      const label = vitrinePlanByBillingId(id).title;
+      setNotice(silent ? `Plan ${label} présélectionné depuis la vitrine.` : `Plan ${label} sélectionné.`);
     } catch (e) {
-      setError(mapErrorToUserMessage(e, "Mise a jour du plan impossible."));
+      if (!silent) {
+        setError(mapErrorToUserMessage(e, "Mise à jour du plan impossible."));
+      }
     } finally {
       setSavingPlan(null);
     }
   };
 
-  const payPlan = async (id: PlanId) => {
+  const payPlan = async (id: BillingPlanId) => {
     setPayingPlan(id);
     setError("");
     setNotice("");
     try {
-      const target = plans.find((plan) => plan.id === id);
-      if (!target) return;
-      const amount = id === "starter" ? 9900 : id === "pro" ? 24900 : 49900;
+      const amount = paymentFcfaForPlan(id);
+      if (amount <= 0) {
+        await selectPlan(id);
+        setNotice("Plan GRATUIT activé — passez au PRO quand vous êtes prêt.");
+        return;
+      }
       const response = await apiFetch("/api/payments/momo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,13 +167,13 @@ export default function BillingPage() {
       } catch {
         throw new Error(
           response.status === 401
-            ? "Session expiree. Veuillez vous reconnecter."
-            : `Erreur serveur (${response.status}). Reessayez dans quelques instants.`
+            ? "Session expirée. Veuillez vous reconnecter."
+            : `Erreur serveur (${response.status}). Réessayez dans quelques instants.`
         );
       }
       if (!response.ok || !data.success) {
         const detail = [data.error, data.paydunya_help].filter(Boolean).join(" ");
-        throw new Error(detail || "Paiement refuse.");
+        throw new Error(detail || "Paiement refusé.");
       }
       if (data.warning) {
         setNotice(data.warning);
@@ -187,14 +181,14 @@ export default function BillingPage() {
         return;
       }
       if (data.checkout_url) {
-        setNotice("Redirection vers PayDunya (sandbox) pour finaliser le paiement test...");
+        setNotice("Redirection vers le paiement Mobile Money...");
         window.location.href = data.checkout_url;
         return;
       }
       if (data.status === "pending") {
-        setNotice("Paiement initialise. Validation en cours via le fournisseur.");
+        setNotice("Paiement initialisé. Validation en cours.");
       } else {
-        setNotice(`Paiement confirme. Plan ${target.name} active.`);
+        setNotice(`Paiement confirmé. Plan ${vitrinePlanByBillingId(id).title} activé.`);
       }
       await loadSubscription();
     } catch (e) {
@@ -209,97 +203,118 @@ export default function BillingPage() {
     <>
       <AppHeader title="Abonnement" />
       <main className="mx-auto max-w-lg space-y-4 p-4">
+        <p className="text-center text-sm text-gray-600">
+          Tarifs identiques à la vitrine — gratuit pour démarrer, PRO à 9,99 €/mois sans engagement.
+        </p>
+
         <section className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
           <p className="text-xs text-gray-500">Plan actuel</p>
-          <p className="text-lg font-semibold text-[#075E54]">{current.name}</p>
-          <p className="text-sm text-gray-700 dark:text-gray-300">{current.price}</p>
-          <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-            Statut:{" "}
+          <p className="text-lg font-semibold text-[#075E54]">{current.title}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {current.priceLabel}
+            {current.priceSuffix}
+          </p>
+          <p className="mt-1 text-xs text-[#FF6F00]">{current.hook}</p>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+            Statut :{" "}
             {currentStatus === "trial"
               ? `Essai gratuit (${trialDaysLeft} jour(s) restant(s))`
               : currentStatus === "active"
                 ? `Actif jusqu'au ${subscription.current_period_end ?? "-"}`
-                : "Expire"}
+                : "Expiré — repassez au PRO pour débloquer tout"}
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-            Limites du plan: {limits.maxProducts} produits, {limits.maxClients} clients.
+            Limites : {limits.maxProducts >= 999_999 ? "produits illimités" : `${limits.maxProducts} produits`}
+            , {limits.maxClients} clients.
           </p>
           {paymentEnvironment ? (
             <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-              Paiement: {paymentEnvironment}
-              {!paydunyaReady ? " — cles PayDunya incompletes." : null}
+              Paiement : {paymentEnvironment}
+              {!paydunyaReady ? " — clés PayDunya incomplètes." : null}
             </p>
           ) : null}
-          <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-            Votre offre inclut les outils nécessaires pour vos opérations quotidiennes.
-          </p>
-          {loading ? <p className="mt-2 text-xs text-gray-500">Chargement abonnement...</p> : null}
+          {loading ? <p className="mt-2 text-xs text-gray-500">Chargement...</p> : null}
           {notice ? <p className="mt-2 text-xs text-green-700">{notice}</p> : null}
           {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
           <Button asChild variant="outline" size="sm" className="mt-3">
-            <Link href="/billing/history">Voir l'historique des paiements</Link>
+            <Link href="/billing/history">Historique des paiements</Link>
           </Button>
         </section>
 
-        <section className="space-y-2">
-          {plans.map((plan) => {
-            const active = plan.id === currentPlan;
+        <section className="space-y-3">
+          {VITRINE_PLANS.map((plan) => {
+            const active = plan.billingId === currentPlan;
             return (
-              <article key={plan.id} className="rounded-xl bg-white p-3 shadow-sm dark:bg-gray-800">
-                <div className="flex items-start justify-between">
+              <article
+                key={plan.billingId}
+                className={`rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800 ${
+                  plan.popular ? "ring-2 ring-[#075E54]/25" : ""
+                }`}
+              >
+                {plan.popular ? (
+                  <span className="mb-2 inline-block rounded-full bg-[#FF6F00] px-2 py-0.5 text-[10px] font-bold text-white">
+                    Recommandé
+                  </span>
+                ) : null}
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">{plan.name}</p>
-                    <p className="text-xs text-gray-500">{plan.price}</p>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">{plan.description}</p>
+                    <p className="text-sm font-semibold text-[#075E54]">{plan.title}</p>
+                    <p className="text-xs text-gray-500">{plan.subtitle}</p>
+                    <p className="mt-1 text-lg font-bold">
+                      {plan.priceLabel}
+                      <span className="text-sm font-normal text-gray-500">{plan.priceSuffix}</span>
+                    </p>
+                    {plan.paymentFcfa > 0 ? (
+                      <p className="text-[11px] text-gray-500">
+                        ≈ {plan.paymentFcfa.toLocaleString("fr-FR")} FCFA via MoMo
+                      </p>
+                    ) : null}
                   </div>
                   {active ? (
-                    <span className="rounded-full bg-[#075E54]/10 px-2 py-1 text-[11px] text-[#075E54]">
+                    <span className="shrink-0 rounded-full bg-[#075E54]/10 px-2 py-1 text-[11px] text-[#075E54]">
                       Actif
                     </span>
                   ) : null}
                 </div>
                 <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
                   {plan.features.map((feature) => (
-                    <li key={feature}>- {feature}</li>
+                    <li key={feature}>✓ {feature}</li>
                   ))}
                 </ul>
-                <Button
-                  variant={active ? "outline" : "default"}
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => void selectPlan(plan.id)}
-                  disabled={savingPlan === plan.id}
-                >
-                  {savingPlan === plan.id ? "Mise a jour..." : active ? "Plan selectionne" : "Choisir ce plan"}
-                </Button>
-                {plan.id !== "business" ? (
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
+                    variant={active ? "outline" : plan.popular ? "default" : "outline"}
                     size="sm"
-                    className="mt-2 ml-2"
-                    onClick={() => void payPlan(plan.id)}
-                    disabled={payingPlan === plan.id}
+                    className={plan.popular && !active ? "bg-[#FF6F00] hover:bg-[#FF6F00]/90" : ""}
+                    onClick={() => void selectPlan(plan.billingId)}
+                    disabled={savingPlan === plan.billingId}
                   >
-                    {payingPlan === plan.id ? "Paiement..." : "Payer ce plan"}
+                    {savingPlan === plan.billingId ? "..." : active ? "Plan actuel" : plan.cta}
                   </Button>
-                ) : null}
+                  {plan.paymentFcfa > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void payPlan(plan.billingId)}
+                      disabled={payingPlan === plan.billingId}
+                    >
+                      {payingPlan === plan.billingId ? "..." : "Payer par MoMo"}
+                    </Button>
+                  ) : null}
+                </div>
               </article>
             );
           })}
         </section>
 
-        <section className="rounded-xl bg-white p-4 text-xs shadow-sm dark:bg-gray-800">
-          <p className="font-semibold">Besoin d'un accompagnement premium ?</p>
-          <p className="mt-1 text-gray-600 dark:text-gray-300">
-            Nous pouvons configurer vos modules, former votre équipe et suivre vos KPI dès le lancement.
+        <section className="rounded-xl bg-[#075E54]/5 p-4 text-xs">
+          <p className="font-semibold text-[#075E54]">Comme sur la vitrine</p>
+          <p className="mt-1 text-gray-600">
+            Caisse MoMo, mode hors ligne, crédit client, boutique WhatsApp et 6 modules métier —
+            upgrade ou downgrade à tout moment.
           </p>
-          <Button asChild variant="outline" size="sm" className="mt-2">
-            <a href="https://wa.me/" target="_blank" rel="noreferrer">
-              Parler au conseiller
-            </a>
-          </Button>
         </section>
       </main>
     </>
   );
 }
-

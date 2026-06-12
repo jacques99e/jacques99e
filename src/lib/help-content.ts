@@ -36,6 +36,10 @@ export const HELP_LINKS: HelpLink[] = [
 
 export const HELP_FAQ: HelpFaqItem[] = [
   {
+    q: "Quels sont les tarifs (comme sur la vitrine) ?",
+    a: "GRATUIT : 0 €, 50 produits, 1 boutique. PRO : 9,99 €/mois, produits illimités, 3 boutiques, analytics. BUSINESS : 24,99 €/mois, équipe et 10 boutiques. Paiement MoMo depuis Abonnement.",
+  },
+  {
     q: "Comment démarrer avec le commerce ?",
     a: "Ajoutez un produit, enregistrez une vente depuis la caisse, gérez les dettes clients dans le carnet crédit, puis partagez votre catalogue WhatsApp.",
     modules: ["commerce"],

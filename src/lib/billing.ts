@@ -12,15 +12,15 @@ export interface BillingSubscription {
 }
 
 export const PLAN_PRICES: Record<BillingPlanId, number> = {
-  starter: 9900,
-  pro: 24900,
-  business: 49900,
+  starter: 0,
+  pro: 6550,
+  business: 16350,
 };
 
 export const PLAN_LIMITS: Record<BillingPlanId, { maxProducts: number; maxClients: number }> = {
   starter: { maxProducts: 50, maxClients: 200 },
-  pro: { maxProducts: 500, maxClients: 2000 },
-  business: { maxProducts: 10000, maxClients: 100000 },
+  pro: { maxProducts: 999_999, maxClients: 2000 },
+  business: { maxProducts: 999_999, maxClients: 100_000 },
 };
 
 export function addDays(dateISO: string, days: number): string {

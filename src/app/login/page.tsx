@@ -72,7 +72,12 @@ export default function LoginPage() {
           📱
         </div>
         <h1 className="text-center text-2xl font-bold text-gray-900">Wazo Digital</h1>
-        <p className="mt-2 text-center text-sm text-gray-500">Connectez-vous avec votre téléphone</p>
+        <p className="mt-2 text-center text-sm font-medium text-[#075E54]">
+          Encaissez plus. Perdez moins de temps.
+        </p>
+        <p className="mt-1 text-center text-xs text-gray-500">
+          Caisse MoMo, stock et boutique WhatsApp — connectez-vous avec votre téléphone
+        </p>
 
         {step === "phone" ? (
           <form className="mt-6 space-y-4" onSubmit={handleSendCode}>
