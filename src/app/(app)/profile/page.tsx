@@ -12,6 +12,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { localStore } from "@/lib/db";
 import type { Language } from "@/types";
 import Link from "next/link";
+import { billingPayHref } from "@/lib/billing-checkout";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Moon, Sun } from "lucide-react";
 
@@ -150,7 +151,7 @@ export default function ProfilePage() {
         </Link>
 
         <Link
-          href="/billing"
+          href={billingPayHref("pro")}
           className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
         >
           {t("profile.billing")} →

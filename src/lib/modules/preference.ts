@@ -1,3 +1,4 @@
+import { billingPayHref } from "@/lib/billing-checkout";
 import { localModules } from "@/lib/db";
 import { normalizeModuleIds } from "@/lib/modules/config";
 import { setBusinessVertical } from "@/lib/onboarding";
@@ -84,5 +85,6 @@ export function applyPendingPlanPay(): boolean {
 }
 
 export function billingCheckoutPath(plan: string): string {
-  return `/billing?plan=${encodeURIComponent(plan)}&pay=1`;
+  if (plan === "business") return billingPayHref("business");
+  return billingPayHref("pro");
 }

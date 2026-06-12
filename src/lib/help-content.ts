@@ -1,3 +1,4 @@
+import { billingPayHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { MODULE_LABELS } from "@/lib/modules/config";
 import type { ModuleId } from "@/types";
 
@@ -31,7 +32,9 @@ export const HELP_LINKS: HelpLink[] = [
   { href: "/blockchain", label: "Traçabilité", modules: ["blockchain"] },
   { href: "/blockchain/qr", label: "QR traçabilité", modules: ["blockchain"] },
   { href: "/settings", label: "Diagnostic technique" },
-  { href: "/billing", label: "Abonnement" },
+  { href: billingPayHref("pro"), label: "Passer au PRO (MoMo)" },
+  { href: billingPayHref("business"), label: "Passer au BUSINESS (MoMo)" },
+  { href: BILLING_MANAGE_HREF, label: "Gérer mon abonnement" },
 ];
 
 export const HELP_FAQ: HelpFaqItem[] = [

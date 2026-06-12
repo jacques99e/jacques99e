@@ -155,6 +155,8 @@
   "dashboard.billing.expired": "Trial expired. Activate a plan to avoid limits.",
   "dashboard.billing.label": "Subscription",
   "dashboard.billing.manage": "Manage subscription",
+  "dashboard.billing.manageActive": "Manage subscription",
+  "dashboard.billing.payPro": "Pay for PRO — Mobile Money",
   "dashboard.billing.trial": "Free trial in progress ({days} day(s) left).",
   "dashboard.chart7days": "Last 7 days",
   "dashboard.commerce.items": "{count} item(s)",

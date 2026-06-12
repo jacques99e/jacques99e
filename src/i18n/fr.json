@@ -155,6 +155,8 @@
   "dashboard.billing.expired": "Limite du plan GRATUIT atteinte. Passez au PRO (9,99 €/mois) pour débloquer tout.",
   "dashboard.billing.label": "Abonnement",
   "dashboard.billing.manage": "Voir les plans GRATUIT · PRO · BUSINESS",
+  "dashboard.billing.manageActive": "Gérer mon abonnement",
+  "dashboard.billing.payPro": "Payer le PRO — Mobile Money",
   "dashboard.billing.trial": "Plan GRATUIT — essai ({days} jour(s) restants). Upgrade PRO en 1 clic.",
   "dashboard.chart7days": "7 derniers jours",
   "dashboard.commerce.items": "{count} article(s)",

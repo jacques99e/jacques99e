@@ -13,6 +13,7 @@ import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { getTrialDaysLeft, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { billingDashboardHref, billingPayHref } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
@@ -317,8 +318,13 @@ export default function DashboardPage() {
                       date: billing.current_period_end ?? "-",
                     })}
             </p>
-            <Link href="/billing" className="mt-1 inline-block underline">
-              {t("dashboard.billing.manage")}
+            <Link
+              href={billingDashboardHref(billing)}
+              className="mt-2 inline-block rounded-lg bg-[#FF6F00] px-3 py-1.5 text-xs font-semibold text-white no-underline hover:opacity-90"
+            >
+              {normalizeBillingStatus(billing) === "active" && billing.plan !== "starter"
+                ? t("dashboard.billing.manageActive")
+                : t("dashboard.billing.payPro")}
             </Link>
           </section>
         ) : null}
@@ -378,7 +384,10 @@ export default function DashboardPage() {
             <Link href="/help" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
               {t("onboarding.helpCenter")}
             </Link>
-            <Link href="/billing" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
+            <Link
+              href={billingPayHref("pro")}
+              className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100"
+            >
               {t("onboarding.billing")}
             </Link>
             <Button

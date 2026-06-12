@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { Camera } from "lucide-react";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
 import { readLocalProducts, writeLocalProducts } from "@/lib/local-products";
 import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { billingUpgradeHref } from "@/lib/billing-checkout";
 
 type ProductCategory =
   | "Alimentation"
@@ -179,7 +181,14 @@ export default function AddProductPage() {
           >
             {loading ? "Enregistrement..." : "Enregistrer le produit"}
           </Button>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {error ? (
+            <p className="text-xs text-red-600">
+              {error}{" "}
+              <Link href={billingUpgradeHref(billing)} className="font-semibold underline">
+                Payer maintenant
+              </Link>
+            </p>
+          ) : null}
         </form>
       </main>
     </>

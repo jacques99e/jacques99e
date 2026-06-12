@@ -19,6 +19,7 @@ import {
 import { getBusinessSettings } from "@/lib/business-settings";
 import { buildMessageFromTemplate, openWhatsAppChat } from "@/lib/whatsapp";
 import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { billingUpgradeHref } from "@/lib/billing-checkout";
 
 type ClientRecord = LocalClientRecord;
 
@@ -310,7 +311,14 @@ export default function ClientsPage() {
           <Button className="w-full" type="submit">
             Ajouter client
           </Button>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {error ? (
+            <p className="text-xs text-red-600">
+              {error}{" "}
+              <Link href={billingUpgradeHref(billing)} className="font-semibold underline">
+                Payer maintenant
+              </Link>
+            </p>
+          ) : null}
         </form>
 
         <Input

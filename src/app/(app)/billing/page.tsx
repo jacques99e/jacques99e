@@ -57,7 +57,7 @@ export default function BillingPage() {
   const currentStatus = normalizeBillingStatus(subscription);
   const limits = PLAN_LIMITS[currentPlan];
 
-  const loadSubscription = async (txId?: string | null) => {
+  const loadSubscription = async (txId?: string | null): Promise<BillingSubscription | null> => {
     setLoading(true);
     setError("");
     try {
@@ -71,8 +71,10 @@ export default function BillingPage() {
       setTrialDaysLeft(data.trial_days_left ?? getTrialDaysLeft(data.subscription));
       setPaymentEnvironment(data.payment_environment ?? "");
       setPaydunyaReady(Boolean(data.paydunya_ready));
+      return data.subscription;
     } catch (e) {
       setError(mapErrorToUserMessage(e, "Impossible de charger votre abonnement."));
+      return null;
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ export default function BillingPage() {
     let cancelled = false;
 
     const runCheckoutIntent = async () => {
-      await loadSubscription();
+      const currentSub = await loadSubscription();
       if (cancelled) return;
 
       const pending =
@@ -91,9 +93,15 @@ export default function BillingPage() {
       const billingPlan = mapVitrinePlanToBilling(pending);
       if (!billingPlan || billingPlan === "starter") return;
 
-      if (autoPay && paymentFcfaForPlan(billingPlan) > 0) {
+      const currentStatus = currentSub ? normalizeBillingStatus(currentSub) : "expired";
+      const alreadyOnPlan =
+        currentSub?.plan === billingPlan &&
+        currentStatus === "active" &&
+        Boolean(currentSub.current_period_end);
+
+      if (autoPay && paymentFcfaForPlan(billingPlan) > 0 && !alreadyOnPlan) {
         await payPlan(billingPlan);
-      } else {
+      } else if (!alreadyOnPlan) {
         await selectPlan(billingPlan, true);
       }
     };

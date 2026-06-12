@@ -1,5 +1,8 @@
+import { billingPayHref } from "@/lib/billing-checkout";
 import { ALL_MODULE_IDS } from "@/lib/modules/config";
 import type { ModuleId } from "@/types";
+
+const BILLING_UPGRADE_HREF = billingPayHref("pro");
 
 /** Secteur d'activité = module principal pour l'onboarding métier */
 export type BusinessVertical = ModuleId;
@@ -29,39 +32,39 @@ export const ONBOARDING_BY_VERTICAL: Record<BusinessVertical, OnboardingTaskDef[
     { id: "sale", href: "/sales" },
     { id: "catalog", href: "/products" },
     { id: "vitrine", href: "/profile" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   health: [
     { id: "patient", href: "/health/patients/new" },
     { id: "appointment", href: "/health/appointments/new" },
     { id: "remind", href: "/health/appointments" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   agriculture: [
     { id: "parcel", href: "/agriculture/parcels/new" },
     { id: "marches", href: "/agriculture/marches" },
     { id: "rendement", href: "/agriculture/rendement" },
     { id: "sale", href: "/products/add?category=Agriculture" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   logistics: [
     { id: "delivery", href: "/logistics/deliveries/new" },
     { id: "suivi", href: "/logistics" },
     { id: "portal", href: "/suivi" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   education: [
     { id: "course", href: "/education/courses/new" },
     { id: "video", href: "/education" },
     { id: "portal", href: "/formation" },
     { id: "cert", href: "/education" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   blockchain: [
     { id: "asset", href: "/blockchain/assets/new" },
     { id: "trace", href: "/trace" },
     { id: "contract", href: "/blockchain/contracts" },
-    { id: "billing", href: "/billing" },
+    { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
 };
 
