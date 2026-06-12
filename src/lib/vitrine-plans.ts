@@ -13,6 +13,9 @@ export interface VitrinePlanDisplay {
   hook: string;
   features: string[];
   popular: boolean;
+  /** Mise en avant secondaire (équipes / multi-sites). */
+  teamsPick?: boolean;
+  badge?: string;
   cta: string;
   paymentFcfa: number;
 }
@@ -72,6 +75,8 @@ export const VITRINE_PLANS: VitrinePlanDisplay[] = [
       "Onboarding dédié",
     ],
     popular: false,
+    teamsPick: true,
+    badge: "Équipes & multi-sites",
     cta: "Passer au BUSINESS",
     paymentFcfa: 16350,
   },

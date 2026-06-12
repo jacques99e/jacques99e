@@ -275,12 +275,20 @@ export default function BillingPage() {
               <article
                 key={plan.billingId}
                 className={`rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800 ${
-                  plan.popular ? "ring-2 ring-[#075E54]/25" : ""
+                  plan.popular
+                    ? "ring-2 ring-[#075E54]/25"
+                    : plan.teamsPick
+                      ? "ring-2 ring-[#075E54]/15"
+                      : ""
                 }`}
               >
                 {plan.popular ? (
                   <span className="mb-2 inline-block rounded-full bg-[#FF6F00] px-2 py-0.5 text-[10px] font-bold text-white">
                     Recommandé
+                  </span>
+                ) : plan.badge ? (
+                  <span className="mb-2 inline-block rounded-full bg-[#075E54] px-2 py-0.5 text-[10px] font-bold text-white">
+                    {plan.badge}
                   </span>
                 ) : null}
                 <div className="flex items-start justify-between gap-2">
@@ -311,9 +319,15 @@ export default function BillingPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {plan.paymentFcfa > 0 ? (
                     <Button
-                      variant={active ? "outline" : plan.popular ? "default" : "outline"}
+                      variant={active ? "outline" : plan.popular || plan.teamsPick ? "default" : "outline"}
                       size="sm"
-                      className={plan.popular && !active ? "bg-[#FF6F00] hover:bg-[#FF6F00]/90" : ""}
+                      className={
+                        !active && plan.popular
+                          ? "bg-[#FF6F00] hover:bg-[#FF6F00]/90"
+                          : !active && plan.teamsPick
+                            ? "bg-[#075E54] hover:bg-[#075E54]/90"
+                            : ""
+                      }
                       onClick={() => void payPlan(plan.billingId)}
                       disabled={payingPlan === plan.billingId || active}
                     >
