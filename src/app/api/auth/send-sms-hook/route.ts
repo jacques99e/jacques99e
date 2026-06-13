@@ -16,8 +16,9 @@ function hookSecretCandidates(): string[] {
   const cleaned = raw.replace(/^["']|["']$/g, "").trim();
   const candidates = new Set<string>();
 
-  if (cleaned.startsWith("v1,whsec_")) {
-    candidates.add(cleaned.slice("v1,whsec_".length));
+  if (/^v\d+,whsec_/.test(cleaned)) {
+    candidates.add(cleaned.replace(/^v\d+,/, "")); // whsec_<base64> — format Supabase
+    candidates.add(cleaned.replace(/^v\d+,whsec_/, "")); // <base64> seul
   }
   if (cleaned.startsWith("whsec_")) {
     candidates.add(cleaned.slice("whsec_".length));
@@ -86,6 +87,8 @@ export async function GET() {
     smsProviderConfigured: sms.providerConfigured,
     atUsername: process.env.AT_USERNAME ? "configured" : "missing",
     atApiKey: process.env.AT_API_KEY ? "configured" : "missing",
+    atMode:
+      process.env.AT_USERNAME?.trim().toLowerCase() === "sandbox" ? "sandbox" : "live",
     hookUrl: "https://app.wazo-digital.com/api/auth/send-sms-hook",
   });
 }
