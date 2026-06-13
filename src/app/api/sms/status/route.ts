@@ -7,7 +7,7 @@ export async function GET() {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
-  const provider = (process.env.SMS_PROVIDER || "twilio").toLowerCase();
+  const provider = (process.env.SMS_PROVIDER || "africastalking").toLowerCase();
   const simulate = process.env.SMS_SIMULATE === "true";
 
   let configured = false;

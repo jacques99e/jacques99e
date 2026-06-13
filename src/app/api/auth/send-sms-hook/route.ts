@@ -52,7 +52,7 @@ function verifyHookPayload(payload: string, headers: Record<string, string>): Se
 
 function smsConfigStatus() {
   const simulate = process.env.SMS_SIMULATE === "true";
-  const provider = (process.env.SMS_PROVIDER || "twilio").toLowerCase();
+  const provider = (process.env.SMS_PROVIDER || "africastalking").toLowerCase();
   let providerConfigured = false;
   if (simulate) {
     providerConfigured = true;
@@ -84,6 +84,9 @@ export async function GET() {
     smsSimulate: sms.simulate,
     smsProvider: sms.provider,
     smsProviderConfigured: sms.providerConfigured,
+    atUsername: process.env.AT_USERNAME ? "configured" : "missing",
+    atApiKey: process.env.AT_API_KEY ? "configured" : "missing",
+    hookUrl: "https://app.wazo-digital.com/api/auth/send-sms-hook",
   });
 }
 

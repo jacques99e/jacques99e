@@ -91,10 +91,23 @@ async function sendViaAfricasTalking(to: string, message: string): Promise<SendS
     body,
   });
 
+  const text = await response.text();
   if (!response.ok) {
-    const text = await response.text();
     return { ok: false, error: text || response.statusText };
   }
+
+  try {
+    const data = JSON.parse(text) as {
+      SMSMessageData?: { Recipients?: Array<{ status?: string; statusCode?: number; number?: string }> };
+    };
+    const recipient = data.SMSMessageData?.Recipients?.[0];
+    if (recipient && recipient.status !== "Success" && recipient.statusCode !== 101) {
+      return { ok: false, error: `Africa's Talking: ${recipient.status ?? "echec"} (${recipient.number ?? to})` };
+    }
+  } catch {
+    /* corps non-JSON */
+  }
+
   return { ok: true };
 }
 
@@ -130,7 +143,7 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
     return { ok: true, simulated: true };
   }
 
-  const provider = (process.env.SMS_PROVIDER || "vonage").toLowerCase();
+  const provider = (process.env.SMS_PROVIDER || "africastalking").toLowerCase();
   if (provider === "africastalking" || provider === "at") {
     return sendViaAfricasTalking(to, message);
   }
