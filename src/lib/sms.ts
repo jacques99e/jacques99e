@@ -12,6 +12,39 @@ function formatSmsPhone(raw: string): string | null {
   return digits.startsWith("+") ? digits : `+${digits}`;
 }
 
+async function sendViaVonage(to: string, message: string): Promise<SendSmsResult> {
+  const apiKey = process.env.VONAGE_API_KEY || process.env.NEXMO_API_KEY;
+  const apiSecret = process.env.VONAGE_API_SECRET || process.env.NEXMO_API_SECRET;
+  const from = process.env.VONAGE_FROM || process.env.NEXMO_FROM;
+  if (!apiKey || !apiSecret || !from) {
+    return {
+      ok: false,
+      error: "Vonage non configuré (VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM)",
+    };
+  }
+
+  const response = await fetch("https://rest.nexmo.com/sms/json", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      api_secret: apiSecret,
+      to: to.replace(/^\+/, ""),
+      from,
+      text: message,
+    }),
+  });
+
+  const data = (await response.json()) as {
+    messages?: Array<{ status?: string; "error-text"?: string }>;
+  };
+  const first = data.messages?.[0];
+  if (!response.ok || first?.status !== "0") {
+    return { ok: false, error: first?.["error-text"] || response.statusText || "Echec Vonage" };
+  }
+  return { ok: true };
+}
+
 async function sendViaTwilio(to: string, message: string): Promise<SendSmsResult> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
@@ -97,9 +130,12 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
     return { ok: true, simulated: true };
   }
 
-  const provider = (process.env.SMS_PROVIDER || "twilio").toLowerCase();
+  const provider = (process.env.SMS_PROVIDER || "vonage").toLowerCase();
   if (provider === "africastalking" || provider === "at") {
     return sendViaAfricasTalking(to, message);
+  }
+  if (provider === "vonage" || provider === "nexmo") {
+    return sendViaVonage(to, message);
   }
   return sendViaTwilio(to, message);
 }
