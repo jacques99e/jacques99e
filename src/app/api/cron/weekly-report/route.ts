@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       avgBasket,
       outOfStock,
       lowStock,
-      lines: [`Consultez le détail sur https://wazo-digital.vercel.app/insights`],
+      lines: [`Consultez le détail sur https://app.wazo-digital.com/insights`],
     });
 
     const sent = await sendWeeklyReportEmail({

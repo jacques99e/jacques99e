@@ -1,5 +1,7 @@
 import type { ModuleId } from "@/types";
 
+import { PROD_APP_URL } from "@/lib/site-urls";
+
 export interface ModulePortalLink {
   moduleId: ModuleId;
   path: string;
@@ -7,7 +9,7 @@ export interface ModulePortalLink {
 
 function appBaseUrl(): string {
   if (typeof window !== "undefined") return window.location.origin;
-  return (process.env.NEXT_PUBLIC_APP_URL || "https://wazo-digital.vercel.app").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL || PROD_APP_URL).replace(/\/$/, "");
 }
 
 export function portalFullUrl(path: string, slug?: string): string {

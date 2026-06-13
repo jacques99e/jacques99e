@@ -75,7 +75,7 @@ export async function POST(
 
     const contact = body.student_email?.trim();
     if (contact && looksLikePhone(contact) && course.invite_code) {
-      const base = (process.env.NEXT_PUBLIC_APP_URL || "https://wazo-digital.vercel.app").replace(
+      const base = (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(
         /\/$/,
         ""
       );

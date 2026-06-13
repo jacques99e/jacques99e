@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const base = (process.env.NEXT_PUBLIC_APP_URL || "https://wazo-digital.vercel.app").replace(
+    const base = (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(
       /\/$/,
       ""
     );

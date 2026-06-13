@@ -1,5 +1,4 @@
-const PROD_LANDING_URL = "https://landing-jacques99e.vercel.app";
-const PROD_APP_URL = "https://wazo-digital.vercel.app";
+import { PROD_APP_URL, PROD_LANDING_URL } from "./site-urls";
 const DEV_LANDING_URL = "http://localhost:3000";
 const DEV_APP_URL = "http://localhost:3001";
 

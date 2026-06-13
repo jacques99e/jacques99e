@@ -254,7 +254,7 @@ function printSummary() {
   console.log(`  Mot de passe : ${ACCOUNTS.employee.password}`);
   console.log(`  Téléphone    : ${ACCOUNTS.employee.phone}`);
   console.log(`\nBoutique : ${STORE_NAME}`);
-  console.log("\nValidation : connectez chaque compte sur landing-jacques99e.vercel.app/login");
+  console.log("\nValidation : connectez chaque compte sur wazo-digital.com/login");
 }
 
 async function main() {

@@ -38,7 +38,7 @@
 5. **Callback URL (IPN)** à enregistrer chez PayDunya :
 
 ```
-https://wazo-digital.vercel.app/api/payments/momo/callback
+https://app.wazo-digital.com/api/payments/momo/callback
 ```
 
 6. Si possible, en-tête HTTP sur le callback :
@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-vercel-payment-live.ps1
 
 ## Étape 8 — Test utilisateur
 
-1. https://wazo-digital.vercel.app → connexion
+1. https://app.wazo-digital.com → connexion
 2. **Abonnement** → **Payer ce plan** (Starter ou Pro)
 3. Si `PAYMENT_MODE=live` + clés PayDunya OK → paiement Mobile Money réel
 4. Après succès → statut **Actif jusqu'au …**

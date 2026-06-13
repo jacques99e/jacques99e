@@ -1,5 +1,5 @@
 # Quick verification after payment live setup
-$base = "https://wazo-digital.vercel.app"
+$base = "https://app.wazo-digital.com"
 Write-Host "=== Verification paiements Wazo Digital ===" -ForegroundColor Cyan
 
 $checks = @(

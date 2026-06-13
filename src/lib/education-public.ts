@@ -1,4 +1,5 @@
 import type { Course, CourseEnrollment, CourseModule, ModuleQuiz } from "@/types";
+import { PROD_APP_URL } from "@/lib/site-urls";
 
 export interface PublicCoursePayload {
   course: Course;
@@ -8,7 +9,7 @@ export interface PublicCoursePayload {
 
 export function formationUrl(inviteCode: string): string {
   if (typeof window === "undefined") {
-    return `https://wazo-digital.vercel.app/formation/${inviteCode}`;
+    return `${PROD_APP_URL}/formation/${inviteCode}`;
   }
   return `${window.location.origin}/formation/${encodeURIComponent(inviteCode)}`;
 }

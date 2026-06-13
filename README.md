@@ -79,7 +79,7 @@ Parcours : `/login` → `/register` (modules) → `/setup` (GPS + slug) → `/da
 |---|---|
 | **Repo GitHub** | [github.com/jacques99e/jacques99e](https://github.com/jacques99e/jacques99e) |
 | **Projet Vercel** | `wazo-digital` |
-| **URL prod** | https://wazo-digital.vercel.app |
+| **URL prod** | https://app.wazo-digital.com |
 | **Branche prod** | `master` |
 
 Le dépôt est connecté à Vercel : chaque `git push origin master` déploie en production.

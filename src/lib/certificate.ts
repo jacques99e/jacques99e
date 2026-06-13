@@ -1,12 +1,12 @@
 import QRCode from "qrcode";
 
-const DEFAULT_APP_URL = "https://wazo-digital.vercel.app";
+import { PROD_APP_URL } from "@/lib/site-urls";
 
 export function resolveAppBaseUrl(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return (process.env.NEXT_PUBLIC_APP_URL || DEFAULT_APP_URL).replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL || PROD_APP_URL).replace(/\/$/, "");
 }
 
 export function certificateVerifyUrl(token: string): string {

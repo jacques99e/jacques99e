@@ -3,7 +3,7 @@ export function traceUrl(hash: string): string {
   const base =
     typeof window !== "undefined"
       ? window.location.origin
-      : (process.env.NEXT_PUBLIC_APP_URL || "https://wazo-digital.vercel.app").replace(/\/$/, "");
+      : (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(/\/$/, "");
   return `${base}/trace/${encodeURIComponent(short)}`;
 }
 

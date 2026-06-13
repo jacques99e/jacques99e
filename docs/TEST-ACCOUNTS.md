@@ -43,8 +43,8 @@ Matrice détaillée : `src/lib/team-permissions.ts` (`TEAM_PERMISSION_MATRIX`).
 
 ## Connexion
 
-1. Landing : https://landing-jacques99e.vercel.app/login  
-2. App : https://wazo-digital.vercel.app/login  
+1. Landing : https://wazo-digital.com/login  
+2. App : https://app.wazo-digital.com/login  
 
 Utilisez l'e-mail ou le téléphone enregistré sur le profil.
 

@@ -59,10 +59,10 @@ Ces endpoints ne exposent que les données prévues pour un usage public (pas de
 
 ```bash
 # Doit retourner 401 sans session
-curl -s -o /dev/null -w "%{http_code}" https://wazo-digital.vercel.app/api/billing/subscription
+curl -s -o /dev/null -w "%{http_code}" https://app.wazo-digital.com/api/billing/subscription
 
 # Doit retourner 401 sans CRON_SECRET
-curl -s -o /dev/null -w "%{http_code}" https://wazo-digital.vercel.app/api/cron/push-alerts
+curl -s -o /dev/null -w "%{http_code}" https://app.wazo-digital.com/api/cron/push-alerts
 ```
 
 Comptes test propriétaire + employé : voir `docs/TEST-ACCOUNTS.md` et `npm run setup:test-accounts`.
