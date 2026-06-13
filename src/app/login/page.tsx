@@ -2,8 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Loader2, Mail, Phone } from "lucide-react";
+import { KeyRound, Loader2, Mail } from "lucide-react";
+import { PhoneCountryInput } from "@/components/PhoneCountryInput";
 import { useAuth } from "@/hooks/useAuth";
+import { DEFAULT_PHONE_COUNTRY } from "@/lib/phone-countries";
+import { formatPhoneDisplay, formatPhoneE164 } from "@/lib/phone-auth";
 import { getLandingLoginUrl } from "@/lib/public-urls";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 
@@ -11,7 +14,8 @@ export default function LoginPage() {
   const { user, loading, sendOtp, verifyOtp } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
+  const [dialCode, setDialCode] = useState(DEFAULT_PHONE_COUNTRY.dial);
+  const [localNumber, setLocalNumber] = useState("");
   const [formattedPhone, setFormattedPhone] = useState("");
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +32,8 @@ export default function LoginPage() {
     setErrorMessage(null);
     setIsLoading(true);
     try {
-      const formatted = await sendOtp(phone);
+      const e164 = formatPhoneE164(localNumber, dialCode);
+      const formatted = await sendOtp(e164);
       setFormattedPhone(formatted);
       setStep("code");
     } catch (error) {
@@ -76,26 +81,25 @@ export default function LoginPage() {
           Encaissez plus. Perdez moins de temps.
         </p>
         <p className="mt-1 text-center text-xs text-gray-500">
-          Caisse MoMo, stock et boutique WhatsApp — connectez-vous avec votre téléphone
+          Connexion par SMS — choisissez votre pays puis votre numéro
         </p>
 
         {step === "phone" ? (
           <form className="mt-6 space-y-4" onSubmit={handleSendCode}>
-            <label className="block text-base font-medium text-[#1A1A1A]">
-              Numéro
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 shadow-sm focus-within:border-wazo-green focus-within:ring-2 focus-within:ring-wazo-green/15">
-                <Phone className="h-5 w-5 text-wazo-green" />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="90 00 00 00"
-                  required
-                  autoComplete="tel"
-                  className="w-full bg-transparent text-lg outline-none"
-                />
-              </div>
-            </label>
+            <div>
+              <span className="block text-base font-medium text-[#1A1A1A]">Numéro de téléphone</span>
+              <PhoneCountryInput
+                dialCode={dialCode}
+                localNumber={localNumber}
+                onDialCodeChange={setDialCode}
+                onLocalNumberChange={setLocalNumber}
+                disabled={isLoading}
+              />
+              <p className="mt-2 text-center text-xs text-gray-500">
+                Un code à 6 chiffres sera envoyé par SMS au{" "}
+                <span className="font-medium text-[#075E54]">{dialCode}</span>
+              </p>
+            </div>
 
             {errorMessage && (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -105,27 +109,31 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !localNumber.trim()}
               className="inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl bg-wazo-orange px-5 py-3 text-base font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-70"
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-              {isLoading ? "Envoi..." : "Recevoir code 📩"}
+              {isLoading ? "Envoi du SMS..." : "Recevoir le code par SMS"}
             </button>
           </form>
         ) : (
           <form className="mt-6 space-y-4" onSubmit={handleVerifyCode}>
-            <p className="text-center text-sm text-gray-500">Code envoyé au {formattedPhone}</p>
+            <p className="text-center text-sm text-gray-600">
+              Code envoyé au{" "}
+              <span className="font-semibold text-[#075E54]">{formatPhoneDisplay(formattedPhone)}</span>
+            </p>
             <label className="block text-base font-medium text-[#1A1A1A]">
-              Code reçu
+              Code reçu par SMS
               <div className="mt-2 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 shadow-sm focus-within:border-wazo-green focus-within:ring-2 focus-within:ring-wazo-green/15">
                 <KeyRound className="h-5 w-5 text-wazo-green" />
                 <input
                   type="text"
                   inputMode="numeric"
                   value={token}
-                  onChange={(e) => setToken(e.target.value)}
+                  onChange={(e) => setToken(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="123456"
                   required
+                  maxLength={6}
                   autoComplete="one-time-code"
                   className="w-full bg-transparent text-2xl tracking-[0.3em] outline-none"
                 />
@@ -140,7 +148,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || token.length < 6}
               className="inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl bg-wazo-green px-5 py-3 text-base font-bold text-white shadow-sm transition hover:bg-wazo-green-light disabled:opacity-70"
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
@@ -156,7 +164,7 @@ export default function LoginPage() {
               }}
               className="w-full text-center text-xs text-wazo-green underline"
             >
-              Modifier le numero
+              Modifier le numéro
             </button>
           </form>
         )}

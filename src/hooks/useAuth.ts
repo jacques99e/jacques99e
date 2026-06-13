@@ -55,11 +55,15 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const sendOtp = useCallback(async (phone: string) => {
-    const formatted = phone.startsWith("+") ? phone : `+${phone}`;
-    const { error } = await supabase.auth.signInWithOtp({ phone: formatted });
+  const sendOtp = useCallback(async (phoneE164: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: phoneE164,
+      options: {
+        channel: "sms",
+      },
+    });
     if (error) throw error;
-    return formatted;
+    return phoneE164;
   }, []);
 
   const verifyOtp = useCallback(async (phone: string, token: string) => {
