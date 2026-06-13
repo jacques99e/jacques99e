@@ -8,9 +8,42 @@ interface SendSmsHookPayload {
 }
 
 function hookSecret(): string | null {
-  const raw = process.env.SEND_SMS_HOOK_SECRET?.trim();
+  const raw =
+    process.env.SEND_SMS_HOOK_SECRET?.trim() ||
+    process.env.SEND_SMS_HOOK_SECRETS?.trim();
   if (!raw) return null;
   return raw.replace(/^v1,whsec_/, "");
+}
+
+function smsConfigStatus() {
+  const simulate = process.env.SMS_SIMULATE === "true";
+  const provider = (process.env.SMS_PROVIDER || "twilio").toLowerCase();
+  let providerConfigured = false;
+  if (simulate) {
+    providerConfigured = true;
+  } else if (provider === "africastalking" || provider === "at") {
+    providerConfigured = Boolean(process.env.AT_API_KEY && process.env.AT_USERNAME);
+  } else {
+    providerConfigured = Boolean(
+      process.env.TWILIO_ACCOUNT_SID &&
+        process.env.TWILIO_AUTH_TOKEN &&
+        process.env.TWILIO_FROM_NUMBER
+    );
+  }
+  return { simulate, provider, providerConfigured };
+}
+
+/** Diagnostic public — ne révèle aucun secret. */
+export async function GET() {
+  const secretConfigured = Boolean(hookSecret());
+  const sms = smsConfigStatus();
+  return NextResponse.json({
+    ok: secretConfigured && (sms.simulate || sms.providerConfigured),
+    hookSecretConfigured: secretConfigured,
+    smsSimulate: sms.simulate,
+    smsProvider: sms.provider,
+    smsProviderConfigured: sms.providerConfigured,
+  });
 }
 
 export async function POST(request: Request) {

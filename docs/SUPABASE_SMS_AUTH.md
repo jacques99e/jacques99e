@@ -26,14 +26,34 @@ Supabase génère le code à 6 chiffres et vérifie le OTP — seul l'**envoi** 
 ## Étape 1 — Compte Africa's Talking
 
 1. Créer un compte sur [africastalking.com](https://africastalking.com)
-2. **Sandbox** (tests) :
+2. **Sandbox** (tests API uniquement — voir section « Sandbox bloqué » ci-dessous) :
+   - Connexion **sandbox** : [sandbox.africastalking.com](https://sandbox.africastalking.com/login) (pas le dashboard production)
    - Username : `sandbox`
-   - API Key : dans le dashboard → Settings → API Key
-   - Ajouter votre numéro de test dans le sandbox
-3. **Production** :
-   - Activer le compte live
+   - API Key : Settings → API Key (attendre ~20 min après création)
+   - Simulateur SMS : lien « Launch Simulator » dans le dashboard → [simulator.africastalking.com](https://simulator.africastalking.com:1517)
+3. **Production** (vrais SMS sur téléphone au Sénégal) :
+   - Activer le compte live sur [account.africastalking.com](https://account.africastalking.com)
    - Demander un **Sender ID** (ex. `WAZO`) pour le Sénégal — délai ~3–7 jours
-   - Variables : `AT_USERNAME` (nom du compte), `AT_API_KEY`, `AT_SENDER_ID`
+   - Variables : `AT_USERNAME` (nom du compte live), `AT_API_KEY`, `AT_SENDER_ID`
+
+### Sandbox bloqué — ajout de numéro impossible
+
+Le sandbox **ne vérifie pas votre téléphone par SMS**. Les messages n’arrivent **pas** sur votre mobile : ils s’affichent dans le **simulateur web** (navigateur).
+
+| Problème | Solution |
+|----------|----------|
+| Page qui demande un SMS de vérification | Vous n’êtes peut‑être pas sur le bon site — utilisez [sandbox.africastalking.com](https://sandbox.africastalking.com/login) |
+| Impossible d’ajouter +221… | Essayez un numéro de test fictif : `+254720000111` (format international, sans espaces) |
+| Bouton « Add » ne réagit pas | Autre navigateur (Chrome), désactiver bloqueur de pub, vider le cache |
+| Erreur de format | Uniquement chiffres après `+` : `+221771234567` (pas `77 123 45 67`) |
+| Besoin d’un vrai SMS sur votre téléphone | **Passez en compte live** ou utilisez les options ci‑dessous |
+
+**Tester l’app sans sandbox AT :**
+
+1. **Email** (immédiat) : https://wazo-digital.com/login → `test.owner@wazo.africa` / `TestOwner2026!`
+2. **OTP fixe Supabase** (dev) : Auth → Phone → Test OTP → `+221771234567=123456` (un seul numéro, retirer en prod)
+3. **Vonage** (déjà configuré) : vérifier les logs Vonage si l’API renvoie une erreur de sender
+4. **Compte AT live** : contacter [support Africa's Talking](https://help.africastalking.com) pour activer le Sénégal
 
 ---
 
@@ -58,22 +78,58 @@ En sandbox, laissez `AT_SENDER_ID` vide. En production, mettez le Sender ID appr
 
 ## Étape 3 — Activer le hook dans Supabase
 
-1. [Dashboard Supabase](https://supabase.com/dashboard/project/gfqmmdihubcpvouidpkc/auth/hooks)
-2. **Auth Hooks** → **Send SMS** → Enable
-3. **HTTP Endpoint** :
+Lien direct : [Auth → Hooks](https://supabase.com/dashboard/project/gfqmmdihubcpvouidpkc/auth/hooks)
 
-   ```
-   https://app.wazo-digital.com/api/auth/send-sms-hook
-   ```
+### Ordre important (à suivre dans cet ordre)
 
-4. Générer le **secret** → copier dans Vercel `SEND_SMS_HOOK_SECRET`
-5. **Save** puis redéployer Vercel si besoin
+| # | Où | Action |
+|---|-----|--------|
+| 1 | Supabase → Hooks | **Add hook** → type **Send SMS** |
+| 2 | Même page | Activer le toggle **Enable Send SMS hook** |
+| 3 | Hook type | Choisir **HTTPS** (pas « Postgres function ») |
+| 4 | URL | `https://app.wazo-digital.com/api/auth/send-sms-hook` |
+| 5 | Secret | Cliquer **Generate secret** → **copier tout** (`v1,whsec_…`) |
+| 6 | Vercel | Ajouter variable `SEND_SMS_HOOK_SECRET` = secret copié |
+| 7 | Vercel | **Redéployer** le projet (obligatoire après ajout de variable) |
+| 8 | Supabase | Cliquer **Create hook** ou **Save** |
 
-### Phone provider
+### Vérifier que l’endpoint répond
 
-- **Authentication** → **Providers** → **Phone** : activé
-- **Test OTP** : vide
-- Vous pouvez laisser Vonage/Twilio **désactivé** ou vide — le hook remplace l'envoi intégré
+Après l’étape 7, cette commande doit renvoyer une erreur de **signature** (pas « secret manquant ») :
+
+```bash
+curl -X POST https://app.wazo-digital.com/api/auth/send-sms-hook -H "Content-Type: application/json" -d "{}"
+```
+
+- `SEND_SMS_HOOK_SECRET manquant` → variable Vercel absente ou pas redéployé
+- `Echec traitement hook SMS` / erreur signature → secret OK, requête non signée (normal pour ce test)
+
+### Phone provider (en parallèle)
+
+1. [Authentication → Providers → Phone](https://supabase.com/dashboard/project/gfqmmdihubcpvouidpkc/auth/providers)
+2. **Enable Phone provider** : ON
+3. **Test OTP** : vide
+4. Vonage/Twilio : peut rester vide — le hook remplace l’envoi SMS
+
+### Bloqué sur l’interface Supabase ?
+
+| Symptôme | Solution |
+|----------|----------|
+| Pas de menu « Hooks » | Menu gauche **Authentication** → onglet **Hooks** (pas Providers) |
+| Bouton Save grisé | Remplir l’URL HTTPS + générer le secret |
+| Erreur à la création | URL sans espace, commence par `https://` |
+| Hook créé mais OTP échoue | Vercel : secret + redéploiement ; logs Auth Supabase |
+| Trop compliqué | **Plan B** ci-dessous — sans hook |
+
+### Plan B — sans hook (plus simple)
+
+Si le hook reste bloquant, utilisez **Vonage directement** dans Supabase :
+
+1. Providers → Phone → fournisseur **Vonage**
+2. API Key + Secret + From
+3. Pas besoin de hook ni de Vercel `SEND_SMS_HOOK_SECRET`
+
+Ou **OTP fixe** (test uniquement) : Test OTP → `+221771234567=123456`
 
 ---
 

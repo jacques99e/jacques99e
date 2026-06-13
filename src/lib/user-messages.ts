@@ -46,6 +46,19 @@ export function mapErrorToUserMessage(
   ) {
     return "Connexion impossible pour le moment. Verifiez internet puis reessayez.";
   }
+  if (
+    message.includes("hook") ||
+    message.includes("sms_send_failed") ||
+    message.includes("error sending sms")
+  ) {
+    return "Envoi SMS impossible. Verifiez la configuration du hook (secret Vercel + fournisseur SMS).";
+  }
+  if (message.includes("rate limit") || message.includes("429") || message.includes("too many")) {
+    return "Trop de tentatives. Attendez une minute puis reessayez.";
+  }
+  if (message.includes("otp") && message.includes("expired")) {
+    return "Code expire. Demandez un nouveau code SMS.";
+  }
   if (message.includes("duplicate") || message.includes("unique")) {
     return "Cette information existe deja.";
   }
