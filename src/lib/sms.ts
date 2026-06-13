@@ -44,7 +44,10 @@ async function sendViaAfricasTalking(to: string, message: string): Promise<SendS
     return { ok: false, error: "Africa's Talking non configuré (AT_API_KEY, AT_USERNAME)" };
   }
 
-  const body = new URLSearchParams({ username, to, message });
+  const body = new URLSearchParams({ username, to, message: message.replace(/\r?\n/g, "\r\n") });
+  const senderId = process.env.AT_SENDER_ID?.trim();
+  if (senderId) body.set("from", senderId);
+
   const response = await fetch("https://api.africastalking.com/version1/messaging", {
     method: "POST",
     headers: {
@@ -74,6 +77,15 @@ export function buildFormationInviteSms(params: {
     `Code: ${params.inviteCode}\n` +
     `Lien: ${params.formationLink}`
   );
+}
+
+export function buildAuthOtpMessage(otp: string): string {
+  return `Votre code Wazo Digital : ${otp}`;
+}
+
+/** OTP connexion — utilisé par le hook Supabase Send SMS. */
+export async function sendAuthOtpSms(phone: string, otp: string): Promise<SendSmsResult> {
+  return sendSms(phone, buildAuthOtpMessage(otp));
 }
 
 export async function sendSms(phone: string, message: string): Promise<SendSmsResult> {
