@@ -80,57 +80,6 @@ export default function BillingPage() {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const runCheckoutIntent = async () => {
-      const currentSub = await loadSubscription();
-      if (cancelled) return;
-
-      const urlPlan = searchParams.get("plan");
-      const urlPay = searchParams.get("pay") === "1";
-      if (!urlPlan && !urlPay) return;
-
-      const pending = urlPlan ?? applyPendingPlan();
-      if (urlPay) applyPendingPlanPay();
-      const billingPlan = mapVitrinePlanToBilling(pending);
-      if (!billingPlan || billingPlan === "starter") return;
-
-      const currentStatus = currentSub ? normalizeBillingStatus(currentSub) : "expired";
-      const alreadyOnPlan =
-        currentSub?.plan === billingPlan &&
-        currentStatus === "active" &&
-        Boolean(currentSub.current_period_end);
-
-      if (urlPay && paymentFcfaForPlan(billingPlan) > 0 && !alreadyOnPlan) {
-        await payPlan(billingPlan);
-      } else if (!alreadyOnPlan) {
-        await selectPlan(billingPlan, true);
-      }
-    };
-
-    void runCheckoutIntent();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- checkout intent once on mount
-  }, []);
-
-  useEffect(() => {
-    const tx = searchParams.get("tx");
-    const status = searchParams.get("status");
-    if (!tx) return;
-    if (status === "cancelled") {
-      setNotice("Paiement annulé. Vous pouvez réessayer.");
-      return;
-    }
-    setNotice("Retour de paiement détecté. Vérification de votre abonnement...");
-    const timer = setTimeout(() => {
-      void loadSubscription(tx);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [searchParams]);
-
   const selectPlan = async (id: BillingPlanId, silent = false) => {
     setSavingPlan(id);
     if (!silent) {
@@ -225,6 +174,57 @@ export default function BillingPage() {
       setPayingPlan(null);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runCheckoutIntent = async () => {
+      const currentSub = await loadSubscription();
+      if (cancelled) return;
+
+      const urlPlan = searchParams.get("plan");
+      const urlPay = searchParams.get("pay") === "1";
+      if (!urlPlan && !urlPay) return;
+
+      const pending = urlPlan ?? applyPendingPlan();
+      if (urlPay) applyPendingPlanPay();
+      const billingPlan = mapVitrinePlanToBilling(pending);
+      if (!billingPlan || billingPlan === "starter") return;
+
+      const currentStatus = currentSub ? normalizeBillingStatus(currentSub) : "expired";
+      const alreadyOnPlan =
+        currentSub?.plan === billingPlan &&
+        currentStatus === "active" &&
+        Boolean(currentSub.current_period_end);
+
+      if (urlPay && paymentFcfaForPlan(billingPlan) > 0 && !alreadyOnPlan) {
+        await payPlan(billingPlan);
+      } else if (!alreadyOnPlan) {
+        await selectPlan(billingPlan, true);
+      }
+    };
+
+    void runCheckoutIntent();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- checkout intent once on mount
+  }, []);
+
+  useEffect(() => {
+    const tx = searchParams.get("tx");
+    const status = searchParams.get("status");
+    if (!tx) return;
+    if (status === "cancelled") {
+      setNotice("Paiement annulé. Vous pouvez réessayer.");
+      return;
+    }
+    setNotice("Retour de paiement détecté. Vérification de votre abonnement...");
+    const timer = setTimeout(() => {
+      void loadSubscription(tx);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [searchParams]);
 
   return (
     <>
