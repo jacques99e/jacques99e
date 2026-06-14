@@ -55,32 +55,11 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const sendOtp = useCallback(async (phoneE164: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: phoneE164,
-      options: {
-        channel: "sms",
-      },
-    });
-    if (error) throw error;
-    return phoneE164;
-  }, []);
-
-  const verifyOtp = useCallback(async (phone: string, token: string) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: "sms",
-    });
-    if (error) throw error;
-    return data;
-  }, []);
-
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     localAuth.clear();
     setUser(null);
   }, []);
 
-  return { user, loading, sendOtp, verifyOtp, signOut, supabase };
+  return { user, loading, signOut, supabase };
 }
