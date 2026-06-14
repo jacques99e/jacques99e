@@ -12,6 +12,7 @@ import { languages } from "@/i18n";
 import { localModules } from "@/lib/db";
 import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
 import { savePendingModule } from "@/lib/modules/preference";
+import { getLandingRegisterUrl } from "@/lib/public-urls";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { setBusinessVertical } from "@/lib/onboarding";
 import type { Language, ModuleId } from "@/types";
@@ -44,7 +45,7 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      router.push("/login");
+      window.location.href = getLandingRegisterUrl();
       return;
     }
     setLoading(true);

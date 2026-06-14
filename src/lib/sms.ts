@@ -129,7 +129,7 @@ export function buildAuthOtpMessage(otp: string): string {
   return `Votre code Wazo Digital : ${otp}`;
 }
 
-/** OTP connexion — utilisé par le hook Supabase Send SMS. */
+/** SMS transactionnel (rappels, invitations). L'auth OTP téléphone a été abandonnée. */
 export async function sendAuthOtpSms(phone: string, otp: string): Promise<SendSmsResult> {
   return sendSms(phone, buildAuthOtpMessage(otp));
 }

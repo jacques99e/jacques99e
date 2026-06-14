@@ -57,7 +57,7 @@ export function mapErrorToUserMessage(
     return "Trop de tentatives. Attendez une minute puis reessayez.";
   }
   if (message.includes("otp") && message.includes("expired")) {
-    return "Code expire. Demandez un nouveau code SMS.";
+    return "Code expire. Demandez un nouveau code.";
   }
   if (message.includes("duplicate") || message.includes("unique")) {
     return "Cette information existe deja.";

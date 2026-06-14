@@ -42,6 +42,10 @@ export function getLandingLoginUrl(): string {
   return `${resolveLandingUrl()}/login`;
 }
 
+export function getLandingRegisterUrl(): string {
+  return `${resolveLandingUrl()}/register`;
+}
+
 export function resolveAppUrl(): string {
   if (isProductionBrowser()) return PROD_APP_URL;
 

@@ -125,8 +125,8 @@ export default function TeamSettingsPage() {
       <AppHeader title="Équipe & rôles" />
       <main className="mx-auto max-w-lg space-y-4 p-4">
         <p className="text-xs text-gray-500">
-          Invitez des collaborateurs par numéro de téléphone (compte Wazo requis). Testez les
-          droits en prod en vous connectant avec leur compte.
+          Invitez des collaborateurs avec le numéro enregistré sur leur profil Wazo (compte requis).
+          Testez les droits en prod en vous connectant avec leur compte.
         </p>
 
         <section className="rounded-xl border border-[#075E54]/15 bg-[#075E54]/5 p-4">

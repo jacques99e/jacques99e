@@ -69,7 +69,7 @@ export const TEAM_PERMISSION_MATRIX: PermissionRow[] = [
 
 export const TEAM_TEST_STEPS = [
   "Invitez un collaborateur avec son numéro Wazo (il doit avoir créé un compte avant).",
-  "Demandez-lui de se connecter sur app.wazo-digital.com avec son téléphone.",
+  "Demandez-lui de se connecter sur wazo-digital.com/login (email ou Google).",
   "Vérifiez qu'il voit la boutique dans le sélecteur en haut de l'écran.",
   "Testez un rôle employé : caisse et clients OK, paramètres et équipe bloqués.",
   "Testez un comptable : analytics uniquement, pas de modification ventes.",
