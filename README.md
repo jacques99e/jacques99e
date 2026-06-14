@@ -16,7 +16,7 @@ Plateforme SaaS modulaire mobile-first pour digitaliser les activités en Afriqu
 ## Stack
 
 - Next.js 15 (App Router), TypeScript, TailwindCSS, shadcn/ui
-- Supabase (Auth phone OTP, PostgreSQL, Storage, Realtime)
+- Supabase (Auth email + Google via Landing, PostgreSQL, Storage, Realtime)
 - Dexie.js (IndexedDB offline)
 - next-pwa (service worker)
 
@@ -32,7 +32,7 @@ cp .env.example .env.local
 ### Supabase
 
 1. Créez un projet sur [supabase.com](https://supabase.com).
-2. Activez **Phone** auth + fournisseur SMS.
+2. Configurez l’auth sur la vitrine **Landing** (email, Google) — voir `Landing/SUPABASE_SETUP.md`.
 3. Exécutez dans l’éditeur SQL :
    - `supabase/migrations/001_initial_schema.sql`
    - `supabase/migrations/002_modules_platform.sql`
@@ -44,7 +44,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Parcours : `/login` → `/register` (modules) → `/setup` (GPS + slug) → `/dashboard`.
+Parcours : connexion sur `Landing/login` → handoff vers l’app → `/setup` (GPS + slug) → `/dashboard`.
 
 ## Navigation (5 onglets)
 

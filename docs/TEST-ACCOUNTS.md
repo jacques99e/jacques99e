@@ -43,10 +43,10 @@ Matrice détaillée : `src/lib/team-permissions.ts` (`TEAM_PERMISSION_MATRIX`).
 
 ## Connexion
 
-1. Landing : https://wazo-digital.com/login  
-2. App : https://app.wazo-digital.com/login  
+1. https://wazo-digital.com/login (email/mot de passe ou Google)
+2. https://app.wazo-digital.com/login redirige vers la vitrine
 
-Utilisez l'e-mail ou le téléphone enregistré sur le profil.
+Utilisez l'e-mail et le mot de passe du tableau ci-dessus (ou Google si le compte est lié).
 
 ## Sécurité
 
