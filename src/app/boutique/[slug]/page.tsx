@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { StorefrontClient } from "./StorefrontClient";
+import { StorefrontNotFound } from "./StorefrontNotFound";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,7 @@ export default async function StorefrontPage({ params }: PageProps) {
     .single();
 
   if (!store) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-wazo-cream">
-        <p className="text-gray-500">Boutique introuvable</p>
-      </div>
-    );
+    return <StorefrontNotFound />;
   }
 
   const { data: products } = await supabase

@@ -86,3 +86,44 @@ html.dark body {
 .pb-nav {
   padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0));
 }
+
+/* Vitrine boutique publique — alignée sur wazo-digital.com */
+.storefront-page {
+  background-color: #fff8f0;
+  color: #1a1a1a;
+}
+
+.storefront-hero-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(255, 111, 0, 0.14), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 80% 20%, rgba(7, 94, 84, 0.12), transparent 45%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255, 111, 0, 0.07), transparent 50%);
+}
+
+@keyframes storefront-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.storefront-float {
+  animation: storefront-float 4s ease-in-out infinite;
+}
+
+@keyframes storefront-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 111, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 111, 0, 0);
+  }
+}
+
+.storefront-cta-pulse {
+  animation: storefront-pulse 2.5s ease-in-out infinite;
+}
