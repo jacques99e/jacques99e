@@ -159,6 +159,15 @@ export default function ProfilePage() {
           Badges & progression →
         </Link>
 
+        <a
+          href="https://wazo-digital.com/legal/confidentialite"
+          target="_blank"
+          rel="noreferrer"
+          className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
+        >
+          Confidentialité & CGU →
+        </a>
+
         <Link
           href="/help"
           className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
