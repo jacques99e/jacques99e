@@ -222,6 +222,12 @@ export default function SettingsPage() {
         ) : (
           <>
             <Link
+              href="/settings/stores/new"
+              className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
+            >
+              Nouvelle boutique (multi-sites) →
+            </Link>
+            <Link
               href="/settings/business"
               className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
             >

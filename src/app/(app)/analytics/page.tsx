@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { useRole } from "@/hooks/useRole";
 import { useModule } from "@/hooks/useModule";
 import { listParcels } from "@/lib/agriculture";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/modules/analytics";
 import { formatCurrency } from "@/lib/utils";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
+import { PlanUpgradeGate } from "@/components/PlanUpgradeGate";
 
 type LocalSale = {
   total?: number;
@@ -53,6 +55,7 @@ function getRangeStart(period: string, customStart: string): string | null {
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const { canViewAnalytics, role } = useRole(user?.id);
+  const { canUseAnalytics, loading: billingLoading } = useBilling();
   const store = localStore.get();
   const { modules } = useModule(store?.id);
   const hasCommerce = modules.includes("commerce");
@@ -179,6 +182,17 @@ export default function AnalyticsPage() {
           </section>
         </main>
       </>
+    );
+  }
+
+  if (!billingLoading && !canUseAnalytics) {
+    return (
+      <PlanUpgradeGate
+        title="Analytics"
+        subtitle="Pilotage"
+        message="Les analytics et exports PDF sont inclus dans le plan PRO ou BUSINESS."
+        requiredPlan="pro"
+      />
     );
   }
 

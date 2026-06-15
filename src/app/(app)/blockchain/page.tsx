@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, Plus, QrCode, Shield } from "lucide-react";
+import { MessageCircle, Plus, QrCode, Shield, FileBadge } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,13 @@ export default function BlockchainPage() {
           icon={QrCode}
           title="QR sur étiquettes"
           description="Code scannable pour vérification /trace"
+          iconClassName="bg-indigo-600/10 text-indigo-800"
+        />
+        <ModuleMenuLink
+          href="/blockchain/origin"
+          icon={FileBadge}
+          title="Certificats d'origine"
+          description="PDF export avec hash, lien /trace et ancrage Celo"
           iconClassName="bg-indigo-600/10 text-indigo-800"
         />
 

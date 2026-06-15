@@ -9,10 +9,13 @@ import { useI18n } from "@/contexts/I18nContext";
 import { useModuleLabelFn } from "@/hooks/useModuleLabel";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardHero } from "@/components/DashboardHero";
+import { EngagementHub } from "@/components/EngagementHub";
+import { ModuleQuickActions } from "@/components/ModuleQuickActions";
+import { TodayPulse } from "@/components/TodayPulse";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
-import { getTrialDaysLeft, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { getTrialDaysLeft, isBillingUsable, normalizeBillingStatus, planAllowsAnalytics, type BillingSubscription } from "@/lib/billing";
 import { billingDashboardHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
@@ -258,6 +261,18 @@ export default function DashboardPage() {
         {offlineInfo ? (
           <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">{offlineInfo}</p>
         ) : null}
+        <EngagementHub
+          storeId={cachedStore?.id}
+          storeName={storeName}
+          activeModules={activeModules}
+        />
+        <TodayPulse
+          storeId={cachedStore?.id}
+          activeModules={activeModules}
+          todaySalesCount={todaySalesCount}
+          todaySalesTotal={todayTotal}
+        />
+        <ModuleQuickActions activeModules={activeModules} />
         {(hasCommerce && alerts.total > 0) ? (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-red-800">
@@ -397,6 +412,13 @@ export default function DashboardPage() {
               className="h-auto py-2 text-xs"
               disabled={reportLoading}
               onClick={() => {
+                if (
+                  billing &&
+                  (!isBillingUsable(billing) || !planAllowsAnalytics(billing.plan))
+                ) {
+                  router.push("/billing?plan=pro");
+                  return;
+                }
                 setReportLoading(true);
                 void downloadWeeklyReportPdf(storeName).finally(() => setReportLoading(false));
               }}

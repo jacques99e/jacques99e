@@ -17,11 +17,47 @@ export const PLAN_PRICES: Record<BillingPlanId, number> = {
   business: 16350,
 };
 
-export const PLAN_LIMITS: Record<BillingPlanId, { maxProducts: number; maxClients: number }> = {
-  starter: { maxProducts: 50, maxClients: 200 },
-  pro: { maxProducts: 999_999, maxClients: 2000 },
-  business: { maxProducts: 999_999, maxClients: 100_000 },
+export interface PlanLimits {
+  maxProducts: number;
+  maxClients: number;
+  maxStores: number;
+}
+
+export const PLAN_LIMITS: Record<BillingPlanId, PlanLimits> = {
+  starter: { maxProducts: 50, maxClients: 200, maxStores: 1 },
+  pro: { maxProducts: 999_999, maxClients: 2000, maxStores: 3 },
+  business: { maxProducts: 999_999, maxClients: 100_000, maxStores: 10 },
 };
+
+const PLAN_RANK: Record<BillingPlanId, number> = {
+  starter: 0,
+  pro: 1,
+  business: 2,
+};
+
+export function highestBillingPlan(plans: BillingPlanId[]): BillingPlanId {
+  if (!plans.length) return "starter";
+  return plans.reduce(
+    (best, plan) => (PLAN_RANK[plan] > PLAN_RANK[best] ? plan : best),
+    "starter" as BillingPlanId
+  );
+}
+
+export function planAllowsAnalytics(plan: BillingPlanId): boolean {
+  return plan === "pro" || plan === "business";
+}
+
+export function planAllowsTeam(plan: BillingPlanId): boolean {
+  return plan === "business";
+}
+
+export function planAllowsWeeklyEmail(plan: BillingPlanId): boolean {
+  return plan === "business";
+}
+
+export function isBillingUsable(subscription: BillingSubscription): boolean {
+  return normalizeBillingStatus(subscription) !== "expired";
+}
 
 export function addDays(dateISO: string, days: number): string {
   const d = new Date(dateISO + "T00:00:00");

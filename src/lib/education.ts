@@ -148,13 +148,16 @@ export async function createCourseModule(
   courseId: string,
   input: Pick<CourseModule, "title"> & { content?: string | null; media_url?: string | null }
 ): Promise<CreateCourseModuleResult> {
+  const existing = readLocalModules(courseId);
+  const nextOrder =
+    existing.reduce((max, row) => Math.max(max, row.sort_order ?? 0), 0) + 1;
   const localRow: CourseModule = {
     id: generateLocalId(),
     course_id: courseId,
     title: input.title,
     content: input.content ?? null,
     media_url: input.media_url?.trim() || null,
-    sort_order: Date.now(),
+    sort_order: nextOrder,
   };
   const local = [localRow, ...readLocalModules(courseId)];
   writeLocalModules(courseId, local);
@@ -175,7 +178,7 @@ export async function createCourseModule(
       title: input.title,
       content: input.content ?? null,
       media_url: input.media_url?.trim() || null,
-      sort_order: 0,
+      sort_order: nextOrder,
     })
     .select("*")
     .single();
@@ -201,6 +204,83 @@ export async function createCourseModule(
     module: data as CourseModule,
     synced: true,
   };
+}
+
+export async function updateCourseModule(
+  moduleId: string,
+  courseId: string,
+  input: Partial<Pick<CourseModule, "title" | "content" | "media_url">>
+): Promise<CourseModule | null> {
+  const local = readLocalModules(courseId);
+  const idx = local.findIndex((m) => m.id === moduleId);
+  if (idx < 0) return null;
+
+  const updated: CourseModule = {
+    ...local[idx],
+    ...(input.title !== undefined ? { title: input.title } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+    ...(input.media_url !== undefined ? { media_url: input.media_url } : {}),
+  };
+  local[idx] = updated;
+  writeLocalModules(courseId, local);
+
+  if (!navigator.onLine || moduleId.startsWith("local-")) return updated;
+
+  const patch: Record<string, unknown> = {};
+  if (input.title !== undefined) patch.title = input.title;
+  if (input.content !== undefined) patch.content = input.content;
+  if (input.media_url !== undefined) patch.media_url = input.media_url;
+
+  const { data, error } = await supabase
+    .from("course_modules")
+    .update(patch)
+    .eq("id", moduleId)
+    .eq("course_id", courseId)
+    .select("*")
+    .single();
+
+  if (error || !data) return updated;
+  const merged = readLocalModules(courseId).map((m) =>
+    m.id === moduleId ? (data as CourseModule) : m
+  );
+  writeLocalModules(courseId, merged);
+  return data as CourseModule;
+}
+
+export async function deleteCourseModule(moduleId: string, courseId: string): Promise<void> {
+  writeLocalModules(
+    courseId,
+    readLocalModules(courseId).filter((m) => m.id !== moduleId)
+  );
+  if (!navigator.onLine || moduleId.startsWith("local-")) return;
+  await supabase.from("course_modules").delete().eq("id", moduleId).eq("course_id", courseId);
+}
+
+export async function reorderCourseModules(
+  courseId: string,
+  orderedModuleIds: string[]
+): Promise<void> {
+  const local = readLocalModules(courseId);
+  const byId = new Map(local.map((m) => [m.id, m]));
+  const reordered = orderedModuleIds
+    .map((id, index) => {
+      const row = byId.get(id);
+      return row ? { ...row, sort_order: index + 1 } : null;
+    })
+    .filter((row): row is CourseModule => Boolean(row));
+  writeLocalModules(courseId, reordered);
+
+  if (!navigator.onLine) return;
+
+  await Promise.all(
+    reordered.map((row) =>
+      supabase
+        .from("course_modules")
+        .update({ sort_order: row.sort_order })
+        .eq("id", row.id)
+        .eq("course_id", courseId)
+    )
+  );
 }
 
 export async function createEnrollment(

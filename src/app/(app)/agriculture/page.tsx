@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
+import { BookOpen, BookMarked, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
@@ -21,6 +21,13 @@ export default function AgriculturePage() {
         <ModuleCompetitiveEdge moduleId="agriculture" />
         <AgricultureInsights />
 
+        <ModuleMenuLink
+          href="/agriculture/journal"
+          icon={BookMarked}
+          title="Journal de champ"
+          description="Semis, traitements, récoltes — notes par parcelle"
+          iconClassName={iconStyle}
+        />
         <ModuleMenuLink
           href="/agriculture/calendrier"
           icon={Calendar}

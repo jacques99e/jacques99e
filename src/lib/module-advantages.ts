@@ -9,38 +9,38 @@ export interface ModuleAdvantage {
 export const MODULE_ADVANTAGES: Record<ModuleId, ModuleAdvantage[]> = {
   commerce: [
     { id: "momo", href: "/sales" },
+    { id: "promo", href: "/sales/promotions" },
     { id: "credit", href: "/sales/credit" },
-    { id: "offline" },
     { id: "whatsapp", href: "/products" },
   ],
   agriculture: [
+    { id: "journal", href: "/agriculture/journal" },
     { id: "meteo", href: "/agriculture" },
     { id: "calendrier", href: "/agriculture/calendrier" },
     { id: "marches", href: "/agriculture/marches" },
-    { id: "rendement", href: "/agriculture/rendement" },
   ],
   health: [
+    { id: "followups", href: "/health/followups" },
     { id: "rdv", href: "/health/appointments" },
     { id: "pharma", href: "/health/pharmacie" },
     { id: "dossier", href: "/health" },
-    { id: "tele", href: "/clients" },
   ],
   logistics: [
+    { id: "zones", href: "/logistics/zones" },
     { id: "suivi", href: "/suivi" },
     { id: "tournee", href: "/logistics/tournee" },
-    { id: "cod", href: "/sales" },
     { id: "pod", href: "/logistics" },
   ],
   education: [
+    { id: "video", href: "/education" },
+    { id: "quiz", href: "/education" },
     { id: "portal", href: "/formation" },
     { id: "presence", href: "/education/presence" },
-    { id: "offline", href: "/education" },
-    { id: "cert", href: "/education" },
   ],
   blockchain: [
+    { id: "origin", href: "/blockchain/origin" },
     { id: "trace", href: "/trace" },
     { id: "qr", href: "/blockchain/qr" },
-    { id: "gps", href: "/blockchain/assets/new" },
     { id: "coop", href: "/blockchain/contracts" },
   ],
 };

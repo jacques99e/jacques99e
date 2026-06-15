@@ -2,14 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Film, Link2, MessageSquare, Upload } from "lucide-react";
+import { Link2, MessageSquare, Upload } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LessonVideoPlayer } from "@/components/LessonVideoPlayer";
-import { ModuleQuizPanel } from "@/components/education/ModuleQuizPanel";
-import { ModuleSubtitlesPanel } from "@/components/education/ModuleSubtitlesPanel";
 import { LearnerLiveDashboard } from "@/components/education/LearnerLiveDashboard";
 import { StudentLearnPanel } from "@/components/education/StudentLearnPanel";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +23,7 @@ import {
   listEnrollments,
   setCoursePublic,
 } from "@/lib/education";
+import { LessonEditorCard } from "@/components/education/LessonEditorCard";
 import { formationUrl } from "@/lib/education-public";
 import { looksLikePhone } from "@/lib/sms";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
@@ -229,6 +227,9 @@ export default function CourseDetailPage() {
     }
   };
 
+  const sortedModules = [...modules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const orderedIds = sortedModules.map((m) => m.id);
+
   if (!course) return <p className="p-4">{t("common.loading")}</p>;
 
   return (
@@ -285,6 +286,14 @@ export default function CourseDetailPage() {
           </p>
         ) : null}
 
+        <section className="rounded-xl border border-violet-200 bg-violet-50/60 p-3 text-xs text-violet-900">
+          <p className="font-semibold">Vidéos & quiz par leçon</p>
+          <p className="mt-1 text-violet-800">
+            Ajoutez une vidéo YouTube ou un fichier MP4, puis un quiz pour valider chaque leçon.
+            Les apprenants suivent un parcours séquentiel sur le portail /formation.
+          </p>
+        </section>
+
         <section>
           <h2 className="mb-2 text-sm font-medium">{t("education.modules")}</h2>
           <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -294,7 +303,7 @@ export default function CourseDetailPage() {
               onClick={() =>
                 downloadCsv(
                   `modules-${course.title}-${new Date().toISOString().slice(0, 10)}.csv`,
-                  modules.map((module) => ({
+                  sortedModules.map((module) => ({
                     id: module.id,
                     title: module.title,
                     content: module.content ?? "",
@@ -312,7 +321,7 @@ export default function CourseDetailPage() {
               onClick={() =>
                 void downloadSimplePdf(
                   `Modules - ${course.title}`,
-                  modules.map(
+                  sortedModules.map(
                     (module) =>
                       `${module.title} | ${module.content ?? "Sans texte"} | ${module.media_url ? "Vidéo" : "Sans vidéo"}`
                   ),
@@ -378,28 +387,19 @@ export default function CourseDetailPage() {
           </div>
 
           <ul className="space-y-3 text-sm">
-            {modules.map((m) => (
-              <li key={m.id} className="space-y-2 rounded-xl bg-white p-3 shadow-sm dark:bg-gray-800">
-                <div className="flex items-start gap-2">
-                  {m.media_url ? (
-                    <Film className="mt-0.5 h-4 w-4 shrink-0 text-[#075E54]" />
-                  ) : null}
-                  <div>
-                    <p className="font-medium">{m.title}</p>
-                    {m.content ? <p className="text-xs text-gray-500">{m.content}</p> : null}
-                  </div>
-                </div>
-                {m.media_url ? <LessonVideoPlayer url={m.media_url} title={m.title} /> : null}
-                <ModuleSubtitlesPanel moduleId={m.id} mode="edit" />
-                <ModuleQuizPanel
-                  moduleId={m.id}
-                  courseId={id}
-                  moduleTitle={m.title}
-                  mode="edit"
-                />
-              </li>
+            {sortedModules.map((m, index) => (
+              <LessonEditorCard
+                key={m.id}
+                module={m}
+                courseId={id}
+                userId={user?.id}
+                index={index}
+                total={sortedModules.length}
+                orderedIds={orderedIds}
+                onChanged={() => void reload()}
+              />
             ))}
-            {modules.length === 0 && <p className="text-xs text-gray-400">{t("common.noData")}</p>}
+            {sortedModules.length === 0 && <p className="text-xs text-gray-400">{t("common.noData")}</p>}
           </ul>
         </section>
 
@@ -473,7 +473,7 @@ export default function CourseDetailPage() {
         <StudentLearnPanel
           courseId={id}
           courseTitle={course.title}
-          modules={modules}
+          modules={sortedModules}
           enrollments={enrollments}
           onProgressUpdated={() => void reload()}
         />

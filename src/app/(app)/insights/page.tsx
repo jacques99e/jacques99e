@@ -14,15 +14,18 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { SalesChart } from "@/components/SalesChart";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { useRole } from "@/hooks/useRole";
 import { computeBusinessInsights, type BusinessInsights } from "@/lib/insights";
 import { formatCurrency } from "@/lib/utils";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
+import { PlanUpgradeGate } from "@/components/PlanUpgradeGate";
 import { localStore } from "@/lib/db";
 
 export default function InsightsPage() {
   const { user } = useAuth();
   const { canViewAnalytics } = useRole(user?.id);
+  const { canUseAnalytics, loading: billingLoading } = useBilling();
   const [insights, setInsights] = useState<BusinessInsights | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const storeName = localStore.get()?.name || "Wazo Digital";
@@ -63,6 +66,16 @@ export default function InsightsPage() {
           </p>
         </main>
       </>
+    );
+  }
+
+  if (!billingLoading && !canUseAnalytics) {
+    return (
+      <PlanUpgradeGate
+        title="Insights Pro"
+        message="Les insights avancés et rapports PDF sont inclus dans le plan PRO ou BUSINESS."
+        requiredPlan="pro"
+      />
     );
   }
 

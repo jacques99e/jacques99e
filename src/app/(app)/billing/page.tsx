@@ -252,7 +252,7 @@ export default function BillingPage() {
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
             Limites : {limits.maxProducts >= 999_999 ? "produits illimités" : `${limits.maxProducts} produits`}
-            , {limits.maxClients} clients.
+            , {limits.maxClients} clients, {limits.maxStores} boutique{limits.maxStores > 1 ? "s" : ""}.
           </p>
           {paymentEnvironment ? (
             <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">

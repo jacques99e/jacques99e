@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Calendar, Pill } from "lucide-react";
+import { Plus, Calendar, Pill, Bell } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,13 @@ export default function HealthPage() {
           icon={Pill}
           title="Mini pharmacie"
           description="Stock médicaments, alertes rupture et expiration"
+          iconClassName="bg-rose-700/10 text-rose-800"
+        />
+        <ModuleMenuLink
+          href="/health/followups"
+          icon={Bell}
+          title="Rappels de suivi"
+          description="Contrôles, vaccins — relance WhatsApp patient"
           iconClassName="bg-rose-700/10 text-rose-800"
         />
 

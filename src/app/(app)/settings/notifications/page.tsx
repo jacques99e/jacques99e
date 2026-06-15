@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActiveStore } from "@/hooks/useActiveStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { useRole } from "@/hooks/useRole";
+import { billingPayHref } from "@/lib/billing-checkout";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { apiFetch } from "@/lib/api-client";
 import { sendSelfPushTest } from "@/lib/push-client";
@@ -17,6 +19,7 @@ export default function NotificationsSettingsPage() {
   const { user } = useAuth();
   const { activeStore } = useActiveStore();
   const { canManageSettings } = useRole(user?.id, activeStore?.membership_role);
+  const { canUseWeeklyEmail, loading: billingLoading } = useBilling();
   const { supported, enabled, loading, enable, disable } = usePushNotifications(
     activeStore?.id
   );
@@ -176,40 +179,51 @@ export default function NotificationsSettingsPage() {
 
         <section className="rounded-xl bg-white p-4 shadow-sm space-y-3 dark:bg-gray-800">
           <h2 className="text-sm font-semibold">Rapport PDF par e-mail (chaque lundi)</h2>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@exemple.com"
-          />
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={reportEnabled}
-              onChange={(e) => setReportEnabled(e.target.checked)}
-            />
-            Activer l&apos;envoi hebdomadaire (8h UTC, lundi)
-          </label>
-          <Button className="w-full bg-[#075E54]" onClick={() => void saveEmail()}>
-            Enregistrer l&apos;e-mail
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            disabled={testSending || !email.trim()}
-            onClick={() => void sendTestReport()}
-          >
-            {testSending ? "Envoi..." : "Envoyer un rapport test maintenant"}
-          </Button>
-          {saved ? <p className="text-xs text-green-600">Enregistré.</p> : null}
-          {emailError ? <p className="text-xs text-red-600">{emailError}</p> : null}
-          {testResult ? (
-            <p
-              className={`text-xs ${testResult.includes("envoyé") ? "text-green-600" : "text-amber-700"}`}
-            >
-              {testResult}
-            </p>
-          ) : null}
+          {!billingLoading && !canUseWeeklyEmail ? (
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p>L&apos;envoi automatique du rapport par e-mail est réservé au plan BUSINESS.</p>
+              <Button asChild className="bg-[#FF6F00] hover:bg-[#FF6F00]/90">
+                <Link href={billingPayHref("business")}>Passer au BUSINESS</Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@exemple.com"
+              />
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={reportEnabled}
+                  onChange={(e) => setReportEnabled(e.target.checked)}
+                />
+                Activer l&apos;envoi hebdomadaire (8h UTC, lundi)
+              </label>
+              <Button className="w-full bg-[#075E54]" onClick={() => void saveEmail()}>
+                Enregistrer l&apos;e-mail
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={testSending || !email.trim()}
+                onClick={() => void sendTestReport()}
+              >
+                {testSending ? "Envoi..." : "Envoyer un rapport test maintenant"}
+              </Button>
+              {saved ? <p className="text-xs text-green-600">Enregistré.</p> : null}
+              {emailError ? <p className="text-xs text-red-600">{emailError}</p> : null}
+              {testResult ? (
+                <p
+                  className={`text-xs ${testResult.includes("envoyé") ? "text-green-600" : "text-amber-700"}`}
+                >
+                  {testResult}
+                </p>
+              ) : null}
+            </>
+          )}
         </section>
 
         <section className="rounded-xl bg-white p-4 shadow-sm space-y-3 dark:bg-gray-800">

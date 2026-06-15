@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, CreditCard, Pencil, Plus, Search } from "lucide-react";
+import { Copy, CreditCard, Megaphone, Pencil, Plus, Search } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,13 @@ export default function ProductsPage() {
           title="Carnet crédit clients"
           description="Dettes, acomptes et relance WhatsApp"
           iconClassName="bg-wazo-green/10 text-wazo-green"
+        />
+        <ModuleMenuLink
+          href="/sales/promotions"
+          icon={Megaphone}
+          title="Promotions flash"
+          description="Réductions % appliquées à la caisse + partage WhatsApp"
+          iconClassName="bg-orange-500/10 text-orange-700"
         />
 
         <Button

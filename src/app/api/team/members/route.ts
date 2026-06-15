@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { assertStoreBillingFeature } from "@/lib/plan-access";
 
 export async function GET(request: Request) {
   const auth = await requireAuthContext();
@@ -60,6 +61,11 @@ export async function POST(request: Request) {
       { success: false, error: "Seul le propriétaire peut inviter des membres." },
       { status: 403 }
     );
+  }
+
+  const planCheck = await assertStoreBillingFeature(auth.serviceSupabase, body.store_id, "team");
+  if (!planCheck.ok) {
+    return NextResponse.json({ success: false, error: planCheck.error }, { status: 403 });
   }
 
   const role = body.role || "employee";

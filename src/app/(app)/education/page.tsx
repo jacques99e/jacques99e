@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Copy, MessageCircle, Link2, UserCheck } from "lucide-react";
+import { Plus, Copy, MessageCircle, Link2, UserCheck, Video, HelpCircle } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,27 @@ export default function EducationPage() {
           description="Émargement par cours avec export PDF"
           iconClassName="bg-violet-600/10 text-violet-800"
         />
+
+        <section className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+            <div className="mb-1 flex items-center gap-2 text-violet-900">
+              <Video className="h-4 w-4" />
+              <p className="text-sm font-semibold">Leçons vidéo</p>
+            </div>
+            <p className="text-xs text-violet-800">
+              YouTube, Facebook ou MP4 uploadé — sous-titres FR/EN/Wolof/Swahili.
+            </p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+            <div className="mb-1 flex items-center gap-2 text-amber-900">
+              <HelpCircle className="h-4 w-4" />
+              <p className="text-sm font-semibold">Quiz par leçon</p>
+            </div>
+            <p className="text-xs text-amber-800">
+              Parcours séquentiel : leçon + quiz réussi pour débloquer la suite et le certificat.
+            </p>
+          </div>
+        </section>
 
         <Button asChild className="w-full">
           <Link href="/education/courses/new">

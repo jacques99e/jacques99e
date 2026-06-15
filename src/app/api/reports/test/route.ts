@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { assertStoreBillingFeature } from "@/lib/plan-access";
 import { sendWeeklyReportEmail } from "@/lib/email";
 import { buildWeeklyReportEmailContent } from "@/lib/report-email-content";
 
@@ -22,6 +23,15 @@ export async function POST(request: Request) {
   );
   if (!access.ok) {
     return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+  }
+
+  const planCheck = await assertStoreBillingFeature(
+    auth.serviceSupabase,
+    body.store_id,
+    "weekly_email"
+  );
+  if (!planCheck.ok) {
+    return NextResponse.json({ success: false, error: planCheck.error }, { status: 403 });
   }
 
   const { data: settings } = await auth.serviceSupabase

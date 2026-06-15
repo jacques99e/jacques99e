@@ -18,6 +18,7 @@ import {
   readPendingPlanPay,
 } from "@/lib/modules/preference";
 import { setBusinessVertical } from "@/lib/onboarding";
+import { apiFetch } from "@/lib/api-client";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { getLandingLoginUrl } from "@/lib/public-urls";
@@ -164,6 +165,22 @@ export default function SetupPage() {
         const profileResult = await ensureUserProfile(supabase, user.id, user.phone);
         if (!profileResult.ok) {
           setError(profileResult.error);
+          setSubmitting(false);
+          return;
+        }
+
+        const accessRes = await apiFetch("/api/stores", { cache: "no-store" });
+        const accessData = (await accessRes.json()) as {
+          success?: boolean;
+          canCreateStore?: boolean;
+          limits?: { maxStores: number };
+          error?: string;
+        };
+        if (!accessRes.ok || !accessData.canCreateStore) {
+          setError(
+            accessData.error ||
+              `Limite de boutiques atteinte (${accessData.limits?.maxStores ?? 1}). Passez au plan PRO pour en créer davantage.`
+          );
           setSubmitting(false);
           return;
         }

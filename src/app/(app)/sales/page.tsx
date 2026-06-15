@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, Megaphone } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { syncStoreToCloud } from "@/lib/cloud-sync";
 import { readLocalProducts, writeLocalProducts, type LocalProduct } from "@/lib/local-products";
 import { appendLocalSale } from "@/lib/local-sales";
+import { activePromotions, applyDiscount, discountForProduct } from "@/lib/commerce-promotions";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
@@ -59,8 +61,15 @@ export default function SalesPage() {
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const total = subtotal;
 
+  const store = localStore.get();
+  const promos = activePromotions(store?.id);
+
   const addToCart = (product: LocalProduct) => {
     if (product.stock <= 0) return;
+    const disc = discountForProduct(product.id, store?.id);
+    const unitPrice = disc
+      ? applyDiscount(product.price, disc.percent)
+      : product.price;
     setCart((prev) => {
       const existing = prev.find((c) => c.productId === product.id);
       if (existing) {
@@ -73,8 +82,8 @@ export default function SalesPage() {
         ...prev,
         {
           productId: product.id,
-          name: product.name,
-          unitPrice: product.price,
+          name: disc ? `${product.name} (-${disc.percent}%)` : product.name,
+          unitPrice,
           quantity: 1,
         },
       ];
@@ -158,6 +167,19 @@ export default function SalesPage() {
     <>
       <AppHeader title="Caisse" subtitle="Enregistrer une vente" />
       <main className="app-page flex flex-col gap-3 pb-44">
+        {promos.length > 0 ? (
+          <Link
+            href="/sales/promotions"
+            className="flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-900"
+          >
+            <Megaphone className="h-4 w-4 shrink-0" />
+            {promos.length} promo(s) active(s) — réductions appliquées au panier
+          </Link>
+        ) : (
+          <Link href="/sales/promotions" className="text-center text-xs text-[#075E54] underline">
+            Créer une promotion flash
+          </Link>
+        )}
         {confirmation && (
           <section className="app-card space-y-3 border-green-200 bg-green-50/50 p-4">
             <p className="text-sm font-medium text-green-700">

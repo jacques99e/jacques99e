@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendWeeklyReportEmail } from "@/lib/email";
 import { buildWeeklyReportEmailContent } from "@/lib/report-email-content";
+import { getStoreBillingPlan } from "@/lib/plan-access";
+import { planAllowsWeeklyEmail } from "@/lib/billing";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -51,6 +53,16 @@ export async function GET(request: Request) {
     }
 
     const storeId = row.store_id as string;
+    const plan = await getStoreBillingPlan(supabase, storeId);
+    if (!planAllowsWeeklyEmail(plan)) {
+      results.push({
+        store_id: storeId,
+        ok: false,
+        detail: "skipped — plan BUSINESS requis",
+      });
+      continue;
+    }
+
     const storeName =
       (row.stores as { name?: string } | null)?.name || "Boutique Wazo";
 

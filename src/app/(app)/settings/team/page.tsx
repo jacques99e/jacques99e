@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActiveStore } from "@/hooks/useActiveStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 import { useRole } from "@/hooks/useRole";
+import { PlanUpgradeGate } from "@/components/PlanUpgradeGate";
 import { apiFetch } from "@/lib/api-client";
 import {
   permissionsForRole,
@@ -37,6 +39,7 @@ export default function TeamSettingsPage() {
   const { activeStore } = useActiveStore();
   const membership = (activeStore?.membership_role || "owner") as StoreMemberRole;
   const { canManageTeam } = useRole(user?.id, activeStore?.membership_role);
+  const { canUseTeam, loading: billingLoading } = useBilling();
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("employee");
@@ -117,6 +120,16 @@ export default function TeamSettingsPage() {
           </p>
         </main>
       </>
+    );
+  }
+
+  if (!billingLoading && !canUseTeam) {
+    return (
+      <PlanUpgradeGate
+        title="Équipe & rôles"
+        message="Invitez des employés, managers et comptables avec le plan BUSINESS."
+        requiredPlan="business"
+      />
     );
   }
 

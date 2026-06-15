@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Copy, Map, MessageCircle, Plus } from "lucide-react";
+import { Copy, Map, MapPin, MessageCircle, Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,13 @@ export default function LogisticsPage() {
           icon={Map}
           title="Tournée du jour"
           description="Itinéraire livraisons et partage groupé WhatsApp"
+          iconClassName="bg-sky-600/10 text-sky-800"
+        />
+        <ModuleMenuLink
+          href="/logistics/zones"
+          icon={MapPin}
+          title="Zones & tarifs"
+          description="Quartiers, frais livraison et délais estimés"
           iconClassName="bg-sky-600/10 text-sky-800"
         />
 

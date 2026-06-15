@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { useActiveStore } from "@/hooks/useActiveStore";
+import { useBilling } from "@/hooks/useBilling";
 import { useModule } from "@/hooks/useModule";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const { t, lang, setLang, languages } = useI18n();
   const { user, signOut } = useAuth();
   const { activeStore } = useActiveStore();
+  const { canUseAnalytics, canUseTeam } = useBilling();
   const { role, canManageModules, canViewAnalytics, canManageSettings, canManageTeam } =
     useRole(user?.id, activeStore?.membership_role);
   const { dark, toggle } = useTheme();
@@ -91,7 +93,7 @@ export default function ProfilePage() {
           </Link>
         ) : null}
 
-        {canViewAnalytics ? (
+        {canViewAnalytics && canUseAnalytics ? (
           <>
             <Link
               href="/insights"
@@ -125,7 +127,7 @@ export default function ProfilePage() {
           </>
         ) : null}
 
-        {canManageTeam ? (
+        {canManageTeam && canUseTeam ? (
           <Link
             href="/settings/team"
             className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
@@ -142,6 +144,20 @@ export default function ProfilePage() {
             {t("profile.crm")} →
           </Link>
         ) : null}
+
+        <Link
+          href="/settings/stores/new"
+          className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
+        >
+          Nouvelle boutique →
+        </Link>
+
+        <Link
+          href="/achievements"
+          className="block rounded-xl bg-white p-4 shadow-sm text-sm font-medium text-wazo-green dark:bg-gray-800"
+        >
+          Badges & progression →
+        </Link>
 
         <Link
           href="/help"
