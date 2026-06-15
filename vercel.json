@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/push-alerts",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/submit-indexing",
+      "schedule": "0 6 * * *"
     }
   ]
 }

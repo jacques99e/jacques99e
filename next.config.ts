@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  async rewrites() {
+    return [{ source: "/indexnow-key.txt", destination: "/api/indexing/key" }];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
