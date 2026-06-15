@@ -224,7 +224,28 @@ export async function POST(request: NextRequest) {
         clearTimeout(paydunyaTimeout);
       }
 
-      const data = (await res.json()) as Record<string, unknown>;
+      const rawBody = await res.text();
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(rawBody) as Record<string, unknown>;
+      } catch {
+        const providerDown = rawBody.includes("Fatal error") || rawBody.includes("<html");
+        const hint = providerDown
+          ? "L'API PayDunya ne repond pas correctement (panne cote fournisseur). Reessayez plus tard ou contactez le support PayDunya."
+          : "Reponse PayDunya illisible (pas du JSON).";
+        if (mode === "test" && process.env.PAYMENT_ALLOW_SIMULATE_FALLBACK === "true") {
+          const periodEnd = await activateSubscription();
+          return NextResponse.json({
+            success: true,
+            transaction_id: transactionId,
+            status: "succeeded",
+            payment_environment: "simulate_fallback",
+            period_end: periodEnd,
+            warning: `${hint} Abonnement active en mode secours (test).`,
+          });
+        }
+        return NextResponse.json({ success: false, error: hint }, { status: 502 });
+      }
       await auth.serviceSupabase
         .from("billing_payments")
         .update({ payload: data, updated_at: new Date().toISOString() })
