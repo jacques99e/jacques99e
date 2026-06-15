@@ -61,6 +61,12 @@ const ALFAJORES_RPC_FALLBACKS = [
   "https://endpoints.omniatech.io/v1/celo/alfajores/public",
 ];
 
+const CELO_MAINNET_RPC_FALLBACKS = [
+  "https://forno.celo.org",
+  "https://1rpc.io/celo",
+  "https://celo.drpc.org",
+];
+
 function resolveRpcUrl(mode: CeloMode): string {
   const custom = process.env.CELO_RPC_URL?.trim();
   if (custom) return custom;
@@ -72,12 +78,10 @@ function resolveRpcUrl(mode: CeloMode): string {
 }
 
 function createCeloTransport(mode: CeloMode) {
-  const urls =
-    mode === "alfajores"
-      ? [process.env.CELO_RPC_URL?.trim(), ...ALFAJORES_RPC_FALLBACKS].filter(
-          (url, index, list): url is string => Boolean(url) && list.indexOf(url) === index
-        )
-      : [resolveRpcUrl(mode)];
+  const fallbacks = mode === "alfajores" ? ALFAJORES_RPC_FALLBACKS : CELO_MAINNET_RPC_FALLBACKS;
+  const urls = [process.env.CELO_RPC_URL?.trim(), ...fallbacks].filter(
+    (url, index, list): url is string => Boolean(url) && list.indexOf(url) === index
+  );
 
   if (urls.length <= 1) {
     return http(urls[0], { timeout: 12_000 });
