@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCeloEnvironmentLabel, getCeloMode, isCeloConfigured } from "@/lib/celo";
 import { getPaymentMode, hasPaydunyaCredentials } from "@/lib/paydunya";
 
 export const dynamic = "force-dynamic";
@@ -17,5 +18,10 @@ export async function GET() {
     supabase: Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     ),
+    celo: {
+      mode: getCeloMode(),
+      environment: getCeloEnvironmentLabel(),
+      configured: isCeloConfigured(),
+    },
   });
 }

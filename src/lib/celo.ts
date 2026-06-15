@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   createWalletClient,
+  fallback,
   http,
   type Address,
   type Hex,
@@ -54,6 +55,36 @@ function resolveChain(mode: CeloMode) {
   return mode === "celo" ? celo : celoAlfajores;
 }
 
+const ALFAJORES_RPC_FALLBACKS = [
+  "https://alfajores-forno.celo-testnet.org",
+  "https://1rpc.io/celo/alfajores",
+  "https://endpoints.omniatech.io/v1/celo/alfajores/public",
+];
+
+function resolveRpcUrl(mode: CeloMode): string {
+  const custom = process.env.CELO_RPC_URL?.trim();
+  if (custom) return custom;
+  const chain = resolveChain(mode);
+  if (mode === "alfajores") {
+    return ALFAJORES_RPC_FALLBACKS[0] ?? chain.rpcUrls.default.http[0];
+  }
+  return chain.rpcUrls.default.http[0];
+}
+
+function createCeloTransport(mode: CeloMode) {
+  const urls =
+    mode === "alfajores"
+      ? [process.env.CELO_RPC_URL?.trim(), ...ALFAJORES_RPC_FALLBACKS].filter(
+          (url, index, list): url is string => Boolean(url) && list.indexOf(url) === index
+        )
+      : [resolveRpcUrl(mode)];
+
+  if (urls.length <= 1) {
+    return http(urls[0], { timeout: 12_000 });
+  }
+  return fallback(urls.map((url) => http(url, { timeout: 12_000 })));
+}
+
 function hashToBytes32(hashSha256: string): Hex {
   const hex = hashSha256.replace(/^0x/i, "").slice(0, 64).padStart(64, "0");
   return `0x${hex}` as Hex;
@@ -78,15 +109,15 @@ export async function anchorHashOnCelo(hashSha256: string): Promise<CeloAnchorRe
   if (!privateKey) return null;
 
   const chain = resolveChain(mode);
-  const rpcUrl = process.env.CELO_RPC_URL?.trim() || chain.rpcUrls.default.http[0];
+  const transport = createCeloTransport(mode);
   const account = privateKeyToAccount(normalizePrivateKey(privateKey));
   const hashBytes = hashToBytes32(hashSha256);
 
-  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
+  const publicClient = createPublicClient({ chain, transport });
   const walletClient = createWalletClient({
     account,
     chain,
-    transport: http(rpcUrl),
+    transport,
   });
 
   const registry = process.env.CELO_REGISTRY_ADDRESS?.trim() as Address | undefined;
@@ -125,8 +156,8 @@ export async function verifyHashOnCelo(
   if (!txHash || network === "simulate") return false;
   const mode: CeloMode = network === "celo" ? "celo" : "alfajores";
   const chain = resolveChain(mode);
-  const rpcUrl = process.env.CELO_RPC_URL?.trim() || chain.rpcUrls.default.http[0];
-  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
+  const transport = createCeloTransport(mode);
+  const publicClient = createPublicClient({ chain, transport });
 
   const registry = process.env.CELO_REGISTRY_ADDRESS?.trim() as Address | undefined;
   const expected = hashToBytes32(expectedHashSha256);
