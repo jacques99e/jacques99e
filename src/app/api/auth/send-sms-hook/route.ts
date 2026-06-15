@@ -77,10 +77,15 @@ function smsConfigStatus() {
 
 /** Diagnostic public — ne révèle aucun secret. */
 export async function GET() {
+  const authSmsEnabled = process.env.SMS_AUTH_HOOK_ENABLED === "true";
   const secretConfigured = Boolean(hookSecret());
   const sms = smsConfigStatus();
   return NextResponse.json({
-    ok: secretConfigured && (sms.simulate || sms.providerConfigured),
+    ok: authSmsEnabled && secretConfigured && (sms.simulate || sms.providerConfigured),
+    authSmsEnabled,
+    authSmsNote: authSmsEnabled
+      ? "Hook auth actif (déconseillé — préférer email/Google)"
+      : "Auth SMS désactivée — connexion via wazo-digital.com/login",
     hookSecretConfigured: secretConfigured,
     smsSimulate: sms.simulate,
     smsProvider: sms.provider,
@@ -94,6 +99,19 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (process.env.SMS_AUTH_HOOK_ENABLED !== "true") {
+    return NextResponse.json(
+      {
+        error: {
+          http_code: 410,
+          message:
+            "Auth SMS désactivée. Connexion via https://wazo-digital.com/login (email ou Google). Désactivez le hook Send SMS dans Supabase.",
+        },
+      },
+      { status: 410 }
+    );
+  }
+
   const payload = await request.text();
   const headers = Object.fromEntries(request.headers.entries());
 
