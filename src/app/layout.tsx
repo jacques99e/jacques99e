@@ -2,18 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/contexts/I18nContext";
 import { Providers } from "@/components/Providers";
+import { buildRootMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Wazo Digital",
-  description: "Digitalisez votre micro-entreprise en Afrique",
-  manifest: "/manifest.json",
-  icons: { icon: "/icons/icon.svg", apple: "/icons/icon.svg" },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Wazo Digital",
-  },
-};
+export const metadata: Metadata = buildRootMetadata();
 
 export const viewport: Viewport = {
   width: "device-width",

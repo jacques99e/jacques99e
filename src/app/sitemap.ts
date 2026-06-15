@@ -1,0 +1,47 @@
+import type { MetadataRoute } from "next";
+import { APP_URL } from "@/lib/seo";
+import { createServiceSupabase } from "@/lib/supabase/server";
+
+const STATIC_PUBLIC_PAGES: Array<{
+  path: string;
+  changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
+  priority: number;
+}> = [
+  { path: "/formation", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/suivi", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/trace", changeFrequency: "monthly", priority: 0.7 },
+];
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const lastModified = new Date();
+  const staticEntries: MetadataRoute.Sitemap = STATIC_PUBLIC_PAGES.map(
+    ({ path, changeFrequency, priority }) => ({
+      url: `${APP_URL}${path}`,
+      lastModified,
+      changeFrequency,
+      priority,
+    })
+  );
+
+  let storeEntries: MetadataRoute.Sitemap = [];
+  try {
+    const supabase = await createServiceSupabase();
+    const { data: stores } = await supabase
+      .from("stores")
+      .select("slug, updated_at")
+      .eq("is_public", true)
+      .order("updated_at", { ascending: false })
+      .limit(500);
+
+    storeEntries = (stores ?? []).map((store) => ({
+      url: `${APP_URL}/boutique/${encodeURIComponent(store.slug)}`,
+      lastModified: store.updated_at ? new Date(store.updated_at) : lastModified,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }));
+  } catch {
+    // Sitemap statique si Supabase indisponible au build
+  }
+
+  return [...staticEntries, ...storeEntries];
+}
