@@ -117,6 +117,10 @@ export interface BlockchainAsset {
   metadata?: Record<string, unknown>;
   latitude?: number | null;
   longitude?: number | null;
+  celo_tx_hash?: string | null;
+  celo_network?: string | null;
+  celo_block_number?: number | string | null;
+  celo_anchored_at?: string | null;
   recorded_at?: string;
   _localId?: string;
   _pendingSync?: boolean;

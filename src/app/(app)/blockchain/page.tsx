@@ -13,6 +13,7 @@ import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { traceUrl } from "@/lib/blockchain-public";
+import { celoExplorerTxUrl } from "@/lib/celo";
 import { shareTraceLink } from "@/lib/module-share";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { listAssets, listLedger, verifyAssetHash } from "@/lib/blockchain";
@@ -50,9 +51,9 @@ export default function BlockchainPage() {
             { value: assets.length, label: "Actifs", accent: "text-sky-600" },
             { value: ledger.length, label: "Écritures", accent: "text-sky-600" },
             {
-              value: Object.values(verifiedMap).filter(Boolean).length,
-              label: "Vérifiés",
-              accent: "text-sky-600",
+              value: assets.filter((a) => Boolean(a.celo_tx_hash)).length,
+              label: "Sur Celo",
+              accent: "text-emerald-600",
             },
           ]}
         />
@@ -96,6 +97,19 @@ export default function BlockchainPage() {
                     {verifiedMap[a.id] ? "valide" : "à vérifier"}
                   </span>
                 </p>
+                {a.celo_tx_hash ? (
+                  <p className="text-xs text-emerald-700">
+                    Celo ({a.celo_network || "alfajores"}) —{" "}
+                    <a
+                      href={celoExplorerTxUrl(a.celo_network || "alfajores", a.celo_tx_hash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      voir sur l&apos;explorateur
+                    </a>
+                  </p>
+                ) : null}
                 {a.latitude && (
                   <p className="text-xs text-gray-500">GPS: {a.latitude}, {a.longitude}</p>
                 )}

@@ -30,6 +30,7 @@
     "standardwebhooks": "^1.0.0",
     "tailwind-merge": "^2.6.0",
     "uuid": "^11.0.3",
+    "viem": "^2.52.2",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

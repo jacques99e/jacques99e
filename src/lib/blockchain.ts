@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { apiFetch } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase/client";
 import { buildAssetHash, sha256 } from "@/lib/crypto";
 import { generateLocalId } from "@/lib/sync";
@@ -69,6 +70,41 @@ export async function createAsset(
   }
 
   if (navigator.onLine) {
+    try {
+      const response = await apiFetch("/api/blockchain/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: storeId,
+          name: input.name,
+          asset_type: input.asset_type,
+          description: input.description,
+          metadata: input.metadata,
+          latitude: input.latitude,
+          longitude: input.longitude,
+        }),
+      });
+      const json = (await response.json()) as {
+        asset?: BlockchainAsset;
+        warning?: string;
+        error?: string;
+      };
+      if (response.ok && json.asset) {
+        const synced = { ...json.asset, _pendingSync: false };
+        if (db) {
+          await db.blockchainAssets.put(synced);
+          await db.blockchainLedger.put({
+            ...ledgerEntry,
+            asset_id: synced.id,
+            _pendingSync: false,
+          } as BlockchainLedgerEntry);
+        }
+        return synced;
+      }
+    } catch {
+      // Fallback Supabase direct ci-dessous
+    }
+
     const { data } = await supabase
       .from("blockchain_assets")
       .insert({

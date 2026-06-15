@@ -17,6 +17,10 @@ export default function PublicTracePage() {
     description: string | null;
     recorded_at: string | null;
     verified: boolean;
+    celo_tx_hash?: string | null;
+    celo_network?: string | null;
+    celo_verified?: boolean;
+    celo_explorer_url?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -60,6 +64,14 @@ export default function PublicTracePage() {
           <p className="text-indigo-600">{asset.asset_type}</p>
           {asset.description ? <p className="mt-2 text-gray-600">{asset.description}</p> : null}
           <p className="mt-3 break-all font-mono text-[10px] text-gray-400">{asset.hash_sha256}</p>
+          {asset.celo_explorer_url ? (
+            <p className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs text-emerald-800">
+              {asset.celo_verified ? "Ancré sur Celo — preuve vérifiable" : "Transaction Celo enregistrée"} —{" "}
+              <a href={asset.celo_explorer_url} target="_blank" rel="noopener noreferrer" className="underline">
+                Voir sur Celoscan
+              </a>
+            </p>
+          ) : null}
         </section>
         <p className="text-center text-xs"><Link href="/trace" className="underline">Autre vérification</Link></p>
       </div>
