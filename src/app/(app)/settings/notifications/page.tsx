@@ -13,7 +13,10 @@ import { billingPayHref } from "@/lib/billing-checkout";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { apiFetch } from "@/lib/api-client";
 import { sendSelfPushTest } from "@/lib/push-client";
-import { syncStoreToCloud } from "@/lib/cloud-sync";
+import {
+  formatLegacySyncSummary,
+  syncAllLegacyModulesToCloud,
+} from "@/lib/legacy-module-sync";
 
 export default function NotificationsSettingsPage() {
   const { user } = useAuth();
@@ -97,43 +100,17 @@ export default function NotificationsSettingsPage() {
   const runSync = async () => {
     if (!activeStore?.id) return;
     setSyncing(true);
-    const result = await syncStoreToCloud(activeStore.id);
-    const lines = [
-      `Sur cet appareil : ${result.localClients} client(s), ${result.localSales} vente(s) (${result.localSalesPending} à envoyer).`,
-      `Cloud : ${result.clientsPushed} clients↑ ${result.clientsPulled}↓ · ${result.salesPushed} ventes↑ ${result.salesPulled}↓.`,
-    ];
-    if (
-      result.localClients === 0 &&
-      result.localSales === 0 &&
-      result.errors.length === 0
-    ) {
-      lines.push(
-        "Aucune donnée locale. Ajoutez un client (/clients) ou une vente (/sales), puis resynchronisez."
+    setSyncResult("");
+    try {
+      const result = await syncAllLegacyModulesToCloud(activeStore.id);
+      setSyncResult(formatLegacySyncSummary(result));
+    } catch (error) {
+      setSyncResult(
+        error instanceof Error ? error.message : "Synchronisation impossible."
       );
-    } else if (
-      result.localSalesPending > 0 &&
-      result.salesPushed === 0 &&
-      !result.errors.length
-    ) {
-      lines.push("Les ventes n'ont pas pu partir — réessayez après reconnexion.");
-    } else if (
-      result.localClients > 0 &&
-      result.clientsPushed === 0 &&
-      !result.errors.length
-    ) {
-      lines.push("Les clients n'ont pas pu partir — vérifiez la connexion.");
-    } else if (
-      result.clientsPushed > 0 ||
-      result.salesPushed > 0 ||
-      (result.clientsPulled > 0 && result.localClients === 0)
-    ) {
-      lines.push("Synchronisation réussie.");
+    } finally {
+      setSyncing(false);
     }
-    if (result.errors.length) {
-      lines.push(`Erreurs : ${result.errors.slice(0, 3).join(" · ")}`);
-    }
-    setSyncResult(lines.join(" "));
-    setSyncing(false);
   };
 
   if (!canManageSettings) {
@@ -156,7 +133,8 @@ export default function NotificationsSettingsPage() {
         <section className="rounded-xl bg-white p-4 shadow-sm space-y-3 dark:bg-gray-800">
           <h2 className="text-sm font-semibold">Sync cloud Supabase</h2>
           <p className="text-xs text-gray-500">
-            Synchronise ventes et clients CRM entre cet appareil et le cloud.
+            Envoie vers le cloud les produits, livraisons, formation, santé, agriculture,
+            blockchain et CRM stockés sur cet appareil.
           </p>
           <Button
             variant="outline"
