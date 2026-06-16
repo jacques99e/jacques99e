@@ -1,4 +1,5 @@
 import type { Product } from "@/types";
+import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -10,6 +11,9 @@ export function isProductUuid(id: string): boolean {
 /** Ligne Supabase `products` → modèle app. */
 export function rowToProduct(row: Record<string, unknown>): Product {
   const stock = Number(row.stock_quantity ?? row.stock ?? 0);
+  const resolvedImageUrl = toPublicProductImageUrl(
+    (row.image_url as string | null) ?? (row.photo_url as string | null) ?? null
+  );
   return {
     id: String(row.id),
     store_id: String(row.store_id),
@@ -18,7 +22,7 @@ export function rowToProduct(row: Record<string, unknown>): Product {
     price: Number(row.price ?? 0),
     stock_quantity: stock,
     barcode: (row.barcode as string | null) ?? null,
-    image_url: (row.image_url as string | null) ?? (row.photo_url as string | null) ?? null,
+    image_url: resolvedImageUrl,
     is_active: row.is_active !== false,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { APP_URL } from "@/lib/seo";
 import { rowToProduct } from "@/lib/product-db-map";
+import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 import { StorefrontClient } from "./StorefrontClient";
 import { StorefrontNotFound } from "./StorefrontNotFound";
 
@@ -60,6 +61,8 @@ export default async function StorefrontPage({ params }: PageProps) {
     <StorefrontClient
       store={{
         ...store,
+        logo_url: toPublicProductImageUrl(store.logo_url),
+        cover_url: toPublicProductImageUrl(store.cover_url),
         products: (products || []).map((p) =>
           rowToProduct(p as Record<string, unknown>)
         ),

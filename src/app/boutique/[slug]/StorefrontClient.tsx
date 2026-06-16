@@ -25,6 +25,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
   const landingUrl = resolveLandingUrl();
   const contactPhone = store.whatsapp || store.phone || "";
   const productCount = store.products.length;
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const onScroll = () => setStickyVisible(window.scrollY > 320);
@@ -32,18 +33,6 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const orderProduct = (product: Product) => {
-    if (!contactPhone) return;
-    const message = `Bonjour ${store.name}! Je souhaite commander: ${product.name} (${formatCurrency(product.price)})`;
-    window.open(getWhatsAppLink(contactPhone, message), "_blank");
-  };
-
-  const contactStore = () => {
-    if (!contactPhone) return;
-    const message = `Bonjour ${store.name}! Je souhaite avoir des informations sur votre catalogue.`;
-    window.open(getWhatsAppLink(contactPhone, message), "_blank");
-  };
 
   return (
     <div className="storefront-page min-h-screen pb-24">
@@ -54,14 +43,14 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
         </a>
       </div>
 
-      <header className="relative overflow-hidden">
+      <header className="relative overflow-hidden border-b border-[#075E54]/10">
         {store.cover_url ? (
           <>
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: `url(${store.cover_url})` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#075E54]/85 via-[#075E54]/75 to-[#054A42]/95" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#075E54]/78 via-[#075E54]/60 to-[#054A42]/88" />
           </>
         ) : (
           <div className="storefront-hero-mesh absolute inset-0 bg-gradient-to-br from-[#075E54] via-[#075E54] to-[#128C7E]" />
@@ -85,7 +74,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
             )}
           </div>
 
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-semibold backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-1.5 text-xs font-semibold">
             <Sparkles className="h-3.5 w-3.5 text-[#FF6F00]" />
             {t("storefront.badge")}
           </span>
@@ -99,19 +88,23 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
           ) : null}
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-semibold">
               <Package className="h-4 w-4 text-[#FF6F00]" />
               {t("storefront.productsCount", { count: productCount })}
             </span>
             {contactPhone ? (
-              <button
-                type="button"
-                onClick={contactStore}
+              <a
+                href={getWhatsAppLink(
+                  contactPhone,
+                  `Bonjour ${store.name}! Je souhaite avoir des informations sur votre catalogue.`
+                )}
+                target="_blank"
+                rel="noreferrer"
                 className="storefront-cta-pulse inline-flex items-center gap-2 rounded-full bg-[#FF6F00] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#FF6F00]/30 transition hover:brightness-110 md:text-sm"
               >
                 <MessageCircle className="h-4 w-4" />
                 {t("storefront.contactWhatsapp")}
-              </button>
+              </a>
             ) : null}
           </div>
         </div>
@@ -133,14 +126,18 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
             </div>
             <p className="font-semibold text-[#1A1A1A]">{t("storefront.emptyCatalog")}</p>
             {contactPhone ? (
-              <button
-                type="button"
-                onClick={contactStore}
+              <a
+                href={getWhatsAppLink(
+                  contactPhone,
+                  `Bonjour ${store.name}! Je souhaite avoir des informations sur votre catalogue.`
+                )}
+                target="_blank"
+                rel="noreferrer"
                 className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-semibold text-white"
               >
                 <MessageCircle className="h-4 w-4" />
                 {t("storefront.contactWhatsapp")}
-              </button>
+              </a>
             ) : null}
           </div>
         ) : (
@@ -153,11 +150,14 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                   className="group flex flex-col overflow-hidden rounded-3xl border border-[#075E54]/10 bg-white shadow-sm transition hover:border-[#075E54]/25 hover:shadow-wazo-lg"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-[#FFF8F0]">
-                    {product.image_url ? (
+                    {product.image_url && !failedImages[product.id] ? (
                       <img
                         src={product.image_url}
                         alt=""
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        onError={() =>
+                          setFailedImages((prev) => ({ ...prev, [product.id]: true }))
+                        }
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#075E54]/10 to-[#FF6F00]/10 text-5xl font-bold text-[#075E54]/40">
@@ -184,15 +184,29 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                       {formatCurrency(product.price)}
                     </p>
 
-                    <button
-                      type="button"
-                      onClick={() => orderProduct(product)}
-                      disabled={!contactPhone}
-                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-sm font-bold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    <a
+                      href={
+                        contactPhone
+                          ? getWhatsAppLink(
+                              contactPhone,
+                              `Bonjour ${store.name}! Je souhaite commander: ${product.name} (${formatCurrency(
+                                product.price
+                              )})`
+                            )
+                          : "#"
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-disabled={!contactPhone}
+                      className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white transition ${
+                        contactPhone
+                          ? "bg-[#25D366] hover:brightness-105"
+                          : "cursor-not-allowed bg-[#25D366]/60 pointer-events-none"
+                      }`}
                     >
                       <MessageCircle className="h-4 w-4" />
                       {t("storefront.order")}
-                    </button>
+                    </a>
                   </div>
                 </article>
               );
@@ -229,15 +243,19 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
               <p className="truncate text-sm font-bold text-[#075E54]">{store.name}</p>
               <p className="text-xs text-[#1A1A1A]/60">{t("storefront.stickyHint")}</p>
             </div>
-            <button
-              type="button"
-              onClick={contactStore}
+            <a
+              href={getWhatsAppLink(
+                contactPhone,
+                `Bonjour ${store.name}! Je souhaite avoir des informations sur votre catalogue.`
+              )}
+              target="_blank"
+              rel="noreferrer"
               className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-xs font-bold text-white sm:px-5 sm:text-sm"
             >
               <Phone className="h-4 w-4 sm:hidden" />
               <MessageCircle className="hidden h-4 w-4 sm:block" />
               WhatsApp
-            </button>
+            </a>
           </div>
         </div>
       ) : null}
