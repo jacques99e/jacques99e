@@ -8,11 +8,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { syncStoreToCloud } from "@/lib/cloud-sync";
-import { readLocalProducts, writeLocalProducts, type LocalProduct } from "@/lib/local-products";
 import { appendLocalSale } from "@/lib/local-sales";
 import { activePromotions, applyDiscount, discountForProduct } from "@/lib/commerce-promotions";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
+import { getProducts, saveProduct } from "@/lib/products";
+import { productToLegacy } from "@/lib/product-legacy-mirror";
+import type { LocalProduct } from "@/lib/local-products";
 
 interface CartItem {
   productId: string;
@@ -50,7 +52,9 @@ export default function SalesPage() {
   } | null>(null);
 
   useEffect(() => {
-    setProducts(readLocalProducts());
+    const store = localStore.get();
+    if (!store?.id) return;
+    void getProducts(store.id).then((rows) => setProducts(rows.map(productToLegacy)));
   }, []);
 
   const filtered = useMemo(() => {
@@ -107,23 +111,44 @@ export default function SalesPage() {
     setCart((prev) => prev.filter((item) => item.productId !== productId));
   };
 
-  const finalizeSale = () => {
+  const finalizeSale = async () => {
     if (cart.length === 0) return;
 
     const updatedProducts = products.map((product) => {
       const cartItem = cart.find((c) => c.productId === product.id);
       if (!cartItem) return product;
+      const nextStock = Math.max(0, product.stock - cartItem.quantity);
       return {
         ...product,
-        stock: Math.max(0, product.stock - cartItem.quantity),
-        stock_quantity: Math.max(0, product.stock - cartItem.quantity),
+        stock: nextStock,
+        stock_quantity: nextStock,
       };
     });
-    writeLocalProducts(updatedProducts);
     setProducts(updatedProducts);
 
     const store = localStore.get();
     const storeId = store?.id || "local-store";
+
+    if (store?.id) {
+      for (const product of updatedProducts) {
+        const cartItem = cart.find((c) => c.productId === product.id);
+        if (!cartItem) continue;
+        try {
+          await saveProduct(store.id, {
+            id: product.id,
+            name: product.name,
+            description: product.description ?? null,
+            price: product.price,
+            stock_quantity: product.stock,
+            barcode: null,
+            image_url: null,
+            is_active: true,
+          });
+        } catch {
+          // Sale still recorded locally if cloud stock update fails.
+        }
+      }
+    }
     const sale: LocalSale = {
       id: `sale-${crypto.randomUUID()}`,
       store_id: storeId,

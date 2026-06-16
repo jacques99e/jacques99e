@@ -1,6 +1,8 @@
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
-import { isProductUuid, rowToProduct } from "@/lib/product-db-map";
+import { fetchCloudProducts } from "@/lib/product-cloud";
+import { isProductUuid } from "@/lib/product-db-map";
+import { mirrorProductsToLegacyCatalog, upsertLegacyProduct } from "@/lib/product-legacy-mirror";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId, syncAll } from "@/lib/sync";
 import type { Product } from "@/types";
@@ -38,50 +40,30 @@ async function persistProductViaApi(
   return payload.product;
 }
 
+async function cacheProductsLocally(storeId: string, products: Product[]) {
+  if (!db) return;
+  await db.products.where("store_id").equals(storeId).delete();
+  if (products.length > 0) {
+    await db.products.bulkPut(products.map((p) => ({ ...p, _pendingSync: false })));
+  }
+  mirrorProductsToLegacyCatalog(products);
+}
+
 export async function getProducts(storeId: string): Promise<Product[]> {
+  const local = db ? await db.products.where("store_id").equals(storeId).toArray() : [];
+
   if (navigator.onLine) {
-    try {
-      const response = await apiFetch(`/api/products?storeId=${encodeURIComponent(storeId)}`, {
-        cache: "no-store",
-      });
-      const payload = (await response.json()) as {
-        success: boolean;
-        products?: Product[];
-      };
-      if (response.ok && payload.success && payload.products) {
-        if (db) {
-          await db.products.where("store_id").equals(storeId).delete();
-          await db.products.bulkPut(
-            payload.products.map((p) => ({ ...p, _pendingSync: false }))
-          );
-        }
-        return payload.products;
+    const cloud = await fetchCloudProducts(storeId);
+    if (cloud !== null) {
+      if (cloud.length > 0) {
+        await cacheProductsLocally(storeId, cloud);
+        return cloud;
       }
-    } catch {
-      // Fallback to direct Supabase read below.
-    }
-
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("store_id", storeId)
-      .order("name");
-
-    if (!error && data) {
-      const mapped = data.map((row) => rowToProduct(row as Record<string, unknown>));
-      if (db) {
-        await db.products.where("store_id").equals(storeId).delete();
-        await db.products.bulkPut(mapped.map((p) => ({ ...p, _pendingSync: false })));
-      }
-      return mapped;
+      if (local.length > 0) return local;
     }
   }
 
-  if (db) {
-    const local = await db.products.where("store_id").equals(storeId).toArray();
-    if (local.length > 0) return local;
-  }
-
+  if (local.length > 0) return local;
   return [];
 }
 
@@ -113,6 +95,7 @@ export async function saveProduct(
     if (legacyId && legacyId !== id) await db.products.delete(legacyId);
     await db.products.put(record);
   }
+  upsertLegacyProduct(record);
 
   if (navigator.onLine) {
     try {
@@ -125,6 +108,7 @@ export async function saveProduct(
         if (legacyId && legacyId !== saved.id) await db.products.delete(legacyId);
         await db.products.put({ ...saved, _pendingSync: false });
       }
+      upsertLegacyProduct(saved);
       return saved;
     } catch (error) {
       await enqueueSync({

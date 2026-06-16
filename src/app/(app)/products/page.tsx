@@ -30,6 +30,8 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock">("name");
   const [showSuccess, setShowSuccess] = useState(false);
   const [persistError, setPersistError] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     const store = localStore.get();
@@ -46,10 +48,15 @@ export default function ProductsPage() {
 
     const load = async () => {
       try {
-        await reconcileProductsWithCloud(storeId);
+        const result = await reconcileProductsWithCloud(storeId);
         const rows = await getProducts(storeId);
         if (cancelled) return;
         setProducts(rows);
+        if (result.pushed > 0) {
+          setSyncMessage(`${result.pushed} produit(s) synchronisé(s) vers la boutique en ligne.`);
+        } else if (result.errors.length > 0) {
+          setSyncMessage(result.errors[0]);
+        }
       } catch {
         // Keep UI usable even if sync fails.
       }
@@ -137,6 +144,31 @@ export default function ProductsPage() {
     }
   };
 
+  const runStoreSync = async () => {
+    if (!storeId) return;
+    setSyncing(true);
+    setSyncMessage("");
+    setPersistError("");
+    try {
+      const result = await reconcileProductsWithCloud(storeId);
+      const rows = await getProducts(storeId);
+      setProducts(rows);
+      if (result.pushed > 0) {
+        setSyncMessage(`${result.pushed} produit(s) publié(s) sur la boutique en ligne.`);
+      } else if (result.errors.length > 0) {
+        setPersistError(result.errors.join(" "));
+      } else if (rows.length === 0) {
+        setSyncMessage("Aucun produit local à synchroniser. Ajoutez un produit puis réessayez.");
+      } else {
+        setSyncMessage("Catalogue déjà à jour en ligne.");
+      }
+    } catch (err) {
+      setPersistError(err instanceof Error ? err.message : "Synchronisation impossible.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <>
       <AppHeader
@@ -158,6 +190,14 @@ export default function ProductsPage() {
             {persistError}
           </p>
         ) : null}
+        {syncMessage ? (
+          <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800 shadow-sm">{syncMessage}</p>
+        ) : null}
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
+            {syncing ? "Synchronisation…" : "Publier sur la boutique"}
+          </Button>
+        </div>
 
         <ModulePublicPortals moduleId="commerce" />
         <ModuleCompetitiveEdge moduleId="commerce" />
