@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { createServiceSupabase } from "@/lib/supabase/server";
 
 function trackingCode() {
   return `WZ${Date.now().toString(36).toUpperCase()}`;
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data, error } = await service
     .from("deliveries")
     .select("*")
     .eq("store_id", storeId)
@@ -40,12 +42,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data, error } = await service
     .from("deliveries")
-    .insert({ ...body, tracking_code: trackingCode(), status: "pending" })
+    .insert({
+      store_id: storeId,
+      sender_name: body.sender_name,
+      recipient_name: body.recipient_name,
+      recipient_phone: body.recipient_phone ?? null,
+      address: body.address,
+      tracking_code: trackingCode(),
+      status: "pending",
+    })
     .select()
     .single();
-  if (error) return NextResponse.json({ error: "Impossible de creer la livraison." }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message || "Impossible de creer la livraison." }, { status: 500 });
   return NextResponse.json({ delivery: data });
 }
 
@@ -60,7 +71,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { data: delivery, error: deliveryError } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data: delivery, error: deliveryError } = await service
     .from("deliveries")
     .select("store_id")
     .eq("id", id)
@@ -78,7 +90,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  const { data, error } = await service
     .from("deliveries")
     .update({ status, signature_data, updated_at: new Date().toISOString() })
     .eq("id", id)

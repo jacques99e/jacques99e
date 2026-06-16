@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { anchorHashOnCelo, getCeloEnvironmentLabel, getCeloMode, isCeloConfigured } from "@/lib/celo";
 import { buildAssetHash, sha256 } from "@/lib/crypto";
+import { createServiceSupabase } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const storeId = request.nextUrl.searchParams.get("store_id");
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data, error } = await service
     .from("blockchain_assets")
     .select("*")
     .eq("store_id", storeId)
@@ -54,7 +56,8 @@ export async function POST(request: NextRequest) {
   };
   const hash_sha256 = await buildAssetHash(payload as Record<string, unknown>);
 
-  const { data, error } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data, error } = await service
     .from("blockchain_assets")
     .insert({ store_id, name, asset_type, description, metadata, hash_sha256, latitude, longitude })
     .select()
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Impossible de creer l'actif blockchain." }, { status: 500 });
   }
 
-  const { data: lastLedger } = await auth.serviceSupabase
+  const { data: lastLedger } = await service
     .from("blockchain_ledger")
     .select("hash_sha256")
     .eq("store_id", store_id)
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
 
   const prev = lastLedger?.hash_sha256 ?? "";
   const entryHash = await sha256(prev + hash_sha256 + "CREATE");
-  await auth.serviceSupabase.from("blockchain_ledger").insert({
+  await service.from("blockchain_ledger").insert({
     store_id,
     asset_id: data.id,
     action: "CREATE",
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
   try {
     const celoAnchor = await anchorHashOnCelo(hash_sha256);
     if (celoAnchor) {
-      const { data: updated, error: celoUpdateError } = await auth.serviceSupabase
+      const { data: updated, error: celoUpdateError } = await service
         .from("blockchain_assets")
         .update({
           celo_tx_hash: celoAnchor.txHash,

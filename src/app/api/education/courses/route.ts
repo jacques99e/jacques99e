@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { createServiceSupabase } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const storeId = request.nextUrl.searchParams.get("store_id");
@@ -14,7 +15,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase.from("courses").select("*").eq("store_id", storeId);
+  const service = await createServiceSupabase();
+  const { data, error } = await service.from("courses").select("*").eq("store_id", storeId);
   if (error) return NextResponse.json({ error: "Impossible de recuperer les cours." }, { status: 500 });
   return NextResponse.json({ courses: data });
 }
@@ -40,7 +42,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { data, error } = await auth.serviceSupabase
+  const service = await createServiceSupabase();
+  const { data, error } = await service
     .from("courses")
     .insert({
       store_id: storeId,
@@ -50,6 +53,6 @@ export async function POST(request: NextRequest) {
     })
     .select()
     .single();
-  if (error) return NextResponse.json({ error: "Impossible de creer le cours." }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message || "Impossible de creer le cours." }, { status: 500 });
   return NextResponse.json({ course: data });
 }
