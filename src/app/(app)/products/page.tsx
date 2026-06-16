@@ -92,9 +92,7 @@ export default function ProductsPage() {
     if (!storeId) return;
     setPersistError("");
     try {
-      const nextId = `prod-${Date.now()}`;
       const copy = await saveProduct(storeId, {
-        id: nextId,
         name: `${product.name} (copie)`,
         description: product.description ?? null,
         price: product.price,

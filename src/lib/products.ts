@@ -1,26 +1,30 @@
 import { db } from "@/lib/db";
+import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import { supabase } from "@/lib/supabase/client";
-import { enqueueSync, generateLocalId } from "@/lib/sync";
+import { enqueueSync, generateLocalId, syncAll } from "@/lib/sync";
 import type { Product } from "@/types";
 
 export async function getProducts(storeId: string): Promise<Product[]> {
-  if (db) {
-    const local = await db.products.where("store_id").equals(storeId).toArray();
-    if (local.length > 0 || !navigator.onLine) return local;
-  }
-
   if (navigator.onLine) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("store_id", storeId)
       .order("name");
 
-    if (data && db) {
-      await db.products.bulkPut(data.map((p) => ({ ...p, price: Number(p.price) })));
-      return data.map((p) => ({ ...p, price: Number(p.price) }));
+    if (!error && data) {
+      const mapped = data.map((row) => rowToProduct(row as Record<string, unknown>));
+      if (db) {
+        await db.products.where("store_id").equals(storeId).delete();
+        await db.products.bulkPut(mapped.map((p) => ({ ...p, _pendingSync: false })));
+      }
+      return mapped;
     }
-    return data?.map((p) => ({ ...p, price: Number(p.price) })) || [];
+  }
+
+  if (db) {
+    const local = await db.products.where("store_id").equals(storeId).toArray();
+    if (local.length > 0) return local;
   }
 
   return [];
@@ -30,8 +34,12 @@ export async function saveProduct(
   storeId: string,
   product: Partial<Product> & { name: string; price: number; stock_quantity: number }
 ): Promise<Product> {
-  const localId = product._localId || generateLocalId();
-  const id = product.id || localId;
+  const hasServerId = Boolean(product.id && isProductUuid(product.id));
+  const legacyId =
+    product.id && !isProductUuid(product.id) ? product.id : undefined;
+  const localId = hasServerId ? undefined : product._localId || generateLocalId();
+  const id = hasServerId ? product.id! : localId!;
+
   const record: Product = {
     id,
     store_id: storeId,
@@ -42,40 +50,42 @@ export async function saveProduct(
     barcode: product.barcode ?? null,
     image_url: product.image_url ?? null,
     is_active: product.is_active ?? true,
-    _localId: id.startsWith("local-") ? id : undefined,
+    _localId: localId,
     _pendingSync: true,
   };
 
-  if (db) await db.products.put(record);
+  if (db) {
+    if (legacyId && legacyId !== id) await db.products.delete(legacyId);
+    await db.products.put(record);
+  }
+
+  if (navigator.onLine) {
+    const row = productToRow(record);
+    const query = hasServerId
+      ? supabase.from("products").update(row).eq("id", id).select().single()
+      : supabase.from("products").insert(row).select().single();
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      const saved = rowToProduct(data as Record<string, unknown>);
+      if (db) {
+        if (localId) await db.products.delete(localId);
+        await db.products.put({ ...saved, _pendingSync: false });
+      }
+      return saved;
+    }
+  }
 
   await enqueueSync({
     entity_type: "product",
     entity_id: id,
-    action: product.id && !product.id.startsWith("local-") ? "update" : "create",
+    action: hasServerId ? "update" : "create",
     payload: record as unknown as Record<string, unknown>,
   });
 
-  if (navigator.onLine && !id.startsWith("local-")) {
-    const { data } = await supabase
-      .from("products")
-      .upsert({
-        id: id.startsWith("local-") ? undefined : id,
-        store_id: storeId,
-        name: record.name,
-        description: record.description,
-        price: record.price,
-        stock_quantity: record.stock_quantity,
-        barcode: record.barcode,
-        image_url: record.image_url,
-        is_active: record.is_active,
-      })
-      .select()
-      .single();
-
-    if (data && db) {
-      await db.products.put({ ...data, price: Number(data.price), _pendingSync: false });
-      return { ...data, price: Number(data.price) };
-    }
+  if (navigator.onLine) {
+    void syncAll(storeId);
   }
 
   return record;
@@ -89,7 +99,7 @@ export async function deleteProduct(id: string) {
     action: "delete",
     payload: { id },
   });
-  if (navigator.onLine) {
+  if (navigator.onLine && isProductUuid(id)) {
     await supabase.from("products").delete().eq("id", id);
   }
 }
@@ -98,7 +108,7 @@ export async function uploadProductImage(
   userId: string,
   file: File
 ): Promise<string | null> {
-  if (!navigator.onLine) return URL.createObjectURL(file);
+  if (!navigator.onLine) return null;
 
   const ext = file.name.split(".").pop() || "jpg";
   const path = `${userId}/${Date.now()}.${ext}`;
@@ -107,7 +117,7 @@ export async function uploadProductImage(
     .from("product-images")
     .upload(path, file, { upsert: true });
 
-  if (error) return URL.createObjectURL(file);
+  if (error) return null;
 
   const { data } = supabase.storage.from("product-images").getPublicUrl(path);
   return data.publicUrl;

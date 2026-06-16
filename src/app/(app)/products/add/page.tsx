@@ -81,7 +81,6 @@ export default function AddProductPage() {
       }
 
       await saveProduct(storeId, {
-        id: `prod-${Date.now()}`,
         name: name.trim(),
         description: description.trim() || null,
         price: Number(price),

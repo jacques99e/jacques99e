@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
+import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import type { Product, Sale, SyncQueueItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -41,10 +42,11 @@ export async function syncAll(storeId: string): Promise<{ synced: number; errors
     .eq("store_id", storeId);
 
   if (products) {
-    await db.products.where("store_id").equals(storeId).delete();
-    await db.products.bulkPut(
-      products.map((p) => ({ ...p, price: Number(p.price), _pendingSync: false }))
+    const mapped = products.map((p) =>
+      rowToProduct(p as Record<string, unknown>)
     );
+    await db.products.where("store_id").equals(storeId).delete();
+    await db.products.bulkPut(mapped.map((p) => ({ ...p, _pendingSync: false })));
   }
 
   try {
@@ -65,33 +67,28 @@ async function syncProduct(
   const payload = item.payload as unknown as Product;
 
   if (item.action === "create" || item.action === "update") {
-    const { data, error } = await supabase
-      .from("products")
-      .upsert({
-        id: payload.id?.startsWith("local-") ? undefined : payload.id,
-        store_id: storeId,
-        name: payload.name,
-        description: payload.description,
-        price: payload.price,
-        stock_quantity: payload.stock_quantity,
-        barcode: payload.barcode,
-        image_url: payload.image_url,
-        is_active: payload.is_active ?? true,
-      })
-      .select()
-      .single();
+    const hasServerId = Boolean(payload.id && isProductUuid(payload.id));
+    const row = productToRow({ ...payload, store_id: storeId });
+    const query = hasServerId
+      ? supabase.from("products").update(row).eq("id", payload.id).select().single()
+      : supabase.from("products").insert(row).select().single();
 
+    const { data, error } = await query;
     if (error) throw error;
 
-    if (payload._localId && data) {
-      await db.products.where("_localId").equals(payload._localId).modify({
-        id: data.id,
-        _pendingSync: false,
-        _localId: undefined,
-      });
+    if (data) {
+      const saved = rowToProduct(data as Record<string, unknown>);
+      if (payload._localId) {
+        await db.products.delete(payload._localId);
+      } else if (payload.id && !isProductUuid(payload.id)) {
+        await db.products.delete(payload.id);
+      }
+      await db.products.put({ ...saved, _pendingSync: false });
     }
   } else if (item.action === "delete") {
-    await supabase.from("products").delete().eq("id", item.entity_id);
+    if (isProductUuid(item.entity_id)) {
+      await supabase.from("products").delete().eq("id", item.entity_id);
+    }
   }
 }
 
@@ -148,16 +145,18 @@ async function syncSale(
 
   // Update stock on server
   for (const i of payload.items || []) {
+    if (!i.product_id || !isProductUuid(String(i.product_id))) continue;
+
     const { data: product } = await supabase
       .from("products")
-      .select("stock_quantity")
+      .select("stock")
       .eq("id", i.product_id)
       .single();
 
     if (product) {
       await supabase
         .from("products")
-        .update({ stock_quantity: Math.max(0, product.stock_quantity - i.quantity) })
+        .update({ stock: Math.max(0, Number(product.stock) - i.quantity) })
         .eq("id", i.product_id);
     }
   }

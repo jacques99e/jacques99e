@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { APP_URL } from "@/lib/seo";
+import { rowToProduct } from "@/lib/product-db-map";
 import { StorefrontClient } from "./StorefrontClient";
 import { StorefrontNotFound } from "./StorefrontNotFound";
 
@@ -53,17 +54,15 @@ export default async function StorefrontPage({ params }: PageProps) {
     .from("products")
     .select("*")
     .eq("store_id", store.id)
-    .eq("is_active", true)
     .order("name");
 
   return (
     <StorefrontClient
       store={{
         ...store,
-        products: (products || []).map((p) => ({
-          ...p,
-          price: Number(p.price),
-        })),
+        products: (products || []).map((p) =>
+          rowToProduct(p as Record<string, unknown>)
+        ),
       }}
     />
   );
