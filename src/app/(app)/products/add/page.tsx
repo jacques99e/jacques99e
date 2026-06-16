@@ -91,6 +91,8 @@ export default function AddProductPage() {
       });
 
       router.push("/products?success=1");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
     } finally {
       setLoading(false);
     }

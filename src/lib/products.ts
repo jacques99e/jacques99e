@@ -1,11 +1,66 @@
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
-import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
+import { isProductUuid, rowToProduct } from "@/lib/product-db-map";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId, syncAll } from "@/lib/sync";
 import type { Product } from "@/types";
 
+async function persistProductViaApi(
+  storeId: string,
+  product: Partial<Product> & { name: string; price: number; stock_quantity: number }
+): Promise<Product> {
+  const hasServerId = Boolean(product.id && isProductUuid(product.id));
+  const response = await apiFetch("/api/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      store_id: storeId,
+      id: hasServerId ? product.id : undefined,
+      name: product.name,
+      description: product.description ?? null,
+      price: product.price,
+      stock_quantity: product.stock_quantity,
+      barcode: product.barcode ?? null,
+      image_url: product.image_url ?? null,
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    success: boolean;
+    product?: Product;
+    error?: string;
+  };
+
+  if (!response.ok || !payload.success || !payload.product) {
+    throw new Error(payload.error || "Impossible d'enregistrer le produit en ligne.");
+  }
+
+  return payload.product;
+}
+
 export async function getProducts(storeId: string): Promise<Product[]> {
   if (navigator.onLine) {
+    try {
+      const response = await apiFetch(`/api/products?storeId=${encodeURIComponent(storeId)}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as {
+        success: boolean;
+        products?: Product[];
+      };
+      if (response.ok && payload.success && payload.products) {
+        if (db) {
+          await db.products.where("store_id").equals(storeId).delete();
+          await db.products.bulkPut(
+            payload.products.map((p) => ({ ...p, _pendingSync: false }))
+          );
+        }
+        return payload.products;
+      }
+    } catch {
+      // Fallback to direct Supabase read below.
+    }
+
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -60,20 +115,28 @@ export async function saveProduct(
   }
 
   if (navigator.onLine) {
-    const row = productToRow(record);
-    const query = hasServerId
-      ? supabase.from("products").update(row).eq("id", id).select().single()
-      : supabase.from("products").insert(row).select().single();
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      const saved = rowToProduct(data as Record<string, unknown>);
+    try {
+      const saved = await persistProductViaApi(storeId, {
+        ...product,
+        id: hasServerId ? product.id : undefined,
+      });
       if (db) {
         if (localId) await db.products.delete(localId);
+        if (legacyId && legacyId !== saved.id) await db.products.delete(legacyId);
         await db.products.put({ ...saved, _pendingSync: false });
       }
       return saved;
+    } catch (error) {
+      await enqueueSync({
+        entity_type: "product",
+        entity_id: id,
+        action: hasServerId ? "update" : "create",
+        payload: record as unknown as Record<string, unknown>,
+      });
+      void syncAll(storeId);
+      throw error instanceof Error
+        ? error
+        : new Error("Impossible d'enregistrer le produit en ligne.");
     }
   }
 
@@ -83,10 +146,6 @@ export async function saveProduct(
     action: hasServerId ? "update" : "create",
     payload: record as unknown as Record<string, unknown>,
   });
-
-  if (navigator.onLine) {
-    void syncAll(storeId);
-  }
 
   return record;
 }

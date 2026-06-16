@@ -32,6 +32,7 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,6 +45,7 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
     e.preventDefault();
     setLoading(true);
     setSuccessMessage("");
+    setErrorMessage("");
     try {
       if (!product?.id) {
         throw new Error("Produit introuvable.");
@@ -74,6 +76,9 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
 
       setSuccessMessage("Produit enregistré avec succès");
       setTimeout(() => void router.push("/products"), 500);
+    } catch (err) {
+      setSuccessMessage("");
+      setErrorMessage(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
     } finally {
       setLoading(false);
     }
@@ -149,6 +154,7 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
         {loading ? t("common.loading") : t("products.save")}
       </Button>
       {successMessage && <p className="text-center text-sm text-green-600">{successMessage}</p>}
+      {errorMessage && <p className="text-center text-sm text-red-600">{errorMessage}</p>}
     </form>
   );
 }

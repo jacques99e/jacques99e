@@ -17,6 +17,7 @@ import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
+import { reconcileProductsWithCloud } from "@/lib/product-reconcile";
 import type { Product } from "@/types";
 
 export default function ProductsPage() {
@@ -45,6 +46,7 @@ export default function ProductsPage() {
 
     const load = async () => {
       try {
+        await reconcileProductsWithCloud(storeId);
         const rows = await getProducts(storeId);
         if (cancelled) return;
         setProducts(rows);
