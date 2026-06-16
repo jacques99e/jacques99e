@@ -3,9 +3,9 @@ import { listAssets } from "@/lib/blockchain";
 import { activePromotions } from "@/lib/commerce-promotions";
 import { listCourses } from "@/lib/education";
 import { overdueFollowUps } from "@/lib/health-followups";
-import { readLocalProducts } from "@/lib/local-products";
 import { readLocalSales } from "@/lib/local-sales";
 import { listDeliveries } from "@/lib/logistics";
+import { getProducts } from "@/lib/products";
 import type { ModuleId } from "@/types";
 
 const STREAK_KEY = "wazo_engagement_streak";
@@ -139,7 +139,7 @@ export async function evaluateAchievements(
   };
 
   const sales = readLocalSales(storeId);
-  const products = readLocalProducts();
+  const products = await getProducts(storeId);
   const streak = getStreak();
 
   if (sales.length >= 1) tryUnlock("first_sale");

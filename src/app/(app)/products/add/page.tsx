@@ -3,48 +3,30 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
 import { Camera } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
-import { readLocalProducts, writeLocalProducts } from "@/lib/local-products";
 import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
 import { billingUpgradeHref } from "@/lib/billing-checkout";
-
-type ProductCategory =
-  | "Alimentation"
-  | "Boissons"
-  | "Beauté"
-  | "Vêtements"
-  | "Électronique"
-  | "Agriculture"
-  | "Autre";
-
-const categories: ProductCategory[] = [
-  "Alimentation",
-  "Boissons",
-  "Beauté",
-  "Vêtements",
-  "Électronique",
-  "Agriculture",
-  "Autre",
-];
+import { useAuth } from "@/hooks/useAuth";
+import { localStore } from "@/lib/db";
+import { getProducts, saveProduct, uploadProductImage } from "@/lib/products";
 
 export default function AddProductPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
-  const initialCategory = (searchParams.get("category") as ProductCategory) || "Alimentation";
-  const [category, setCategory] = useState<ProductCategory>(initialCategory);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [billing, setBilling] = useState<BillingSubscription | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>("");
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadBilling = async () => {
@@ -64,35 +46,51 @@ export default function AddProductPage() {
     void loadBilling();
   }, []);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
+      const storeId = localStore.get()?.id;
+      if (!storeId) {
+        setError("Boutique introuvable. Reconnectez-vous.");
+        return;
+      }
+
       if (billing && normalizeBillingStatus(billing) === "expired") {
         setError("Votre abonnement est expire. Activez un plan pour continuer.");
         return;
       }
 
       const maxProducts = billing ? PLAN_LIMITS[billing.plan].maxProducts : PLAN_LIMITS.starter.maxProducts;
-      const existing = readLocalProducts();
+      const existing = await getProducts(storeId);
       if (existing.length >= maxProducts) {
         setError(`Limite atteinte (${maxProducts} produits). Passez a un plan superieur.`);
         return;
       }
 
-      const product = {
+      let image_url: string | null = null;
+      if (imageFile) {
+        if (!user?.id) {
+          setError("Connexion requise pour enregistrer la photo.");
+          return;
+        }
+        if (navigator.onLine) {
+          image_url = await uploadProductImage(user.id, imageFile);
+        }
+      }
+
+      await saveProduct(storeId, {
         id: `prod-${Date.now()}`,
         name: name.trim(),
-        description: description.trim(),
+        description: description.trim() || null,
         price: Number(price),
-        stock: Number(quantity),
         stock_quantity: Number(quantity),
-        category,
-        createdAt: new Date().toISOString(),
-      };
+        barcode: null,
+        image_url,
+        is_active: true,
+      });
 
-      writeLocalProducts([...existing, product]);
       router.push("/products?success=1");
     } finally {
       setLoading(false);
@@ -151,26 +149,26 @@ export default function AddProductPage() {
           </div>
 
           <div>
-            <Label>Catégorie</Label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ProductCategory)}
-              className="mt-1 flex h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm"
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
             <Label>Photo du produit</Label>
             <label className="mt-1 flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
-              <Camera className="h-6 w-6" />
-              <span className="mt-1 text-xs">Prendre une photo ou uploader (placeholder)</span>
-              <input type="file" accept="image/*" className="hidden" />
+              {imagePreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagePreviewUrl} alt="" className="h-full w-full rounded-xl object-cover" />
+              ) : (
+                <Camera className="h-6 w-6" />
+              )}
+              <span className="mt-1 text-xs">{imagePreviewUrl ? "Photo prete" : "Uploader une photo"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setImageFile(file);
+                  setImagePreviewUrl(URL.createObjectURL(file));
+                }}
+              />
             </label>
           </div>
 

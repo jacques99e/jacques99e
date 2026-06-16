@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
-import { readLocalProducts, type LocalProduct, writeLocalProducts } from "@/lib/local-products";
+import { type LocalProduct } from "@/lib/local-products";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
@@ -16,70 +16,125 @@ import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
+import { getProducts, saveProduct } from "@/lib/products";
+import type { Product } from "@/types";
 
 export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [products, setProducts] = useState<LocalProduct[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock">("name");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [persistError, setPersistError] = useState("");
 
   useEffect(() => {
-    setProducts(readLocalProducts());
+    const store = localStore.get();
+    setStoreId(store?.id ?? null);
+  }, []);
+
+  useEffect(() => {
     setShowSuccess(searchParams.get("success") === "1");
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const rows = await getProducts(storeId);
+        if (cancelled) return;
+        setProducts(rows);
+      } catch {
+        // Keep UI usable even if sync fails.
+      }
+    };
+
+    void load();
+    const interval = setInterval(() => void load(), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [storeId]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     let next = products.filter((p) => p.name.toLowerCase().includes(q));
-    if (categoryFilter !== "all") {
-      next = next.filter((p) => (p.category ?? "Autre") === categoryFilter);
-    }
     if (stockFilter === "low") {
-      next = next.filter((p) => p.stock > 0 && p.stock <= 5);
+      next = next.filter((p) => (p.stock_quantity ?? 0) > 0 && (p.stock_quantity ?? 0) <= 5);
     } else if (stockFilter === "out") {
-      next = next.filter((p) => p.stock <= 0);
+      next = next.filter((p) => (p.stock_quantity ?? 0) <= 0);
     }
     const sorted = [...next];
     if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
     if (sortBy === "price") sorted.sort((a, b) => b.price - a.price);
-    if (sortBy === "stock") sorted.sort((a, b) => b.stock - a.stock);
+    if (sortBy === "stock") sorted.sort((a, b) => (b.stock_quantity ?? 0) - (a.stock_quantity ?? 0));
     return sorted;
-  }, [products, search, categoryFilter, stockFilter, sortBy]);
+  }, [products, search, stockFilter, sortBy]);
 
-  const categories = useMemo(() => {
-    const values = [...new Set(products.map((p) => p.category ?? "Autre"))];
-    return values.sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  const stockValue = (p: Product) => p.stock_quantity ?? 0;
+  const toLocalProduct = (p: Product): LocalProduct => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ?? undefined,
+    price: p.price,
+    stock: p.stock_quantity ?? 0,
+    stock_quantity: p.stock_quantity ?? 0,
+    category: "Autre",
+    createdAt: p.created_at,
+  });
 
-  const stockValue = (p: LocalProduct) => p.stock ?? p.stock_quantity ?? 0;
-
-  const duplicateProduct = (product: LocalProduct) => {
-    const copy: LocalProduct = {
-      ...product,
-      id: `prod-${Date.now()}`,
-      name: `${product.name} (copie)`,
-      stock: stockValue(product),
-      stock_quantity: stockValue(product),
-      createdAt: new Date().toISOString(),
-    };
-    const next = [copy, ...products];
-    setProducts(next);
-    writeLocalProducts(next);
+  const duplicateProduct = async (product: Product) => {
+    if (!storeId) return;
+    setPersistError("");
+    try {
+      const nextId = `prod-${Date.now()}`;
+      const copy = await saveProduct(storeId, {
+        id: nextId,
+        name: `${product.name} (copie)`,
+        description: product.description ?? null,
+        price: product.price,
+        stock_quantity: stockValue(product),
+        barcode: product.barcode,
+        image_url: product.image_url,
+        is_active: true,
+      });
+      setProducts((prev) => [copy, ...prev]);
+    } catch {
+      setPersistError("Erreur lors de la duplication du produit.");
+    }
   };
 
-  const updateStock = (productId: string, delta: number) => {
-    const next = products.map((product) => {
-      if (product.id !== productId) return product;
-      const current = stockValue(product);
-      const updated = Math.max(0, current + delta);
-      return { ...product, stock: updated, stock_quantity: updated };
-    });
-    setProducts(next);
-    writeLocalProducts(next);
+  const updateStock = async (productId: string, delta: number) => {
+    if (!storeId) return;
+    setPersistError("");
+    const current = products.find((p) => p.id === productId);
+    if (!current) return;
+
+    const original = current;
+    const updated = Math.max(0, stockValue(original) + delta);
+
+    setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, stock_quantity: updated } : p)));
+    try {
+      const saved = await saveProduct(storeId, {
+        id: original.id,
+        name: original.name,
+        description: original.description ?? null,
+        price: original.price,
+        stock_quantity: updated,
+        barcode: original.barcode,
+        image_url: original.image_url,
+        is_active: original.is_active,
+      });
+      setProducts((prev) => prev.map((p) => (p.id === productId ? saved : p)));
+    } catch {
+      setPersistError("Erreur lors de la mise à jour du stock.");
+      setProducts((prev) => prev.map((p) => (p.id === productId ? original : p)));
+    }
   };
 
   return (
@@ -98,6 +153,11 @@ export default function ProductsPage() {
             Produit enregistré avec succès.
           </p>
         )}
+        {persistError ? (
+          <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 shadow-sm">
+            {persistError}
+          </p>
+        ) : null}
 
         <ModulePublicPortals moduleId="commerce" />
         <ModuleCompetitiveEdge moduleId="commerce" />
@@ -129,7 +189,7 @@ export default function ProductsPage() {
                 : undefined;
             const text = buildWhatsAppCatalog({
               storeName: store?.name || "Ma boutique",
-              products: filtered,
+              products: filtered.map(toLocalProduct),
               boutiqueUrl,
             });
             window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
@@ -168,19 +228,7 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-          >
-            <option value="all">Toutes catégories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <select
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as "all" | "low" | "out")}
@@ -210,7 +258,7 @@ export default function ProductsPage() {
                 filtered.map((p) => ({
                   id: p.id,
                   nom: p.name,
-                  categorie: p.category ?? "Autre",
+                  categorie: "Autre",
                   prix: p.price,
                   stock: stockValue(p),
                 }))
@@ -226,7 +274,7 @@ export default function ProductsPage() {
                 "Inventaire Produits",
                 filtered.map(
                   (p) =>
-                    `${p.name} | ${p.category ?? "Autre"} | ${formatCurrency(p.price)} | Stock ${stockValue(p)}`
+                    `${p.name} | Autre | ${formatCurrency(p.price)} | Stock ${stockValue(p)}`
                 ),
                 `inventaire-${new Date().toISOString().slice(0, 10)}.pdf`
               )
@@ -248,7 +296,12 @@ export default function ProductsPage() {
             {filtered.map((p) => (
               <li key={p.id} className="app-list-item">
                 <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 rounded-lg bg-gray-200" />
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image_url} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-lg bg-gray-200" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold text-gray-900">{p.name}</p>
                     <p className="text-sm text-[#075E54]">{formatCurrency(p.price)}</p>
@@ -256,7 +309,7 @@ export default function ProductsPage() {
                       <span>Stock: {stockValue(p)}</span>
                       <button
                         type="button"
-                        onClick={() => updateStock(p.id, -1)}
+                        onClick={() => void updateStock(p.id, -1)}
                         className="rounded border px-1.5 hover:bg-gray-100"
                         aria-label={`Diminuer le stock de ${p.name}`}
                       >
@@ -264,7 +317,7 @@ export default function ProductsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateStock(p.id, 1)}
+                        onClick={() => void updateStock(p.id, 1)}
                         className="rounded border px-1.5 hover:bg-gray-100"
                         aria-label={`Augmenter le stock de ${p.name}`}
                       >
@@ -282,7 +335,7 @@ export default function ProductsPage() {
                             : "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      {p.category ?? "Autre"}
+                      {p.barcode ?? "Produit"}
                     </span>
                     <button
                       type="button"
@@ -294,7 +347,7 @@ export default function ProductsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => duplicateProduct(p)}
+                      onClick={() => void duplicateProduct(p)}
                       className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
                     >
                       <Copy className="h-3 w-3" />

@@ -9,12 +9,15 @@ import { Label } from "./ui/label";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { useI18n } from "@/contexts/I18nContext";
 import type { Product } from "@/types";
+import { saveProduct, uploadProductImage } from "@/lib/products";
 
 interface ProductFormProps {
   product?: Product;
+  storeId: string;
+  userId: string;
 }
 
-export function ProductForm({ product }: ProductFormProps) {
+export function ProductForm({ product, storeId, userId }: ProductFormProps) {
   const { t } = useI18n();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -24,7 +27,8 @@ export function ProductForm({ product }: ProductFormProps) {
   const [quantity, setQuantity] = useState(String(product?.stock_quantity ?? "0"));
   const [description, setDescription] = useState(product?.description ?? "");
   const [barcode, setBarcode] = useState(product?.barcode ?? "");
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(product?.image_url ?? "");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -32,8 +36,8 @@ export function ProductForm({ product }: ProductFormProps) {
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,28 +45,35 @@ export function ProductForm({ product }: ProductFormProps) {
     setLoading(true);
     setSuccessMessage("");
     try {
-      const productItem: Product = {
-        id: product?.id || `local-product-${Date.now()}`,
-        store_id: "local-store-test",
+      if (!product?.id) {
+        throw new Error("Produit introuvable.");
+      }
+
+      let finalImageUrl = product.image_url ?? null;
+      if (imageFile) {
+        // Pour que l'image s'affiche aussi sur d'autres téléphones, il faut une URL publique.
+        if (!navigator.onLine) {
+          throw new Error("Connectez-vous pour enregistrer la photo du produit.");
+        }
+        if (!userId) {
+          throw new Error("Session requise pour enregistrer la photo.");
+        }
+        finalImageUrl = await uploadProductImage(userId, imageFile);
+      }
+
+      await saveProduct(storeId, {
+        id: product.id,
         name,
         description: description || null,
         price: Number(price),
         stock_quantity: Number(quantity),
         barcode: barcode || null,
-        image_url: imageUrl || null,
+        image_url: finalImageUrl,
         is_active: true,
-      };
-
-      const existingRaw = localStorage.getItem("wazo_products");
-      const existing = existingRaw ? (JSON.parse(existingRaw) as Product[]) : [];
-      const withoutCurrent = existing.filter((p) => p.id !== productItem.id);
-      const updatedProducts = [...withoutCurrent, productItem];
-      localStorage.setItem("wazo_products", JSON.stringify(updatedProducts));
+      });
 
       setSuccessMessage("Produit enregistré avec succès");
-      setTimeout(() => {
-        router.push("/products");
-      }, 500);
+      setTimeout(() => void router.push("/products"), 500);
     } finally {
       setLoading(false);
     }
@@ -75,8 +86,8 @@ export function ProductForm({ product }: ProductFormProps) {
         onClick={() => fileRef.current?.click()}
         className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-wazo-green/30 bg-wazo-cream"
       >
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        {imagePreviewUrl ? (
+          <img src={imagePreviewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <Camera className="h-8 w-8 text-wazo-green" />
         )}
