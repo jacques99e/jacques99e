@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -27,6 +28,12 @@ function loadEnvFile(filePath) {
 const env = {
   ...loadEnvFile(path.join(ROOT, ".env.local")),
   ...loadEnvFile(path.join(ROOT, ".env.vercel.production")),
+  ...Object.fromEntries(
+    ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].map((k) => [
+      k,
+      process.env[k],
+    ]).filter(([, v]) => v)
+  ),
 };
 
 const SUPA = env.NEXT_PUBLIC_SUPABASE_URL;

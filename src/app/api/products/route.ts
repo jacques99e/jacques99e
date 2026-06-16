@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
     }
 
-    const storeId = request.nextUrl.searchParams.get("storeId");
+    const storeId =
+      request.nextUrl.searchParams.get("storeId") ??
+      request.nextUrl.searchParams.get("store_id");
     if (!storeId) {
       return NextResponse.json({ success: false, error: "storeId requis." }, { status: 400 });
     }
