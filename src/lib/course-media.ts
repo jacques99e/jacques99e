@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/api-client";
+
 export type LessonMediaKind = "youtube" | "facebook" | "file" | "external";
 
 export interface ParsedLessonMedia {
@@ -35,8 +37,8 @@ export function parseLessonMediaUrl(raw: string): ParsedLessonMedia | null {
 }
 
 export async function uploadCourseVideo(
-  userId: string,
-  courseId: string,
+  _userId: string,
+  _courseId: string,
   file: File
 ): Promise<string> {
   const maxMb = 80;
@@ -44,25 +46,28 @@ export async function uploadCourseVideo(
     throw new Error(`Vidéo trop lourde (max ${maxMb} Mo). Utilisez un lien YouTube pour économiser la data.`);
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
-  const safeExt = ["mp4", "webm", "mov", "ogg"].includes(ext) ? ext : "mp4";
-  const path = `${userId}/${courseId}/${Date.now()}.${safeExt}`;
-
-  const { supabase } = await import("@/lib/supabase/client");
-
   if (!navigator.onLine) {
-    return URL.createObjectURL(file);
+    throw new Error("Connexion requise pour envoyer la vidéo.");
   }
 
-  const { error } = await supabase.storage.from("course-media").upload(path, file, {
-    upsert: true,
-    contentType: file.type || `video/${safeExt}`,
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("bucket", "course-media");
+
+  const response = await apiFetch("/api/media/upload", {
+    method: "POST",
+    body: formData,
   });
 
-  if (error) {
-    throw new Error(error.message || "Impossible d'envoyer la vidéo.");
+  const payload = (await response.json()) as {
+    success: boolean;
+    url?: string;
+    error?: string;
+  };
+
+  if (!response.ok || !payload.success || !payload.url) {
+    throw new Error(payload.error || "Impossible d'envoyer la vidéo.");
   }
 
-  const { data } = supabase.storage.from("course-media").getPublicUrl(path);
-  return data.publicUrl;
+  return payload.url;
 }

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { apiFetch } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase/client";
 import { generateLocalId } from "@/lib/sync";
 import type { Course, CourseEnrollment, CourseModule } from "@/types";
@@ -39,23 +40,31 @@ async function syncPendingModules(courseId: string): Promise<CourseModule[]> {
   let next = [...local];
 
   for (const courseModule of pending) {
-    const { data, error } = await supabase
-      .from("course_modules")
-      .insert({
-        course_id: courseId,
-        title: courseModule.title,
-        content: courseModule.content ?? null,
-        media_url: courseModule.media_url ?? null,
-        sort_order:
-          typeof courseModule.sort_order === "number" ? courseModule.sort_order : 0,
-      })
-      .select("*")
-      .single();
-
-    if (error || !data) continue;
-    next = next.map((item) =>
-      item.id === courseModule.id ? (data as CourseModule) : item
-    );
+    try {
+      const response = await apiFetch("/api/education/modules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          course_id: courseId,
+          title: courseModule.title,
+          content: courseModule.content ?? null,
+          media_url: courseModule.media_url ?? null,
+          sort_order:
+            typeof courseModule.sort_order === "number" ? courseModule.sort_order : 0,
+        }),
+      });
+      const payload = (await response.json()) as {
+        success: boolean;
+        module?: CourseModule;
+      };
+      if (response.ok && payload.success && payload.module) {
+        next = next.map((item) =>
+          item.id === courseModule.id ? payload.module! : item
+        );
+      }
+    } catch {
+      // Keep pending for next refresh.
+    }
   }
 
   writeLocalModules(courseId, next);
@@ -89,22 +98,33 @@ export async function saveCourse(
   };
   if (db) await db.courses.put(record);
   if (navigator.onLine) {
-    const { data } = await supabase
-      .from("courses")
-      .upsert({
-        id: localId.startsWith("local-") ? undefined : localId,
-        store_id: storeId,
-        title: record.title,
-        description: record.description,
-        is_public: record.is_public,
-      })
-      .select()
-      .single();
-    if (data) {
-      record.id = data.id;
-      record.invite_code = data.invite_code;
-      record._pendingSync = false;
-      if (db) await db.courses.put(record);
+    try {
+      const response = await apiFetch("/api/education/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: storeId,
+          title: record.title,
+          description: record.description,
+          is_public: record.is_public,
+        }),
+      });
+      const payload = (await response.json()) as { course?: Course; error?: string };
+      if (response.ok && payload.course) {
+        record.id = payload.course.id;
+        record.invite_code = payload.course.invite_code;
+        record._pendingSync = false;
+        if (db) {
+          if (localId.startsWith("local-")) await db.courses.delete(localId);
+          await db.courses.put(record);
+        }
+        return record;
+      }
+      throw new Error(payload.error || "Impossible d'enregistrer le cours en ligne.");
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error("Impossible d'enregistrer le cours en ligne.");
     }
   }
   return record;
@@ -171,39 +191,44 @@ export async function createCourseModule(
     };
   }
 
-  const { data, error } = await supabase
-    .from("course_modules")
-    .insert({
-      course_id: courseId,
-      title: input.title,
-      content: input.content ?? null,
-      media_url: input.media_url?.trim() || null,
-      sort_order: nextOrder,
-    })
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    // Fallback local is kept so user can continue even if RLS/network fails.
-    // Pending rows are retried automatically on the next list refresh.
+  try {
+    const response = await apiFetch("/api/education/modules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        course_id: courseId,
+        title: input.title,
+        content: input.content ?? null,
+        media_url: input.media_url?.trim() || null,
+        sort_order: nextOrder,
+      }),
+    });
+    const payload = (await response.json()) as {
+      success: boolean;
+      module?: CourseModule;
+      error?: string;
+    };
+    if (response.ok && payload.success && payload.module) {
+      const merged = readLocalModules(courseId).map((item) =>
+        item.id === localRow.id ? payload.module! : item
+      );
+      writeLocalModules(courseId, merged);
+      return { module: payload.module, synced: true };
+    }
     return {
       module: localRow,
       synced: false,
       reason: "supabase_error",
-      message:
-        error?.message ??
-        "Supabase a refuse la creation du module. Sauvegarde locale effectuee, synchronisation en attente.",
+      message: payload.error || "Synchronisation module impossible.",
+    };
+  } catch (error) {
+    return {
+      module: localRow,
+      synced: false,
+      reason: "supabase_error",
+      message: error instanceof Error ? error.message : "Synchronisation module impossible.",
     };
   }
-
-  const merged = readLocalModules(courseId).map((item) =>
-    item.id === localRow.id ? (data as CourseModule) : item
-  );
-  writeLocalModules(courseId, merged);
-  return {
-    module: data as CourseModule,
-    synced: true,
-  };
 }
 
 export async function updateCourseModule(

@@ -1,4 +1,6 @@
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
+import { isCloudUuid } from "@/lib/cloud-uuid";
 import { supabase } from "@/lib/supabase/client";
 import { generateLocalId } from "@/lib/sync";
 import type {
@@ -9,13 +11,23 @@ import type {
 } from "@/types";
 
 export async function listPatients(storeId: string): Promise<HealthPatient[]> {
+  if (navigator.onLine) {
+    const { data } = await supabase.from("health_patients").select("*").eq("store_id", storeId);
+    if (data && db && data.length > 0) {
+      await db.healthPatients.where("store_id").equals(storeId).delete();
+      await db.healthPatients.bulkPut(data.map((p) => ({ ...p, _pendingSync: false })));
+      return data;
+    }
+  }
+
   if (db) {
     const local = await db.healthPatients.where("store_id").equals(storeId).toArray();
-    if (local.length || !navigator.onLine) return local;
+    if (local.length > 0) return local;
   }
+
   if (!navigator.onLine) return [];
   const { data } = await supabase.from("health_patients").select("*").eq("store_id", storeId);
-  if (data && db) await db.healthPatients.bulkPut(data);
+  if (data && db) await db.healthPatients.bulkPut(data.map((p) => ({ ...p, _pendingSync: false })));
   return data || [];
 }
 
@@ -23,9 +35,12 @@ export async function savePatient(
   storeId: string,
   patient: Partial<HealthPatient> & { full_name: string }
 ): Promise<HealthPatient> {
-  const localId = patient.id || generateLocalId();
+  const hasServerId = Boolean(patient.id && isCloudUuid(patient.id));
+  const localId = hasServerId ? undefined : patient._localId || generateLocalId();
+  const id = hasServerId ? patient.id! : localId!;
+
   const record: HealthPatient = {
-    id: localId,
+    id,
     store_id: storeId,
     full_name: patient.full_name,
     age: patient.age ?? null,
@@ -33,31 +48,43 @@ export async function savePatient(
     allergies: patient.allergies ?? null,
     medical_history: patient.medical_history ?? null,
     phone: patient.phone ?? null,
-    _localId: localId.startsWith("local-") ? localId : undefined,
+    _localId: localId,
     _pendingSync: true,
   };
+
   if (db) await db.healthPatients.put(record);
+
   if (navigator.onLine) {
-    const { data } = await supabase
-      .from("health_patients")
-      .upsert({
-        id: localId.startsWith("local-") ? undefined : localId,
+    const response = await apiFetch("/api/health/patients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         store_id: storeId,
+        id: hasServerId ? patient.id : undefined,
         full_name: record.full_name,
         age: record.age,
         blood_group: record.blood_group,
         allergies: record.allergies,
         medical_history: record.medical_history,
         phone: record.phone,
-      })
-      .select()
-      .single();
-    if (data) {
-      record.id = data.id;
-      record._pendingSync = false;
-      if (db) await db.healthPatients.put(record);
+      }),
+    });
+    const payload = (await response.json()) as {
+      success: boolean;
+      patient?: HealthPatient;
+      error?: string;
+    };
+    if (!response.ok || !payload.success || !payload.patient) {
+      throw new Error(payload.error || "Impossible d'enregistrer le patient en ligne.");
     }
+    const saved = { ...payload.patient, _pendingSync: false };
+    if (db) {
+      if (localId) await db.healthPatients.delete(localId);
+      await db.healthPatients.put(saved);
+    }
+    return saved;
   }
+
   return record;
 }
 

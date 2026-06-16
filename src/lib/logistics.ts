@@ -1,4 +1,6 @@
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
+import { isCloudUuid } from "@/lib/cloud-uuid";
 import { supabase } from "@/lib/supabase/client";
 import { generateLocalId } from "@/lib/sync";
 import type { Delivery, DeliveryStatus } from "@/types";
@@ -8,17 +10,39 @@ export function generateTrackingCode(): string {
 }
 
 export async function listDeliveries(storeId: string): Promise<Delivery[]> {
+  if (navigator.onLine) {
+    try {
+      const response = await apiFetch(
+        `/api/logistics/deliveries?store_id=${encodeURIComponent(storeId)}`,
+        { cache: "no-store" }
+      );
+      const payload = (await response.json()) as { deliveries?: Delivery[] };
+      if (response.ok && payload.deliveries) {
+        if (db && payload.deliveries.length > 0) {
+          await db.deliveries.where("store_id").equals(storeId).delete();
+          await db.deliveries.bulkPut(
+            payload.deliveries.map((d) => ({ ...d, _pendingSync: false }))
+          );
+        }
+        return payload.deliveries;
+      }
+    } catch {
+      // Fallback below.
+    }
+  }
+
   if (db) {
     const local = await db.deliveries.where("store_id").equals(storeId).toArray();
-    if (local.length || !navigator.onLine) return local;
+    if (local.length > 0) return local;
   }
+
   if (!navigator.onLine) return [];
   const { data } = await supabase
     .from("deliveries")
     .select("*")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
-  if (data && db) await db.deliveries.bulkPut(data);
+  if (data && db) await db.deliveries.bulkPut(data.map((d) => ({ ...d, _pendingSync: false })));
   return data || [];
 }
 
@@ -27,11 +51,10 @@ export async function createDelivery(
   input: Omit<Delivery, "id" | "store_id" | "tracking_code" | "status">
 ): Promise<Delivery> {
   const localId = generateLocalId();
-  const tracking_code = generateTrackingCode();
   const delivery: Delivery = {
     id: localId,
     store_id: storeId,
-    tracking_code,
+    tracking_code: generateTrackingCode(),
     sender_name: input.sender_name,
     recipient_name: input.recipient_name,
     recipient_phone: input.recipient_phone ?? null,
@@ -44,25 +67,32 @@ export async function createDelivery(
   if (db) await db.deliveries.put(delivery);
 
   if (navigator.onLine) {
-    const { data } = await supabase
-      .from("deliveries")
-      .insert({
+    const response = await apiFetch("/api/logistics/deliveries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         store_id: storeId,
-        tracking_code,
         sender_name: input.sender_name,
         recipient_name: input.recipient_name,
         recipient_phone: input.recipient_phone,
         address: input.address,
-        status: "pending",
-      })
-      .select()
-      .single();
-    if (data) {
-      delivery.id = data.id;
-      delivery._pendingSync = false;
-      if (db) await db.deliveries.put(delivery);
+      }),
+    });
+    const payload = (await response.json()) as {
+      delivery?: Delivery;
+      error?: string;
+    };
+    if (!response.ok || !payload.delivery) {
+      throw new Error(payload.error || "Impossible d'enregistrer la livraison en ligne.");
     }
+    const saved = { ...payload.delivery, _pendingSync: false };
+    if (db) {
+      await db.deliveries.delete(localId);
+      await db.deliveries.put(saved);
+    }
+    return saved;
   }
+
   return delivery;
 }
 
@@ -74,11 +104,20 @@ export async function updateDeliveryStatus(
   if (db) {
     await db.deliveries.update(id, { status, signature_data, updated_at: new Date().toISOString() });
   }
-  if (navigator.onLine) {
-    await supabase
-      .from("deliveries")
-      .update({ status, signature_data, updated_at: new Date().toISOString() })
-      .eq("id", id);
+  if (!navigator.onLine) return;
+
+  if (!isCloudUuid(id)) {
+    throw new Error("Livraison non synchronisee. Reconnectez-vous puis reessayez.");
+  }
+
+  const response = await apiFetch("/api/logistics/deliveries", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status, signature_data }),
+  });
+  const payload = (await response.json()) as { error?: string };
+  if (!response.ok) {
+    throw new Error(payload.error || "Impossible de mettre a jour la livraison.");
   }
 }
 

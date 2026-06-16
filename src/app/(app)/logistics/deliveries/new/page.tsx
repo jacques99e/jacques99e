@@ -23,23 +23,27 @@ export default function NewDeliveryPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
-    const d = await createDelivery(store.id, {
-      sender_name: sender,
-      recipient_name: recipient,
-      recipient_phone: phone,
-      address,
-    });
-    await logAuditEvent({
-      action: "delivery_created",
-      entityType: "delivery",
-      entityId: d.id,
-      payload: {
-        tracking_code: d.tracking_code,
-        recipient_name: d.recipient_name,
-        status: d.status,
-      },
-    });
-    router.push(`/logistics/deliveries/${encodeURIComponent(d.id)}`);
+    try {
+      const d = await createDelivery(store.id, {
+        sender_name: sender,
+        recipient_name: recipient,
+        recipient_phone: phone,
+        address,
+      });
+      await logAuditEvent({
+        action: "delivery_created",
+        entityType: "delivery",
+        entityId: d.id,
+        payload: {
+          tracking_code: d.tracking_code,
+          recipient_name: d.recipient_name,
+          status: d.status,
+        },
+      });
+      router.push(`/logistics/deliveries/${encodeURIComponent(d.id)}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Impossible de creer la livraison.");
+    }
   };
 
   return (
