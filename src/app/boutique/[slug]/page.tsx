@@ -57,10 +57,15 @@ export default async function StorefrontPage({ params }: PageProps) {
     .eq("store_id", store.id)
     .order("name");
 
+  const phone = store.phone?.trim() || null;
+  const whatsapp = store.whatsapp?.trim() || phone;
+
   return (
     <StorefrontClient
       store={{
         ...store,
+        phone,
+        whatsapp,
         logo_url: toPublicProductImageUrl(store.logo_url),
         cover_url: toPublicProductImageUrl(store.cover_url),
         products: (products || []).map((p) =>

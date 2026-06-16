@@ -147,21 +147,23 @@ export async function deleteProduct(id: string) {
   }
 }
 
-export async function uploadProductImage(
-  userId: string,
-  file: File
-): Promise<string | null> {
-  if (!navigator.onLine) return null;
+export async function uploadProductImage(_userId: string, file: File): Promise<string> {
+  if (!navigator.onLine) {
+    throw new Error("Connexion requise pour envoyer la photo.");
+  }
 
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `${userId}/${Date.now()}.${ext}`;
+  const form = new FormData();
+  form.append("file", file);
 
-  const { error } = await supabase.storage
-    .from("product-images")
-    .upload(path, file, { upsert: true });
+  const response = await apiFetch("/api/uploads/product-image", {
+    method: "POST",
+    body: form,
+  });
+  const payload = (await response.json()) as { success: boolean; url?: string; error?: string };
 
-  if (error) return null;
+  if (!response.ok || !payload.success || !payload.url) {
+    throw new Error(payload.error || "Impossible d'envoyer la photo du produit.");
+  }
 
-  const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-  return data.publicUrl;
+  return payload.url;
 }

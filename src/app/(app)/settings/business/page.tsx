@@ -15,6 +15,7 @@ import {
   type WhatsAppTemplate,
 } from "@/lib/business-settings";
 import { notifyAlertsChanged } from "@/lib/alerts";
+import { apiFetch } from "@/lib/api-client";
 import { localStore } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import type { Store } from "@/types";
@@ -38,18 +39,35 @@ export default function BusinessSettingsPage() {
 
   useEffect(() => {
     setSettings(getBusinessSettings());
-    const store = localStore.get();
-    if (!store) return;
-    setStoreIdentity({
-      id: store.id,
-      name: store.name || "",
-      description: store.description || "",
-      phone: store.phone || "",
-      whatsapp: store.whatsapp || "",
-      logo_url: store.logo_url || "",
-      cover_url: store.cover_url || "",
-    });
   }, []);
+
+  useEffect(() => {
+    const loadStore = async () => {
+      const cached = localStore.get();
+      if (!cached?.id || !user?.id) return;
+
+      const { data, error } = await supabase
+        .from("stores")
+        .select("*")
+        .eq("id", cached.id)
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      const store = !error && data ? (data as Store) : cached;
+      localStore.save(store);
+      setStoreIdentity({
+        id: store.id,
+        name: store.name || "",
+        description: store.description || "",
+        phone: store.phone || "",
+        whatsapp: store.whatsapp || store.phone || "",
+        logo_url: store.logo_url || "",
+        cover_url: store.cover_url || "",
+      });
+    };
+
+    void loadStore();
+  }, [supabase, user?.id]);
 
   if (!canManageSettings) {
     return (
@@ -114,16 +132,15 @@ export default function BusinessSettingsPage() {
     persist(DEFAULT_BUSINESS_SETTINGS);
   };
 
-  const uploadStoreAsset = async (file: File, kind: "logo" | "cover"): Promise<string> => {
-    if (!user?.id) throw new Error("Session introuvable.");
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${user.id}/stores/${kind}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file, {
-      upsert: true,
-    });
-    if (error) throw error;
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    return data.publicUrl;
+  const uploadStoreAsset = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await apiFetch("/api/uploads/product-image", { method: "POST", body: form });
+    const payload = (await response.json()) as { success: boolean; url?: string; error?: string };
+    if (!response.ok || !payload.success || !payload.url) {
+      throw new Error(payload.error || "Impossible d'envoyer l'image.");
+    }
+    return payload.url;
   };
 
   const saveStoreIdentity = async () => {
@@ -131,27 +148,42 @@ export default function BusinessSettingsPage() {
     setSavingIdentity(true);
     setIdentityMessage("");
     try {
-      const payload = {
-        name: storeIdentity.name.trim() || "Ma boutique",
-        description: storeIdentity.description.trim() || null,
-        phone: storeIdentity.phone.trim() || null,
-        whatsapp: storeIdentity.whatsapp.trim() || null,
-        logo_url: storeIdentity.logo_url.trim() || null,
-        cover_url: storeIdentity.cover_url.trim() || null,
+      const response = await apiFetch("/api/stores/identity", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: storeIdentity.id,
+          name: storeIdentity.name,
+          description: storeIdentity.description,
+          phone: storeIdentity.phone,
+          whatsapp: storeIdentity.whatsapp,
+          logo_url: storeIdentity.logo_url,
+          cover_url: storeIdentity.cover_url,
+        }),
+      });
+      const payload = (await response.json()) as {
+        success: boolean;
+        store?: Store;
+        error?: string;
       };
-      const { data, error } = await supabase
-        .from("stores")
-        .update(payload)
-        .eq("id", storeIdentity.id)
-        .eq("owner_id", user.id)
-        .select("*")
-        .single();
-
-      if (error) throw error;
-      if (data) localStore.save(data as Store);
+      if (!response.ok || !payload.success || !payload.store) {
+        throw new Error(payload.error || "Enregistrement impossible.");
+      }
+      localStore.save(payload.store);
+      setStoreIdentity({
+        id: payload.store.id,
+        name: payload.store.name || "",
+        description: payload.store.description || "",
+        phone: payload.store.phone || "",
+        whatsapp: payload.store.whatsapp || payload.store.phone || "",
+        logo_url: payload.store.logo_url || "",
+        cover_url: payload.store.cover_url || "",
+      });
       setIdentityMessage("Identité boutique enregistrée.");
-    } catch {
-      setIdentityMessage("Impossible d'enregistrer la boutique pour le moment.");
+    } catch (err) {
+      setIdentityMessage(
+        err instanceof Error ? err.message : "Impossible d'enregistrer la boutique pour le moment."
+      );
     } finally {
       setSavingIdentity(false);
     }
@@ -221,7 +253,7 @@ export default function BusinessSettingsPage() {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    const url = await uploadStoreAsset(file, "logo");
+                    const url = await uploadStoreAsset(file);
                     setStoreIdentity((prev) => (prev ? { ...prev, logo_url: url } : prev));
                   } catch {
                     setIdentityMessage("Upload logo impossible.");
@@ -243,7 +275,7 @@ export default function BusinessSettingsPage() {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    const url = await uploadStoreAsset(file, "cover");
+                    const url = await uploadStoreAsset(file);
                     setStoreIdentity((prev) => (prev ? { ...prev, cover_url: url } : prev));
                   } catch {
                     setIdentityMessage("Upload couverture impossible.");

@@ -23,7 +23,8 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
   const { t } = useI18n();
   const [stickyVisible, setStickyVisible] = useState(false);
   const landingUrl = resolveLandingUrl();
-  const contactPhone = store.whatsapp || store.phone || "";
+  const contactPhone = (store.whatsapp || store.phone || "").replace(/\s/g, "");
+  const hasWhatsApp = contactPhone.replace(/\D/g, "").length >= 8;
   const productCount = store.products.length;
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
@@ -68,7 +69,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                 className="h-24 w-24 rounded-3xl border-4 border-white/30 object-cover shadow-wazo-lg"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white/30 bg-white/15 text-4xl font-bold shadow-wazo-lg backdrop-blur-sm">
+              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white/30 bg-white/20 text-4xl font-bold shadow-wazo-lg">
                 {store.name[0]?.toUpperCase() || "W"}
               </div>
             )}
@@ -92,7 +93,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
               <Package className="h-4 w-4 text-[#FF6F00]" />
               {t("storefront.productsCount", { count: productCount })}
             </span>
-            {contactPhone ? (
+            {hasWhatsApp ? (
               <a
                 href={getWhatsAppLink(
                   contactPhone,
@@ -119,13 +120,20 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
           <p className="mt-2 text-sm text-[#1A1A1A]/65">{t("storefront.catalogHint")}</p>
         </div>
 
+        {!hasWhatsApp ? (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Commande WhatsApp indisponible : le propriétaire doit renseigner un numéro dans{" "}
+            <strong>Paramètres métier</strong> de l&apos;application.
+          </div>
+        ) : null}
+
         {productCount === 0 ? (
           <div className="rounded-3xl border border-[#075E54]/10 bg-white p-10 text-center shadow-sm">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#075E54]/10 text-[#075E54]">
               <ShoppingBag className="h-8 w-8" />
             </div>
             <p className="font-semibold text-[#1A1A1A]">{t("storefront.emptyCatalog")}</p>
-            {contactPhone ? (
+            {hasWhatsApp ? (
               <a
                 href={getWhatsAppLink(
                   contactPhone,
@@ -186,7 +194,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
 
                     <a
                       href={
-                        contactPhone
+                        hasWhatsApp
                           ? getWhatsAppLink(
                               contactPhone,
                               `Bonjour ${store.name}! Je souhaite commander: ${product.name} (${formatCurrency(
@@ -197,11 +205,11 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                       }
                       target="_blank"
                       rel="noreferrer"
-                      aria-disabled={!contactPhone}
+                      aria-disabled={!hasWhatsApp}
                       className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white transition ${
-                        contactPhone
+                        hasWhatsApp
                           ? "bg-[#25D366] hover:brightness-105"
-                          : "cursor-not-allowed bg-[#25D366]/60 pointer-events-none"
+                          : "cursor-not-allowed bg-gray-300 text-gray-600 pointer-events-none"
                       }`}
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -236,7 +244,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
         </div>
       </footer>
 
-      {contactPhone && productCount > 0 && stickyVisible ? (
+      {hasWhatsApp && productCount > 0 && stickyVisible ? (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#075E54]/15 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(7,94,84,0.12)] backdrop-blur-md safe-bottom">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-1">
             <div className="min-w-0 flex-1">
