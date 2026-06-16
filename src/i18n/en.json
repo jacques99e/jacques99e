@@ -466,6 +466,7 @@
   "storefront.footerTagline": "Wazo Digital storefront",
   "storefront.createStore": "Create my store",
   "storefront.stickyHint": "Questions? Message us on WhatsApp.",
+  "storefront.whatsappMissing": "WhatsApp ordering unavailable: the store owner must add a phone number in Business settings in the app.",
   "tournee.client": "Customer",
   "tournee.code": "Code",
   "tournee.count": "{count} active delivery(ies)",

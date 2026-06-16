@@ -476,6 +476,7 @@
   "storefront.footerTagline": "Vitrine Wazo Digital",
   "storefront.createStore": "Créer ma boutique",
   "storefront.stickyHint": "Une question ? Écrivez-nous sur WhatsApp.",
+  "storefront.whatsappMissing": "Commande WhatsApp indisponible : le propriétaire doit renseigner un numéro dans Paramètres métier de l'application.",
   "tournee.client": "Client",
   "tournee.code": "Code",
   "tournee.count": "{count} livraison(s) active(s)",

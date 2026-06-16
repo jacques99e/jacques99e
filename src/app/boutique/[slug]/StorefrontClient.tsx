@@ -17,14 +17,13 @@ import type { Product, Store as StoreType } from "@/types";
 
 interface StorefrontClientProps {
   store: StoreType & { products: Product[] };
+  contactPhone?: string;
 }
 
-export function StorefrontClient({ store }: StorefrontClientProps) {
+export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientProps) {
   const { t } = useI18n();
   const [stickyVisible, setStickyVisible] = useState(false);
   const landingUrl = resolveLandingUrl();
-  const contactPhone = (store.whatsapp || store.phone || "").replace(/\s/g, "");
-  const hasWhatsApp = contactPhone.replace(/\D/g, "").length >= 8;
   const productCount = store.products.length;
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
@@ -44,18 +43,17 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
         </a>
       </div>
 
-      <header className="relative overflow-hidden border-b border-[#075E54]/10">
+      <header className="relative overflow-hidden border-b border-[#075E54]/10 bg-gradient-to-br from-[#075E54] via-[#0a7a6e] to-[#128C7E]">
         {store.cover_url ? (
           <>
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${store.cover_url})` }}
+            <img
+              src={store.cover_url}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#075E54]/78 via-[#075E54]/60 to-[#054A42]/88" />
+            <div className="absolute inset-0 bg-[#075E54]/45" />
           </>
-        ) : (
-          <div className="storefront-hero-mesh absolute inset-0 bg-gradient-to-br from-[#075E54] via-[#075E54] to-[#128C7E]" />
-        )}
+        ) : null}
 
         <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-[#FF6F00]/20" />
@@ -69,7 +67,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                 className="h-24 w-24 rounded-3xl border-4 border-white/30 object-cover shadow-wazo-lg"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white/30 bg-white/20 text-4xl font-bold shadow-wazo-lg">
+              <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white/40 bg-white/20 text-4xl font-bold shadow-wazo-lg">
                 {store.name[0]?.toUpperCase() || "W"}
               </div>
             )}
@@ -93,7 +91,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
               <Package className="h-4 w-4 text-[#FF6F00]" />
               {t("storefront.productsCount", { count: productCount })}
             </span>
-            {hasWhatsApp ? (
+            {contactPhone ? (
               <a
                 href={getWhatsAppLink(
                   contactPhone,
@@ -118,14 +116,12 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
           </p>
           <h2 className="mt-2 text-2xl font-bold text-[#075E54] md:text-3xl">{t("storefront.catalog")}</h2>
           <p className="mt-2 text-sm text-[#1A1A1A]/65">{t("storefront.catalogHint")}</p>
+          {!contactPhone ? (
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {t("storefront.whatsappMissing")}
+            </p>
+          ) : null}
         </div>
-
-        {!hasWhatsApp ? (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Commande WhatsApp indisponible : le propriétaire doit renseigner un numéro dans{" "}
-            <strong>Paramètres métier</strong> de l&apos;application.
-          </div>
-        ) : null}
 
         {productCount === 0 ? (
           <div className="rounded-3xl border border-[#075E54]/10 bg-white p-10 text-center shadow-sm">
@@ -133,7 +129,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
               <ShoppingBag className="h-8 w-8" />
             </div>
             <p className="font-semibold text-[#1A1A1A]">{t("storefront.emptyCatalog")}</p>
-            {hasWhatsApp ? (
+            {contactPhone ? (
               <a
                 href={getWhatsAppLink(
                   contactPhone,
@@ -194,7 +190,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
 
                     <a
                       href={
-                        hasWhatsApp
+                        contactPhone
                           ? getWhatsAppLink(
                               contactPhone,
                               `Bonjour ${store.name}! Je souhaite commander: ${product.name} (${formatCurrency(
@@ -205,11 +201,11 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
                       }
                       target="_blank"
                       rel="noreferrer"
-                      aria-disabled={!hasWhatsApp}
+                      aria-disabled={!contactPhone}
                       className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white transition ${
-                        hasWhatsApp
+                        contactPhone
                           ? "bg-[#25D366] hover:brightness-105"
-                          : "cursor-not-allowed bg-gray-300 text-gray-600 pointer-events-none"
+                          : "cursor-not-allowed bg-[#25D366]/60 pointer-events-none"
                       }`}
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -244,7 +240,7 @@ export function StorefrontClient({ store }: StorefrontClientProps) {
         </div>
       </footer>
 
-      {hasWhatsApp && productCount > 0 && stickyVisible ? (
+      {contactPhone && productCount > 0 && stickyVisible ? (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#075E54]/15 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(7,94,84,0.12)] backdrop-blur-md safe-bottom">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-1">
             <div className="min-w-0 flex-1">

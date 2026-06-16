@@ -147,22 +147,30 @@ export async function deleteProduct(id: string) {
   }
 }
 
-export async function uploadProductImage(_userId: string, file: File): Promise<string> {
+export async function uploadProductImage(
+  _userId: string,
+  file: File
+): Promise<string> {
   if (!navigator.onLine) {
-    throw new Error("Connexion requise pour envoyer la photo.");
+    throw new Error("Connexion requise pour enregistrer la photo.");
   }
 
-  const form = new FormData();
-  form.append("file", file);
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const response = await apiFetch("/api/uploads/product-image", {
+  const response = await apiFetch("/api/media/upload", {
     method: "POST",
-    body: form,
+    body: formData,
   });
-  const payload = (await response.json()) as { success: boolean; url?: string; error?: string };
+
+  const payload = (await response.json()) as {
+    success: boolean;
+    url?: string;
+    error?: string;
+  };
 
   if (!response.ok || !payload.success || !payload.url) {
-    throw new Error(payload.error || "Impossible d'envoyer la photo du produit.");
+    throw new Error(payload.error || "Impossible d'enregistrer la photo du produit.");
   }
 
   return payload.url;

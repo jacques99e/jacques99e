@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { APP_URL } from "@/lib/seo";
+import { resolveContactPhone } from "@/lib/contact-phone";
 import { rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 import { StorefrontClient } from "./StorefrontClient";
@@ -51,27 +52,35 @@ export default async function StorefrontPage({ params }: PageProps) {
     return <StorefrontNotFound />;
   }
 
+  const { data: ownerProfile } = await supabase
+    .from("profiles")
+    .select("phone")
+    .eq("id", store.owner_id)
+    .maybeSingle();
+
   const { data: products } = await supabase
     .from("products")
     .select("*")
     .eq("store_id", store.id)
     .order("name");
 
-  const phone = store.phone?.trim() || null;
-  const whatsapp = store.whatsapp?.trim() || phone;
+  const contactPhone = resolveContactPhone(
+    store.whatsapp,
+    store.phone,
+    ownerProfile?.phone
+  );
 
   return (
     <StorefrontClient
       store={{
         ...store,
-        phone,
-        whatsapp,
         logo_url: toPublicProductImageUrl(store.logo_url),
         cover_url: toPublicProductImageUrl(store.cover_url),
         products: (products || []).map((p) =>
           rowToProduct(p as Record<string, unknown>)
         ),
       }}
+      contactPhone={contactPhone}
     />
   );
 }

@@ -61,6 +61,9 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
           throw new Error("Session requise pour enregistrer la photo.");
         }
         finalImageUrl = await uploadProductImage(userId, imageFile);
+        if (!finalImageUrl) {
+          throw new Error("Impossible d'enregistrer la photo du produit.");
+        }
       }
 
       await saveProduct(storeId, {
