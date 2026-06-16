@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "audit:cloud": "node scripts/audit-cloud-stores.mjs",
+    "purge:accounts": "node scripts/purge-all-accounts.mjs",
     "setup:test-accounts": "node scripts/setup-test-accounts.mjs"
   },
   "dependencies": {
