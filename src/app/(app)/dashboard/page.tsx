@@ -38,7 +38,6 @@ import {
 } from "@/lib/onboarding";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
 import { localStore } from "@/lib/db";
-import { loadUserStore } from "@/lib/store";
 import { readLocalSales } from "@/lib/local-sales";
 
 interface LocalProduct {
@@ -122,17 +121,23 @@ export default function DashboardPage() {
     const initStore = async () => {
       if (!user) return;
       try {
-        const store = await loadUserStore(user.id);
+        const { data, error } = await supabase
+          .from("stores")
+          .select("*")
+          .eq("owner_id", user.id)
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
         if (cancelled) return;
-        if (!store) {
+        if (!data) {
           router.replace("/setup");
           return;
         }
-        setStoreName(store.name || t("dashboard.defaultStore"));
-        localStorage.setItem("store_name", store.name || "");
-        localStorage.setItem("store_slug", store.slug || "");
+        setStoreName(data.name || t("dashboard.defaultStore"));
+        localStorage.setItem("store_name", data.name || "");
+        localStorage.setItem("store_slug", data.slug || "");
         localStorage.setItem("store_setup_complete", "true");
-        localStore.save(store);
+        localStore.save(data);
       } catch {
         if (cancelled) return;
         const localName = localStorage.getItem("store_name");

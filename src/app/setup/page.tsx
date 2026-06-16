@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/contexts/I18nContext";
 import { ModuleCard } from "@/components/ModuleCard";
 import { localModules, localStore } from "@/lib/db";
-import { loadUserStores, setActiveStore } from "@/lib/stores-multi";
 import { ALL_MODULE_IDS, normalizeModuleIds } from "@/lib/modules/config";
 import {
   applyPendingModule,
@@ -89,15 +88,6 @@ export default function SetupPage() {
           localStore.save(data as Store);
           localStorage.setItem("store_name", data.name || "");
           localStorage.setItem("store_slug", data.slug || "");
-          localStorage.setItem("store_setup_complete", "true");
-          router.replace("/dashboard");
-          return;
-        }
-
-        const memberStores = await loadUserStores(user.id);
-        if (memberStores.length > 0) {
-          const teamStore = memberStores[0];
-          setActiveStore(teamStore);
           localStorage.setItem("store_setup_complete", "true");
           router.replace("/dashboard");
           return;
