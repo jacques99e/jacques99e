@@ -15,16 +15,40 @@ import {
   type WhatsAppTemplate,
 } from "@/lib/business-settings";
 import { notifyAlertsChanged } from "@/lib/alerts";
+import { localStore } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import type { Store } from "@/types";
 
 export default function BusinessSettingsPage() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const { canManageSettings } = useRole(user?.id);
   const [settings, setSettings] = useState<BusinessSettings>(DEFAULT_BUSINESS_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [identityMessage, setIdentityMessage] = useState("");
+  const [storeIdentity, setStoreIdentity] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    phone: string;
+    whatsapp: string;
+    logo_url: string;
+    cover_url: string;
+  } | null>(null);
 
   useEffect(() => {
     setSettings(getBusinessSettings());
+    const store = localStore.get();
+    if (!store) return;
+    setStoreIdentity({
+      id: store.id,
+      name: store.name || "",
+      description: store.description || "",
+      phone: store.phone || "",
+      whatsapp: store.whatsapp || "",
+      logo_url: store.logo_url || "",
+      cover_url: store.cover_url || "",
+    });
   }, []);
 
   if (!canManageSettings) {
@@ -90,6 +114,49 @@ export default function BusinessSettingsPage() {
     persist(DEFAULT_BUSINESS_SETTINGS);
   };
 
+  const uploadStoreAsset = async (file: File, kind: "logo" | "cover"): Promise<string> => {
+    if (!user?.id) throw new Error("Session introuvable.");
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${user.id}/stores/${kind}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file, {
+      upsert: true,
+    });
+    if (error) throw error;
+    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const saveStoreIdentity = async () => {
+    if (!storeIdentity?.id || !user?.id) return;
+    setSavingIdentity(true);
+    setIdentityMessage("");
+    try {
+      const payload = {
+        name: storeIdentity.name.trim() || "Ma boutique",
+        description: storeIdentity.description.trim() || null,
+        phone: storeIdentity.phone.trim() || null,
+        whatsapp: storeIdentity.whatsapp.trim() || null,
+        logo_url: storeIdentity.logo_url.trim() || null,
+        cover_url: storeIdentity.cover_url.trim() || null,
+      };
+      const { data, error } = await supabase
+        .from("stores")
+        .update(payload)
+        .eq("id", storeIdentity.id)
+        .eq("owner_id", user.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      if (data) localStore.save(data as Store);
+      setIdentityMessage("Identité boutique enregistrée.");
+    } catch {
+      setIdentityMessage("Impossible d'enregistrer la boutique pour le moment.");
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
+
   return (
     <>
       <AppHeader title="Paramètres métier" />
@@ -97,6 +164,100 @@ export default function BusinessSettingsPage() {
         <p className="text-xs text-gray-500">
           Seuils d&apos;alerte, objectifs et modèles WhatsApp personnalisables.
         </p>
+
+        {storeIdentity ? (
+          <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
+            <h2 className="text-sm font-semibold">Identité boutique (logo & couverture)</h2>
+            <label className="block text-xs text-gray-500">Nom boutique</label>
+            <Input
+              value={storeIdentity.name}
+              onChange={(e) =>
+                setStoreIdentity((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+              }
+            />
+            <label className="block text-xs text-gray-500">Description</label>
+            <Input
+              value={storeIdentity.description}
+              onChange={(e) =>
+                setStoreIdentity((prev) =>
+                  prev ? { ...prev, description: e.target.value } : prev
+                )
+              }
+              placeholder="Présentez votre boutique"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500">Téléphone</label>
+                <Input
+                  value={storeIdentity.phone}
+                  onChange={(e) =>
+                    setStoreIdentity((prev) => (prev ? { ...prev, phone: e.target.value } : prev))
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500">WhatsApp</label>
+                <Input
+                  value={storeIdentity.whatsapp}
+                  onChange={(e) =>
+                    setStoreIdentity((prev) =>
+                      prev ? { ...prev, whatsapp: e.target.value } : prev
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Logo boutique</label>
+              {storeIdentity.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={storeIdentity.logo_url} alt="" className="h-20 w-20 rounded-xl object-cover" />
+              ) : null}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const url = await uploadStoreAsset(file, "logo");
+                    setStoreIdentity((prev) => (prev ? { ...prev, logo_url: url } : prev));
+                  } catch {
+                    setIdentityMessage("Upload logo impossible.");
+                  }
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs text-gray-500">Couverture boutique</label>
+              {storeIdentity.cover_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={storeIdentity.cover_url} alt="" className="h-24 w-full rounded-xl object-cover" />
+              ) : null}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const url = await uploadStoreAsset(file, "cover");
+                    setStoreIdentity((prev) => (prev ? { ...prev, cover_url: url } : prev));
+                  } catch {
+                    setIdentityMessage("Upload couverture impossible.");
+                  }
+                }}
+              />
+            </div>
+
+            <Button className="w-full bg-[#075E54]" disabled={savingIdentity} onClick={saveStoreIdentity}>
+              {savingIdentity ? "Enregistrement..." : "Enregistrer identité boutique"}
+            </Button>
+            {identityMessage ? <p className="text-xs text-gray-600">{identityMessage}</p> : null}
+          </section>
+        ) : null}
 
         <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
           <h2 className="text-sm font-semibold">Stock & objectifs</h2>
