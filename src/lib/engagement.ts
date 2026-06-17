@@ -1,37 +1,27 @@
 import { listFieldJournal } from "@/lib/agriculture-journal";
 import { listAssets } from "@/lib/blockchain";
 import { activePromotions } from "@/lib/commerce-promotions";
-import { listCourses } from "@/lib/education";
+import { listCourses, listModules } from "@/lib/education";
 import { overdueFollowUps } from "@/lib/health-followups";
-import { readLocalSales } from "@/lib/local-sales";
 import { listDeliveries } from "@/lib/logistics";
+import { readLocalClients } from "@/lib/local-clients";
+import { readLocalSales } from "@/lib/local-sales";
 import { getProducts } from "@/lib/products";
+import { listPatients } from "@/lib/health";
+import { listParcels } from "@/lib/agriculture";
+import { readLocalAppointments } from "@/lib/offline-health";
+import {
+  ACHIEVEMENT_CATALOG,
+  type AchievementDef,
+} from "@/lib/achievements-catalog";
 import type { ModuleId } from "@/types";
+
+export { ACHIEVEMENT_CATALOG, BADGE_CATEGORIES } from "@/lib/achievements-catalog";
+export type { AchievementDef, BadgeCategory } from "@/lib/achievements-catalog";
 
 const STREAK_KEY = "wazo_engagement_streak";
 const ACHIEVEMENTS_KEY = "wazo_engagement_achievements";
 const LAST_VISIT_KEY = "wazo_engagement_last_visit";
-
-export interface AchievementDef {
-  id: string;
-  emoji: string;
-  title: string;
-  description: string;
-}
-
-export const ACHIEVEMENT_CATALOG: AchievementDef[] = [
-  { id: "first_sale", emoji: "💰", title: "Première vente", description: "Enregistrer votre première vente à la caisse" },
-  { id: "sales_10", emoji: "🔥", title: "10 ventes", description: "Atteindre 10 ventes enregistrées" },
-  { id: "first_product", emoji: "📦", title: "Catalogue lancé", description: "Ajouter votre premier produit" },
-  { id: "streak_3", emoji: "⚡", title: "3 jours actifs", description: "Ouvrir l'app 3 jours d'affilée" },
-  { id: "streak_7", emoji: "🏆", title: "Semaine champion", description: "7 jours d'affilée sur Wazo" },
-  { id: "multi_module", emoji: "🧩", title: "Multi-activité", description: "Activer au moins 3 modules métier" },
-  { id: "first_course", emoji: "🎓", title: "Formateur", description: "Créer votre premier cours" },
-  { id: "first_delivery", emoji: "🚚", title: "Logisticien", description: "Planifier une première livraison" },
-  { id: "first_trace", emoji: "🔗", title: "Traçabilité", description: "Enregistrer un actif blockchain" },
-  { id: "field_journal", emoji: "🌾", title: "Journal de champ", description: "Noter une activité agricole" },
-  { id: "promo_flash", emoji: "📣", title: "Promoteur", description: "Créer une promotion flash" },
-];
 
 export interface StreakState {
   current: number;
@@ -126,6 +116,16 @@ export function getStreak(): StreakState {
   };
 }
 
+function unlockMilestones(prefix: string, value: number, tryUnlock: (id: string) => void) {
+  for (const badge of ACHIEVEMENT_CATALOG) {
+    if (!badge.id.startsWith(`${prefix}_`)) continue;
+    const threshold = Number(badge.id.slice(prefix.length + 1));
+    if (Number.isFinite(threshold) && value >= threshold) {
+      tryUnlock(badge.id);
+    }
+  }
+}
+
 export async function evaluateAchievements(
   storeId: string,
   activeModules: ModuleId[]
@@ -139,29 +139,65 @@ export async function evaluateAchievements(
   };
 
   const sales = readLocalSales(storeId);
+  const salesTotal = sales.reduce(
+    (sum, s) => sum + Number(s.total ?? s.total_amount ?? 0),
+    0
+  );
   const products = await getProducts(storeId);
   const streak = getStreak();
+  const clients = readLocalClients(storeId);
+  const promos = activePromotions(storeId);
+  const journal = listFieldJournal(storeId);
+  const deliveries = activeModules.includes("logistics") ? await listDeliveries(storeId) : [];
+  const deliveredCount = deliveries.filter((d) => d.status === "delivered").length;
+  const patients = activeModules.includes("health") ? await listPatients(storeId) : [];
+  const appointments = readLocalAppointments(storeId);
+  const courses = activeModules.includes("education") ? await listCourses(storeId) : [];
+  const publicCourses = courses.filter((c) => c.is_public);
+  const parcels = activeModules.includes("agriculture") ? await listParcels(storeId) : [];
+  const assets = activeModules.includes("blockchain") ? await listAssets(storeId) : [];
 
-  if (sales.length >= 1) tryUnlock("first_sale");
-  if (sales.length >= 10) tryUnlock("sales_10");
-  if (products.length >= 1) tryUnlock("first_product");
-  if (streak.current >= 3) tryUnlock("streak_3");
-  if (streak.current >= 7) tryUnlock("streak_7");
-  if (activeModules.length >= 3) tryUnlock("multi_module");
-  if (activePromotions(storeId).length > 0) tryUnlock("promo_flash");
-  if (listFieldJournal(storeId).length > 0) tryUnlock("field_journal");
+  let lessonCount = 0;
+  for (const course of courses.slice(0, 10)) {
+    const modules = await listModules(course.id);
+    lessonCount += modules.length;
+  }
 
-  if (activeModules.includes("education")) {
-    const courses = await listCourses(storeId);
-    if (courses.length > 0) tryUnlock("first_course");
+  unlockMilestones("sales", sales.length, tryUnlock);
+  unlockMilestones("revenue", salesTotal, tryUnlock);
+  unlockMilestones("products", products.length, tryUnlock);
+  unlockMilestones("clients", clients.length, tryUnlock);
+  unlockMilestones("promos", promos.length, tryUnlock);
+  unlockMilestones("streak", streak.current, tryUnlock);
+  unlockMilestones("courses", courses.length, tryUnlock);
+  unlockMilestones("lessons", lessonCount, tryUnlock);
+  unlockMilestones("deliveries", deliveries.length, tryUnlock);
+  unlockMilestones("delivered", deliveredCount, tryUnlock);
+  unlockMilestones("patients", patients.length, tryUnlock);
+  unlockMilestones("appointments", appointments.length, tryUnlock);
+  unlockMilestones("parcels", parcels.length, tryUnlock);
+  unlockMilestones("journal", journal.length, tryUnlock);
+  unlockMilestones("trace", assets.length, tryUnlock);
+
+  if (activeModules.length >= 2) tryUnlock("multi_module_2");
+  if (activeModules.length >= 3) tryUnlock("multi_module_3");
+  if (activeModules.length >= 4) tryUnlock("multi_module_4");
+  if (activeModules.length >= 5) tryUnlock("multi_module_5");
+
+  for (const mod of activeModules) {
+    tryUnlock(`mod_${mod}`);
   }
-  if (activeModules.includes("logistics")) {
-    const deliveries = await listDeliveries(storeId);
-    if (deliveries.length > 0) tryUnlock("first_delivery");
+
+  if (publicCourses.length > 0) tryUnlock("public_course");
+  if (sales.some((s) => s.payment_method === "credit")) tryUnlock("first_credit_sale");
+  if (products.some((p) => p.stock_quantity > 0 && p.stock_quantity <= 5)) tryUnlock("low_stock_alert");
+  if (overdueFollowUps(storeId).length > 0) tryUnlock("followup_active");
+  if (parcels.some((p) => (p.harvested_kg ?? 0) > 0)) tryUnlock("harvest_logged");
+  if (typeof localStorage !== "undefined" && localStorage.getItem("wazo_offline_sale")) {
+    tryUnlock("offline_sale");
   }
-  if (activeModules.includes("blockchain")) {
-    const assets = await listAssets(storeId);
-    if (assets.length > 0) tryUnlock("first_trace");
+  if (typeof localStorage !== "undefined" && localStorage.getItem("wazo_last_sync_ok")) {
+    tryUnlock("sync_complete");
   }
 
   return newly;

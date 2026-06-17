@@ -166,6 +166,9 @@ export default function SalesPage() {
     };
 
     appendLocalSale(storeId, { ...sale, store_id: storeId });
+    if (!navigator.onLine) {
+      localStorage.setItem("wazo_offline_sale", "1");
+    }
     void syncStoreToCloud(storeId);
 
     const receiptText = [

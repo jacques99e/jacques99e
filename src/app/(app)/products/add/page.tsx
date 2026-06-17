@@ -71,11 +71,9 @@ export default function AddProductPage() {
 
       let image_url: string | null = null;
       if (imageFile) {
-        if (!user?.id) {
-          setError("Connexion requise pour enregistrer la photo.");
-          return;
+        if (navigator.onLine && user?.id) {
+          image_url = await uploadProductImage(user.id, imageFile);
         }
-        image_url = await uploadProductImage(user.id, imageFile);
       }
 
       await saveProduct(storeId, {

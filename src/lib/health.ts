@@ -2,7 +2,12 @@ import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
 import { isCloudUuid } from "@/lib/cloud-uuid";
 import { supabase } from "@/lib/supabase/client";
-import { generateLocalId } from "@/lib/sync";
+import { generateLocalId, enqueueSync } from "@/lib/sync";
+import {
+  appendLocalAppointment,
+  readLocalAppointments,
+  writeLocalAppointments,
+} from "@/lib/offline-health";
 import type {
   HealthAppointment,
   HealthAppointmentWithPatient,
@@ -89,28 +94,70 @@ export async function savePatient(
 }
 
 export async function listAppointments(storeId: string): Promise<HealthAppointment[]> {
-  if (!navigator.onLine) return [];
+  const today = new Date().toISOString().split("T")[0];
+  const local = readLocalAppointments(storeId).filter(
+    (a) => a.scheduled_at.slice(0, 10) >= today
+  );
+
+  if (!navigator.onLine) {
+    return local.sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  }
+
   const { data } = await supabase
     .from("health_appointments")
     .select("*")
     .eq("store_id", storeId)
-    .gte("scheduled_at", new Date().toISOString().split("T")[0])
+    .gte("scheduled_at", today)
     .order("scheduled_at");
-  return data || [];
+
+  const remote = data || [];
+  if (remote.length === 0) {
+    return local.sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  }
+  return remote;
 }
 
 export async function listAppointmentsWithPatients(
   storeId: string
 ): Promise<HealthAppointmentWithPatient[]> {
-  if (!navigator.onLine) return [];
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const localPatients = db
+    ? await db.healthPatients.where("store_id").equals(storeId).toArray()
+    : [];
+  const patientName = (id: string | null | undefined) =>
+    localPatients.find((p) => p.id === id)?.full_name ?? null;
+  const patientPhone = (id: string | null | undefined) =>
+    localPatients.find((p) => p.id === id)?.phone ?? null;
+
+  const localRows = readLocalAppointments(storeId)
+    .filter((a) => a.scheduled_at >= since)
+    .map((row) => ({
+      id: row.id,
+      store_id: row.store_id,
+      patient_id: row.patient_id,
+      scheduled_at: row.scheduled_at,
+      status: row.status,
+      notes: row.notes,
+      patient_name: patientName(row.patient_id),
+      patient_phone: patientPhone(row.patient_id),
+    }));
+
+  if (!navigator.onLine) {
+    return localRows.sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  }
+
   const { data } = await supabase
     .from("health_appointments")
     .select("*, health_patients(full_name, phone)")
     .eq("store_id", storeId)
-    .gte("scheduled_at", new Date(Date.now() - 86400000).toISOString())
+    .gte("scheduled_at", since)
     .order("scheduled_at");
 
-  return (data || []).map((row) => {
+  if (!data?.length) {
+    return localRows.sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+  }
+
+  return data.map((row) => {
     const patient = row.health_patients as { full_name?: string; phone?: string } | null;
     return {
       id: row.id,
@@ -127,9 +174,20 @@ export async function listAppointmentsWithPatients(
 
 export async function updateAppointmentStatus(
   appointmentId: string,
-  status: "pending" | "confirmed" | "done"
+  status: "pending" | "confirmed" | "done",
+  storeId?: string
 ): Promise<void> {
+  if (storeId) {
+    const local = readLocalAppointments(storeId);
+    const idx = local.findIndex((a) => a.id === appointmentId);
+    if (idx >= 0) {
+      local[idx] = { ...local[idx], status };
+      writeLocalAppointments(storeId, local);
+    }
+  }
+
   if (!navigator.onLine) return;
+
   const { error } = await supabase
     .from("health_appointments")
     .update({ status })
@@ -143,8 +201,29 @@ export async function saveAppointment(
     patient_id?: string | null;
     status?: string;
   }
-): Promise<HealthAppointment | null> {
-  if (!navigator.onLine) return null;
+): Promise<HealthAppointment> {
+  const localId = generateLocalId();
+  const record: HealthAppointment = {
+    id: localId,
+    store_id: storeId,
+    patient_id: appointment.patient_id ?? null,
+    scheduled_at: appointment.scheduled_at,
+    status: (appointment.status as HealthAppointment["status"]) ?? "pending",
+    notes: appointment.notes ?? null,
+  };
+
+  appendLocalAppointment(storeId, record);
+
+  if (!navigator.onLine) {
+    await enqueueSync({
+      entity_type: "health_appointment",
+      entity_id: localId,
+      action: "create",
+      payload: record as unknown as Record<string, unknown>,
+    });
+    return record;
+  }
+
   const { data, error } = await supabase
     .from("health_appointments")
     .insert({
@@ -156,8 +235,13 @@ export async function saveAppointment(
     })
     .select("*")
     .single();
-  if (error) throw error;
-  return data || null;
+
+  if (error || !data) return record;
+
+  const saved = data as HealthAppointment;
+  const local = readLocalAppointments(storeId).filter((a) => a.id !== localId);
+  writeLocalAppointments(storeId, [saved, ...local]);
+  return saved;
 }
 
 export async function listVitals(patientId: string): Promise<HealthVital[]> {

@@ -17,6 +17,11 @@ export function useAuth() {
     }
 
     const init = async () => {
+      if (!navigator.onLine && cached) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {

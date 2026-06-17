@@ -1,10 +1,19 @@
-const CACHE = "wazo-app-v1";
+const CACHE = "wazo-app-v2";
+const SHELL = [
+  "/offline.html",
+  "/manifest.json",
+  "/icons/icon.svg",
+  "/dashboard",
+  "/sales",
+  "/products",
+  "/products/add",
+  "/clients",
+  "/login",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      cache.addAll(["/offline.html", "/manifest.json", "/icons/icon.svg"])
-    )
+    caches.open(CACHE).then((cache) => cache.addAll(SHELL).catch(() => undefined))
   );
   self.skipWaiting();
 });

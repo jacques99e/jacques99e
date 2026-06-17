@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { fetchCloudProducts } from "@/lib/product-cloud";
 import { mirrorProductsToLegacyCatalog } from "@/lib/product-legacy-mirror";
 import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
-import type { Product, Sale, SyncQueueItem } from "@/types";
+import type { Product, Sale, SyncQueueItem, DeliveryStatus } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function enqueueSync(item: Omit<SyncQueueItem, "id" | "created_at">) {
@@ -30,6 +30,8 @@ export async function syncAll(storeId: string): Promise<{ synced: number; errors
         await syncProduct(supabase, storeId, item);
       } else if (item.entity_type === "sale") {
         await syncSale(supabase, storeId, item);
+      } else if (item.entity_type === "delivery") {
+        await syncDelivery(storeId, item);
       }
       if (item.id) await db.syncQueue.delete(item.id);
       synced++;
@@ -99,6 +101,30 @@ async function syncProduct(
         throw new Error(result.error || "Suppression produit impossible.");
       }
     }
+  }
+}
+
+async function syncDelivery(storeId: string, item: SyncQueueItem) {
+  const payload = item.payload as {
+    id?: string;
+    status?: DeliveryStatus;
+    signature_data?: string;
+  };
+  const id = payload.id || item.entity_id;
+  if (!id) return;
+
+  const response = await apiFetch("/api/logistics/deliveries", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id,
+      status: payload.status,
+      signature_data: payload.signature_data,
+    }),
+  });
+  const result = (await response.json()) as { error?: string };
+  if (!response.ok) {
+    throw new Error(result.error || "Mise a jour livraison impossible.");
   }
 }
 

@@ -2,10 +2,30 @@ import { apiFetch } from "@/lib/api-client";
 import { db, localStore } from "@/lib/db";
 import { fetchCloudProducts } from "@/lib/product-cloud";
 import { isProductUuid } from "@/lib/product-db-map";
-import { mirrorProductsToLegacyCatalog, removeLegacyProduct, upsertLegacyProduct } from "@/lib/product-legacy-mirror";
+import {
+  legacyProductsForStore,
+  mirrorProductsToLegacyCatalog,
+  removeLegacyProduct,
+  upsertLegacyProduct,
+} from "@/lib/product-legacy-mirror";
+import { readLocalProducts } from "@/lib/local-products";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId, syncAll } from "@/lib/sync";
 import type { Product } from "@/types";
+
+function legacyToProduct(storeId: string, legacy: ReturnType<typeof readLocalProducts>[number]): Product {
+  return {
+    id: legacy.id,
+    store_id: storeId,
+    name: legacy.name,
+    description: legacy.description ?? null,
+    price: legacy.price,
+    stock_quantity: legacy.stock ?? legacy.stock_quantity ?? 0,
+    barcode: null,
+    image_url: null,
+    is_active: true,
+  };
+}
 
 async function persistProductViaApi(
   storeId: string,
@@ -64,6 +84,11 @@ export async function getProducts(storeId: string): Promise<Product[]> {
   }
 
   if (local.length > 0) return local;
+
+  const legacy = legacyProductsForStore();
+  if (legacy.length > 0) {
+    return legacy.map((p) => legacyToProduct(storeId, p));
+  }
   return [];
 }
 

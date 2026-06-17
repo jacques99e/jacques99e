@@ -54,7 +54,8 @@ export async function saveParcel(
   if (db) await db.farmParcels.put(record);
 
   if (navigator.onLine) {
-    const response = await apiFetch("/api/agriculture/parcels", {
+    try {
+      const response = await apiFetch("/api/agriculture/parcels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -80,6 +81,9 @@ export async function saveParcel(
       await db.farmParcels.put(saved);
     }
     return saved;
+    } catch {
+      // Keep local record for offline / retry.
+    }
   }
 
   return record;

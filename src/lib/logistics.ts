@@ -2,7 +2,7 @@ import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/db";
 import { isCloudUuid } from "@/lib/cloud-uuid";
 import { supabase } from "@/lib/supabase/client";
-import { generateLocalId } from "@/lib/sync";
+import { enqueueSync, generateLocalId } from "@/lib/sync";
 import type { Delivery, DeliveryStatus } from "@/types";
 
 export function generateTrackingCode(): string {
@@ -104,7 +104,16 @@ export async function updateDeliveryStatus(
   if (db) {
     await db.deliveries.update(id, { status, signature_data, updated_at: new Date().toISOString() });
   }
-  if (!navigator.onLine) return;
+
+  if (!navigator.onLine) {
+    await enqueueSync({
+      entity_type: "delivery",
+      entity_id: id,
+      action: "update",
+      payload: { id, status, signature_data },
+    });
+    return;
+  }
 
   if (!isCloudUuid(id)) {
     throw new Error("Livraison non synchronisee. Reconnectez-vous puis reessayez.");

@@ -121,10 +121,8 @@ export async function saveCourse(
         return record;
       }
       throw new Error(payload.error || "Impossible d'enregistrer le cours en ligne.");
-    } catch (error) {
-      throw error instanceof Error
-        ? error
-        : new Error("Impossible d'enregistrer le cours en ligne.");
+    } catch {
+      // Offline or API error: keep local Dexie record.
     }
   }
   return record;

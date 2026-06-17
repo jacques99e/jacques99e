@@ -8,6 +8,7 @@ import { DailyAlertsBanner } from "@/components/DailyAlertsBanner";
 import { GuidedOnboarding } from "@/components/GuidedOnboarding";
 import { PushAlertsRunner } from "@/components/PushAlertsRunner";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
 import {
@@ -72,6 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell pb-nav">
+      <OfflineBanner />
       <PushAlertsRunner />
       <StoreSwitcher />
       <DailyAlertsBanner />

@@ -130,6 +130,13 @@ export default function DashboardPage() {
         if (error) throw error;
         if (cancelled) return;
         if (!data) {
+          const cached = localStore.get();
+          const localName = localStorage.getItem("store_name");
+          if (cached || localName?.trim() || !navigator.onLine) {
+            setStoreName(cached?.name || localName || t("dashboard.defaultStore"));
+            if (!navigator.onLine) setOfflineInfo(t("dashboard.offlineLocal"));
+            return;
+          }
           router.replace("/setup");
           return;
         }

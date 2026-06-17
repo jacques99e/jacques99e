@@ -30,7 +30,10 @@ export function useSync() {
     setSyncing(true);
     try {
       const result = await syncAll(store.id);
-      if (result.synced > 0) setLastSync(new Date());
+      if (result.synced > 0) {
+        setLastSync(new Date());
+        localStorage.setItem("wazo_last_sync_ok", new Date().toISOString());
+      }
     } finally {
       setSyncing(false);
       await refreshPending();
