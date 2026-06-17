@@ -1,8 +1,8 @@
 import { apiFetch } from "@/lib/api-client";
-import { db } from "@/lib/db";
+import { db, localStore } from "@/lib/db";
 import { fetchCloudProducts } from "@/lib/product-cloud";
 import { isProductUuid } from "@/lib/product-db-map";
-import { mirrorProductsToLegacyCatalog, upsertLegacyProduct } from "@/lib/product-legacy-mirror";
+import { mirrorProductsToLegacyCatalog, removeLegacyProduct, upsertLegacyProduct } from "@/lib/product-legacy-mirror";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId, syncAll } from "@/lib/sync";
 import type { Product } from "@/types";
@@ -134,17 +134,41 @@ export async function saveProduct(
   return record;
 }
 
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: string, storeId?: string) {
+  const resolvedStoreId = storeId ?? (typeof window !== "undefined" ? localStore.get()?.id : undefined);
+
   if (db) await db.products.delete(id);
+  removeLegacyProduct(id);
+
+  if (navigator.onLine && isProductUuid(id) && resolvedStoreId) {
+    const response = await apiFetch("/api/products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, store_id: resolvedStoreId }),
+    });
+    const payload = (await response.json()) as { success?: boolean; error?: string };
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || "Impossible de supprimer le produit en ligne.");
+    }
+    if (db) {
+      const pending = await db.syncQueue
+        .where("entity_type")
+        .equals("product")
+        .filter((item) => item.entity_id === id && item.action === "delete")
+        .toArray();
+      for (const item of pending) {
+        if (item.id) await db.syncQueue.delete(item.id);
+      }
+    }
+    return;
+  }
+
   await enqueueSync({
     entity_type: "product",
     entity_id: id,
     action: "delete",
-    payload: { id },
+    payload: { id, store_id: resolvedStoreId },
   });
-  if (navigator.onLine && isProductUuid(id)) {
-    await supabase.from("products").delete().eq("id", id);
-  }
 }
 
 export async function uploadProductImage(

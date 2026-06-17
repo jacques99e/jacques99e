@@ -24,6 +24,11 @@ export function mirrorProductsToLegacyCatalog(products: Product[]) {
   writeLocalProducts(products.map(productToLegacy));
 }
 
+export function removeLegacyProduct(id: string) {
+  if (typeof window === "undefined") return;
+  writeLocalProducts(readLocalProducts().filter((p) => p.id !== id));
+}
+
 export function upsertLegacyProduct(product: Product) {
   if (typeof window === "undefined") return;
   const list = readLocalProducts().filter((p) => p.id !== product.id);

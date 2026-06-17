@@ -20,6 +20,7 @@ export default function EditProductPage() {
   const { user } = useAuth();
   const storeId = useMemo(() => localStore.get()?.id ?? null, []);
   const [product, setProduct] = useState<Product | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -49,8 +50,13 @@ export default function EditProductPage() {
 
   const handleDelete = async () => {
     if (!confirm(t("products.delete") + "?")) return;
-    await deleteProduct(id);
-    router.push("/products");
+    setDeleteError("");
+    try {
+      await deleteProduct(id, product?.store_id ?? storeId ?? undefined);
+      router.push("/products");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Impossible de supprimer le produit.");
+    }
   };
 
   if (!product) {
@@ -70,6 +76,7 @@ export default function EditProductPage() {
         <Button variant="destructive" className="w-full" onClick={handleDelete}>
           {t("products.delete")}
         </Button>
+        {deleteError ? <p className="text-center text-sm text-red-600">{deleteError}</p> : null}
       </main>
     </>
   );

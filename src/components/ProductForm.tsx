@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { Button } from "./ui/button";
@@ -20,7 +20,6 @@ interface ProductFormProps {
 export function ProductForm({ product, storeId, userId }: ProductFormProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(product?.name ?? "");
   const [price, setPrice] = useState(String(product?.price ?? ""));
@@ -89,18 +88,19 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl bg-white p-4 shadow-sm">
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-wazo-green/30 bg-wazo-cream"
-      >
+      <label className="mx-auto flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-wazo-green/30 bg-wazo-cream">
         {imagePreviewUrl ? (
           <img src={imagePreviewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <Camera className="h-8 w-8 text-wazo-green" />
         )}
-      </button>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImage} />
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={handleImage}
+        />
+      </label>
       <p className="text-center text-xs text-gray-500">{t("products.photo")}</p>
 
       <div>

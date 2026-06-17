@@ -1,6 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
+import { apiFetch } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
+import { fetchCloudProducts } from "@/lib/product-cloud";
+import { mirrorProductsToLegacyCatalog } from "@/lib/product-legacy-mirror";
 import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import type { Product, Sale, SyncQueueItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -36,17 +39,13 @@ export async function syncAll(storeId: string): Promise<{ synced: number; errors
   }
 
   // Pull latest from server
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .eq("store_id", storeId);
-
-  if (products) {
-    const mapped = products.map((p) =>
-      rowToProduct(p as Record<string, unknown>)
-    );
+  const cloud = await fetchCloudProducts(storeId);
+  if (cloud && db) {
     await db.products.where("store_id").equals(storeId).delete();
-    await db.products.bulkPut(mapped.map((p) => ({ ...p, _pendingSync: false })));
+    if (cloud.length > 0) {
+      await db.products.bulkPut(cloud.map((p) => ({ ...p, _pendingSync: false })));
+    }
+    mirrorProductsToLegacyCatalog(cloud);
   }
 
   try {
@@ -86,8 +85,19 @@ async function syncProduct(
       await db.products.put({ ...saved, _pendingSync: false });
     }
   } else if (item.action === "delete") {
-    if (isProductUuid(item.entity_id)) {
-      await supabase.from("products").delete().eq("id", item.entity_id);
+    const payload = item.payload as { id?: string; store_id?: string };
+    const id = payload?.id || item.entity_id;
+    const sid = payload?.store_id || storeId;
+    if (isProductUuid(id)) {
+      const response = await apiFetch("/api/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, store_id: sid }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Suppression produit impossible.");
+      }
     }
   }
 }

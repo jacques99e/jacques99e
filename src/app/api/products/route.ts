@@ -125,3 +125,49 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAuthContext();
+    if (!auth.ok) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+    }
+
+    const body = (await request.json()) as { id?: string; store_id?: string };
+    const id = body.id?.trim();
+    const storeId = body.store_id?.trim();
+
+    if (!id || !storeId) {
+      return NextResponse.json(
+        { success: false, error: "Identifiant produit et boutique requis." },
+        { status: 400 }
+      );
+    }
+
+    if (!isProductUuid(id)) {
+      return NextResponse.json({ success: true, deleted: false, local_only: true });
+    }
+
+    const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "write");
+    if (!access.ok) {
+      return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+    }
+
+    const service = await createServiceSupabase();
+    const { error } = await service.from("products").delete().eq("id", id).eq("store_id", storeId);
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message || "Suppression impossible." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, deleted: true });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Impossible de supprimer le produit." },
+      { status: 500 }
+    );
+  }
+}

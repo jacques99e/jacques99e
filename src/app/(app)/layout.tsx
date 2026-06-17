@@ -38,6 +38,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const store = await loadUserStore(user.id);
       if (cancelled) return;
       if (!store) {
+        const cached = localStore.get();
+        if (!navigator.onLine && cached) {
+          setStoreReady(true);
+          return;
+        }
         router.replace("/setup");
         return;
       }
