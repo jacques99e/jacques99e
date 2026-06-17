@@ -56,3 +56,23 @@ git push origin v1.0.0
 ---
 
 **Version déployée app :** voir `GET https://app.wazo-digital.com/api/health` → champ `version`
+
+---
+
+## Phase 2 — Semaine 1 (pilotes)
+
+- [ ] `npm run pilot:outreach` → envoyer message **invitation** à 3–5 commerçants
+- [ ] `npm run launch:stats` (app) → suivre inscriptions / boutiques / produits
+- [ ] J+3 : message **relance** aux pilotes sans produit
+- [ ] J+7 : message **merci** + collecter retours (note /10)
+- [ ] Configurer secrets GitHub pour CI monitor :
+  - `E2E_OWNER_EMAIL` = test.owner@wazo.africa
+  - `E2E_OWNER_PASSWORD` = (mot de passe test)
+  - `MONITOR_WEBHOOK_URL` (optionnel)
+
+## Phase 3 — Croissance (mois 1)
+
+- [ ] Google Search Console sur wazo-digital.com
+- [ ] 1 post réseaux / WhatsApp status avec lien `/register`
+- [ ] Premier client payant (upgrade Pro via MoMo)
+- [ ] `npm run audit:cloud` hebdomadaire sur boutiques pilotes
