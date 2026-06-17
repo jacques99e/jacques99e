@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
 import { localStore } from "@/lib/db";
+import { resolveLandingUrl } from "@/lib/public-urls";
 import { helpFaqForModules, helpLinksForModules, helpWelcomeLine } from "@/lib/help-content";
 
 export default function HelpPage() {
@@ -18,6 +19,18 @@ export default function HelpPage() {
       <AppHeader title="Centre d'aide" />
       <main className="app-page space-y-4 pb-6">
         <p className="text-sm text-gray-600">{helpWelcomeLine(modules)}</p>
+
+        <section className="app-card border-[#075E54]/20 bg-[#075E54]/5 p-4">
+          <h2 className="text-sm font-semibold text-[#075E54]">Guide commerçant pilote</h2>
+          <p className="mt-1 text-xs text-gray-600">
+            PDF, WhatsApp et étapes pour vos premiers commerçants testeurs.
+          </p>
+          <Button asChild className="mt-3 w-full" variant="outline">
+            <a href={`${resolveLandingUrl()}/guide-pilote`} target="_blank" rel="noreferrer">
+              Ouvrir le guide pilote
+            </a>
+          </Button>
+        </section>
 
         <section className="app-card p-4">
           <h2 className="text-sm font-semibold">Liens utiles</h2>

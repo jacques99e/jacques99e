@@ -8,6 +8,7 @@ import { getOrderedActiveModules, MODULES } from "@/lib/modules/config";
 import { useI18n } from "@/contexts/I18nContext";
 import { useModuleLabelFn } from "@/hooks/useModuleLabel";
 import { AppHeader } from "@/components/AppHeader";
+import { WelcomeNewUserBanner } from "@/components/WelcomeNewUserBanner";
 import { DashboardHero } from "@/components/DashboardHero";
 import { EngagementHub } from "@/components/EngagementHub";
 import { ModuleQuickActions } from "@/components/ModuleQuickActions";
@@ -265,6 +266,7 @@ export default function DashboardPage() {
           todayTotal={todayTotal}
           todaySalesCount={todaySalesCount}
         />
+        <WelcomeNewUserBanner storeName={storeName} salesCount={todaySalesCount} />
         {offlineInfo ? (
           <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">{offlineInfo}</p>
         ) : null}
