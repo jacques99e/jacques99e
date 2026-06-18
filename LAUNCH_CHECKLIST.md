@@ -11,10 +11,10 @@
 ## Parcours commerçant (15 min)
 
 - [ ] Ajouter 1 produit (+ photo si en ligne)
-- [ ] 1 vente à la caisse + reçu WhatsApp
+- [x] 1 vente à la caisse + reçu WhatsApp (API `/api/sales` + sync cloud)
 - [ ] Partager catalogue WhatsApp depuis Produits
 - [ ] Installer PWA sur téléphone + test hors ligne (caisse)
-- [ ] Sync cloud : Paramètres → Notifications
+- [x] Sync cloud : Paramètres → Notifications (`/api/sales` + `syncStoreToCloud`)
 
 ## Modules optionnels (1 action chacun)
 
@@ -33,6 +33,7 @@
 ## Technique post-lancement
 
 - [x] GitHub Action `Monitor production` verte (toutes les 6 h)
+- [x] `npm run production:ready` — audit complet local (app + landing)
 - [x] `node scripts/monitor-production.mjs` en local si alerte
 - [x] `npm run production:ready` (app + landing) avant chaque release
 - [x] API ventes `/api/sales` (sync cloud fiable, déployée)
@@ -75,7 +76,8 @@ git push origin v1.0.0
   - `E2E_OWNER_PASSWORD` = (mot de passe test)
   - `MONITOR_WEBHOOK_URL` (optionnel)
 - [ ] Remplacer profils type pilot-2…5 par vrais contacts (`pilot:tracker add`)
-- [ ] Relance **Balade Estivale** : 1ère vente caisse (`pilot:tracker relance`)
+- [x] Balade Estivale : ventes enregistrées en cloud (sync `/api/sales`)
+- [ ] Balade : ajouter photos produits + partage catalogue WhatsApp
 
 ## Phase 3 — Croissance (mois 1)
 
