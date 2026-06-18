@@ -34,13 +34,28 @@ function loadEnvFile(filePath) {
   return out;
 }
 
-const env = {
-  ...loadEnvFile(path.join(ROOT, ".env.local")),
-  ...loadEnvFile(path.join(ROOT, ".env.vercel.production")),
-};
+function mergeEnv(...sources) {
+  const out = {};
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      if (value) out[key] = value;
+    }
+  }
+  return out;
+}
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+const env = mergeEnv(
+  loadEnvFile(path.join(ROOT, ".env.local")),
+  loadEnvFile(path.join(ROOT, ".env.vercel.production")),
+  Object.fromEntries(
+    ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+      .map((k) => [k, process.env[k]])
+      .filter(([, v]) => v)
+  )
+);
+
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (process.env.PURGE_CONFIRM !== "YES") {
   console.error(
@@ -153,7 +168,12 @@ async function main() {
     await admin.from("profiles").delete().eq("id", profile.id);
   }
 
-  console.log("\n5) Suppression des comptes auth...");
+  console.log("\n5) Purge des journaux d'audit...");
+  const { error: auditErr } = await admin.from("audit_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (auditErr) console.warn(`  audit_logs: ${auditErr.message}`);
+  else console.log("  audit_logs vidés");
+
+  console.log("\n6) Suppression des comptes auth...");
   let deleted = 0;
   let failed = 0;
   for (const user of usersBefore) {
