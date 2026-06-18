@@ -25,16 +25,25 @@ function loadEnvFile(filePath) {
   return out;
 }
 
-const env = {
-  ...loadEnvFile(path.join(ROOT, ".env.local")),
-  ...loadEnvFile(path.join(ROOT, ".env.vercel.production")),
-  ...Object.fromEntries(
-    ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].map((k) => [
-      k,
-      process.env[k],
-    ]).filter(([, v]) => v)
-  ),
-};
+function mergeEnv(...sources) {
+  const out = {};
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      if (value) out[key] = value;
+    }
+  }
+  return out;
+}
+
+const env = mergeEnv(
+  loadEnvFile(path.join(ROOT, ".env.local")),
+  loadEnvFile(path.join(ROOT, ".env.vercel.production")),
+  Object.fromEntries(
+    ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+      .map((k) => [k, process.env[k]])
+      .filter(([, v]) => v)
+  )
+);
 
 const SUPA = env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE = env.SUPABASE_SERVICE_ROLE_KEY;

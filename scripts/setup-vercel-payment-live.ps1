@@ -40,6 +40,7 @@ $map = @{
   "PAYMENT_TOKEN"                  = Read-DotEnvValue "PAYMENT_TOKEN"
   "PAYMENT_CALLBACK_SECRET"        = Read-DotEnvValue "PAYMENT_CALLBACK_SECRET"
   "CINETPAY_SITE_ID"               = Read-DotEnvValue "CINETPAY_SITE_ID"
+  "CRON_SECRET"                    = Read-DotEnvValue "CRON_SECRET"
 }
 
 foreach ($entry in $map.GetEnumerator()) {

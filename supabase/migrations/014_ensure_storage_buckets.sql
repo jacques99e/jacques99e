@@ -10,6 +10,7 @@ ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
 DROP POLICY IF EXISTS "Authenticated upload images" ON storage.objects;
 DROP POLICY IF EXISTS "Public read images" ON storage.objects;
 DROP POLICY IF EXISTS "Owners delete images" ON storage.objects;
+DROP POLICY IF EXISTS "Owners update images" ON storage.objects;
 DROP POLICY IF EXISTS "Service role product images" ON storage.objects;
 
 CREATE POLICY "Authenticated upload images" ON storage.objects FOR INSERT
@@ -18,9 +19,13 @@ CREATE POLICY "Public read images" ON storage.objects FOR SELECT
   USING (bucket_id = 'product-images');
 CREATE POLICY "Owners delete images" ON storage.objects FOR DELETE
   USING (bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+CREATE POLICY "Owners update images" ON storage.objects FOR UPDATE
+  USING (bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1])
+  WITH CHECK (bucket_id = 'product-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 DROP POLICY IF EXISTS "auth_upload_health" ON storage.objects;
 DROP POLICY IF EXISTS "auth_upload_course" ON storage.objects;
+DROP POLICY IF EXISTS "public_read_course_media" ON storage.objects;
 
 CREATE POLICY "auth_upload_health" ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'health-docs' AND auth.role() = 'authenticated');

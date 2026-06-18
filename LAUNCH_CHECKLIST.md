@@ -2,11 +2,11 @@
 
 ## Avant d'inviter le public
 
-- [ ] `/api/health` landing + app → `ok: true`
-- [ ] Tests E2E prod : `npm run test:e2e:production` (47/47)
-- [ ] Inscription : https://wazo-digital.com/register
-- [ ] Création boutique `/setup` sans erreur FK
-- [ ] Guide pilote partagé : https://wazo-digital.com/guide-pilote
+- [x] `/api/health` landing + app → `ok: true`
+- [x] Tests E2E prod : `npm run test:e2e:production` (47/47)
+- [x] Inscription : https://wazo-digital.com/register
+- [x] Création boutique `/setup` sans erreur FK
+- [x] Guide pilote partagé : https://wazo-digital.com/guide-pilote
 
 ## Parcours commerçant (15 min)
 
@@ -33,9 +33,10 @@
 ## Technique post-lancement
 
 - [ ] GitHub Action `Monitor production` verte (toutes les 6 h)
-- [ ] `node scripts/monitor-production.mjs` en local si alerte
+- [x] `node scripts/monitor-production.mjs` en local si alerte
 - [ ] Secrets GitHub : `E2E_OWNER_EMAIL`, `E2E_OWNER_PASSWORD` (compte test)
 - [ ] Optionnel : `MONITOR_WEBHOOK_URL` (Slack / Discord)
+- [x] Vercel : `CRON_SECRET`, VAPID, Resend configurés (`npm run audit:vercel`)
 
 ## Comptes test (ne pas supprimer en prod)
 

@@ -10,6 +10,11 @@
     "audit:cloud": "node scripts/audit-cloud-stores.mjs",
     "launch:stats": "node scripts/launch-stats.mjs",
     "ensure:storage": "node scripts/ensure-storage-buckets.mjs",
+    "audit:supabase": "node scripts/audit-supabase.mjs",
+    "apply:sql": "node scripts/apply-supabase-sql.mjs",
+    "apply:storage-policies": "node scripts/apply-storage-policies.mjs",
+    "audit:vercel": "node scripts/audit-vercel.mjs",
+    "prepare:vercel-env": "node scripts/prepare-vercel-env.mjs",
     "purge:accounts": "node scripts/purge-all-accounts.mjs",
     "setup:test-accounts": "node scripts/setup-test-accounts.mjs"
   },
