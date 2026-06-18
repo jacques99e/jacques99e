@@ -184,6 +184,7 @@ async function setupWithServiceRole() {
         slug: STORE_SLUG,
         phone: ACCOUNTS.owner.phone,
         whatsapp: ACCOUNTS.owner.phone,
+        is_public: false,
       })
       .select("id")
       .single();
@@ -193,6 +194,8 @@ async function setupWithServiceRole() {
   } else {
     console.log(`  Boutique existante : ${STORE_NAME}`);
   }
+
+  await admin.from("stores").update({ is_public: false }).eq("id", storeId);
 
   const { error: memberError } = await admin.from("store_members").upsert(
     { store_id: storeId, user_id: employeeId, role: "employee" },
@@ -225,6 +228,7 @@ async function setupWithAnonKey() {
         slug: STORE_SLUG,
         phone: ACCOUNTS.owner.phone,
         whatsapp: ACCOUNTS.owner.phone,
+        is_public: false,
       })
       .select("id")
       .single();
@@ -234,6 +238,8 @@ async function setupWithAnonKey() {
   } else {
     console.log(`  Boutique existante : ${STORE_NAME}`);
   }
+
+  await ownerClient.from("stores").update({ is_public: false }).eq("id", storeId);
 
   const { error: memberError } = await ownerClient.from("store_members").upsert(
     { store_id: storeId, user_id: employeeId, role: "employee" },
