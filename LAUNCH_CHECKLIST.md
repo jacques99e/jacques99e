@@ -28,7 +28,7 @@
 
 - [ ] Envoyer message WhatsApp (bouton sur `/guide-pilote`)
 - [x] 3–5 commerçants testeurs identifiés (profils type pilot-2…5 + Balade active)
-- [ ] Numéro support WhatsApp actif
+- [x] Numéro support WhatsApp actif (+228 93 92 40 40 — guide & footer)
 
 ## Technique post-lancement
 
@@ -77,6 +77,7 @@ git push origin v1.0.0
 ## Phase 3 — Croissance (mois 1)
 
 - [ ] Google Search Console : `npm run launch:gsc` (Landing) puis balise Vercel
+- [x] IndexNow + sitemap soumis (cron `/api/cron/submit-indexing` — 11 URLs)
 - [ ] 1 post réseaux : `npm run launch:social register` ou `pilote`
 - [ ] Premier client payant (upgrade Pro via MoMo)
 - [ ] `npm run audit:cloud` hebdomadaire sur boutiques pilotes
