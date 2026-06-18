@@ -32,7 +32,7 @@
 
 ## Technique post-lancement
 
-- [ ] GitHub Action `Monitor production` verte (toutes les 6 h)
+- [x] GitHub Action `Monitor production` verte (toutes les 6 h)
 - [x] `node scripts/monitor-production.mjs` en local si alerte
 - [x] Secrets GitHub : `E2E_OWNER_EMAIL`, `E2E_OWNER_PASSWORD` (compte test)
 - [x] Secrets GitHub : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (E2E CI)
@@ -64,7 +64,7 @@ git push origin v1.0.0
 ## Phase 2 — Semaine 1 (pilotes)
 
 - [ ] `npm run pilot:outreach` → envoyer message **invitation** à 3–5 commerçants
-- [ ] `npm run launch:stats` (app) → suivre inscriptions / boutiques / produits
+- [x] `npm run launch:stats` (app) → suivre inscriptions / boutiques / produits
 - [ ] J+3 : message **relance** aux pilotes sans produit
 - [ ] J+7 : message **merci** + collecter retours (note /10)
 - [ ] Configurer secrets GitHub pour CI monitor :
