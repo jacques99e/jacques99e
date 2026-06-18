@@ -27,7 +27,7 @@
 ## Communication pilotes
 
 - [ ] Envoyer message WhatsApp (bouton sur `/guide-pilote`)
-- [ ] 3–5 commerçants testeurs identifiés
+- [x] 3–5 commerçants testeurs identifiés (profils type pilot-2…5 + Balade active)
 - [ ] Numéro support WhatsApp actif
 
 ## Technique post-lancement
