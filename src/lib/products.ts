@@ -206,6 +206,7 @@ export async function uploadProductImage(
 
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("bucket", "product-images");
 
   const response = await apiFetch("/api/media/upload", {
     method: "POST",

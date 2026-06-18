@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
-const ALLOWED_BUCKETS = new Set(["product-images", "course-media", "certificates"]);
+const BUCKET_CONFIG: Record<string, { public: boolean }> = {
+  "product-images": { public: true },
+  "course-media": { public: true },
+  certificates: { public: true },
+  "health-docs": { public: false },
+};
+
+const ALLOWED_BUCKETS = new Set(Object.keys(BUCKET_CONFIG));
+
+async function ensureBucket(service: SupabaseClient, bucket: string): Promise<string | null> {
+  const { data: buckets, error: listError } = await service.storage.listBuckets();
+  if (listError) return listError.message;
+
+  if (buckets?.some((b) => b.id === bucket)) return null;
+
+  const config = BUCKET_CONFIG[bucket];
+  const { error } = await service.storage.createBucket(bucket, {
+    public: config.public,
+    fileSizeLimit: 10 * 1024 * 1024,
+  });
+
+  if (error?.message?.toLowerCase().includes("already exists")) return null;
+  return error?.message ?? null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +50,14 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const service = await createServiceSupabase();
+    const bucketError = await ensureBucket(service, bucket);
+    if (bucketError) {
+      return NextResponse.json(
+        { success: false, error: bucketError || "Impossible de preparer le stockage." },
+        { status: 500 }
+      );
+    }
+
     const { error } = await service.storage.from(bucket).upload(path, buffer, {
       contentType: file.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
       upsert: true,

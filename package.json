@@ -9,6 +9,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "audit:cloud": "node scripts/audit-cloud-stores.mjs",
     "launch:stats": "node scripts/launch-stats.mjs",
+    "ensure:storage": "node scripts/ensure-storage-buckets.mjs",
     "purge:accounts": "node scripts/purge-all-accounts.mjs",
     "setup:test-accounts": "node scripts/setup-test-accounts.mjs"
   },
