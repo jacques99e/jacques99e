@@ -7,6 +7,7 @@ import { mirrorProductsToLegacyCatalog } from "@/lib/product-legacy-mirror";
 import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import type { Product, Sale, SyncQueueItem, DeliveryStatus } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { replaceSaleItems, saleItemProductId, upsertSaleByExternalId } from "@/lib/sale-cloud";
 
 export async function enqueueSync(item: Omit<SyncQueueItem, "id" | "created_at">) {
   if (!db) return;
@@ -144,39 +145,30 @@ async function syncSale(
   const localRef = payload._localId || payload.id;
   const total = Number(payload.total_amount ?? 0);
 
-  const { data: sale, error } = await supabase
-    .from("sales")
-    .upsert(
-      {
-        store_id: storeId,
-        total_amount: total,
-        total,
-        payment_method: payload.payment_method,
-        payment_status: payload.payment_status ?? "completed",
-        external_local_id: localRef,
-      },
-      { onConflict: "store_id,external_local_id" }
-    )
-    .select()
-    .single();
+  const result = await upsertSaleByExternalId(supabase, storeId, {
+    total_amount: total,
+    total,
+    payment_method: payload.payment_method ?? "cash",
+    payment_status: payload.payment_status ?? "completed",
+    external_local_id: localRef,
+  });
 
-  if (error) throw error;
+  if ("error" in result) throw new Error(result.error);
+  const sale = { id: result.id };
 
   if (payload.items?.length) {
-    await supabase.from("sale_items").delete().eq("sale_id", sale.id);
-    await supabase.from("sale_items").insert(
+    const itemsResult = await replaceSaleItems(
+      supabase,
+      sale.id,
       payload.items.map((i) => ({
-        sale_id: sale.id,
-        product_id:
-          i.product_id && !String(i.product_id).startsWith("local-")
-            ? i.product_id
-            : null,
+        product_id: saleItemProductId(i.product_id),
         product_name: i.product_name,
         quantity: i.quantity,
         unit_price: i.unit_price,
         subtotal: i.subtotal,
       }))
     );
+    if ("error" in itemsResult) throw new Error(itemsResult.error);
   }
 
   // Update stock on server

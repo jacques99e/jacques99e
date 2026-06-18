@@ -16,7 +16,9 @@
     "audit:vercel": "node scripts/audit-vercel.mjs",
     "prepare:vercel-env": "node scripts/prepare-vercel-env.mjs",
     "purge:accounts": "node scripts/purge-all-accounts.mjs",
-    "setup:test-accounts": "node scripts/setup-test-accounts.mjs"
+    "setup:test-accounts": "node scripts/setup-test-accounts.mjs",
+    "production:ready": "node scripts/production-readiness.mjs",
+    "test:sales-api": "node scripts/test-sale-insert.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.4",

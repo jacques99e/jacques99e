@@ -49,6 +49,7 @@ export default function SalesPage() {
     total: number;
     whatsappLink: string;
     paymentMethod: string;
+    syncWarning?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -169,7 +170,17 @@ export default function SalesPage() {
     if (!navigator.onLine) {
       localStorage.setItem("wazo_offline_sale", "1");
     }
-    void syncStoreToCloud(storeId);
+
+    let syncWarning: string | undefined;
+    if (store?.id && navigator.onLine) {
+      const syncResult = await syncStoreToCloud(storeId);
+      if (syncResult.errors.length) {
+        syncWarning = syncResult.errors.join(" · ");
+      } else if (syncResult.localSalesPending > 0) {
+        syncWarning =
+          "Vente enregistrée sur cet appareil. Synchronisation cloud en attente — ouvrez Paramètres > Synchroniser.";
+      }
+    }
 
     const receiptText = [
       "Reçu Wazo Digital",
@@ -178,7 +189,7 @@ export default function SalesPage() {
     ].join("\n");
     const whatsappLink = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
 
-    setConfirmation({ total: sale.total, whatsappLink, paymentMethod });
+    setConfirmation({ total: sale.total, whatsappLink, paymentMethod, syncWarning });
     setCart([]);
     setPaymentMethod("cash");
     setTimeout(() => {
@@ -216,6 +227,13 @@ export default function SalesPage() {
             <p className="text-xs text-gray-600">
               Méthode de paiement: {confirmation.paymentMethod === "cash" ? "Espèces" : confirmation.paymentMethod}
             </p>
+            {confirmation.syncWarning ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {confirmation.syncWarning}
+              </p>
+            ) : (
+              <p className="text-xs text-green-700">Synchronisée avec le cloud.</p>
+            )}
             <Button asChild className="w-full" variant="outline">
               <a href={confirmation.whatsappLink} target="_blank" rel="noreferrer">
                 Partager le reçu via WhatsApp

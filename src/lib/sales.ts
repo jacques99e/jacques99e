@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { appendLocalSale, readLocalSales, writeLocalSales } from "@/lib/local-sales";
 import { supabase } from "@/lib/supabase/client";
 import { enqueueSync, generateLocalId } from "@/lib/sync";
+import { replaceSaleItems, saleItemProductId, upsertSaleByExternalId } from "@/lib/sale-cloud";
 import type { CartItem, PaymentMethod, Sale, SaleItem } from "@/types";
 
 export async function completeSale(
@@ -83,27 +84,20 @@ export async function completeSale(
   });
 
   if (navigator.onLine) {
-    const { data: saleRow, error: saleError } = await supabase
-      .from("sales")
-      .upsert(
-        {
-          store_id: storeId,
-          total_amount: total,
-          total,
-          payment_method: paymentMethod,
-          payment_status: "completed",
-          external_local_id: localId,
-        },
-        { onConflict: "store_id,external_local_id" }
-      )
-      .select()
-      .single();
+    const result = await upsertSaleByExternalId(supabase, storeId, {
+      total_amount: total,
+      total,
+      payment_method: paymentMethod,
+      payment_status: "completed",
+      external_local_id: localId,
+    });
 
-    if (saleRow && !saleError) {
-      await supabase.from("sale_items").insert(
+    if (!("error" in result)) {
+      const itemsResult = await replaceSaleItems(
+        supabase,
+        result.id,
         items.map((i) => ({
-          sale_id: saleRow.id,
-          product_id: i.product_id.startsWith("local-") ? null : i.product_id,
+          product_id: saleItemProductId(i.product_id),
           product_name: i.product_name,
           quantity: i.quantity,
           unit_price: i.unit_price,
@@ -111,27 +105,29 @@ export async function completeSale(
         }))
       );
 
-      for (const c of cart) {
-        if (!c.product.id.startsWith("local-")) {
-          await supabase
-            .from("products")
-            .update({
-              stock_quantity: Math.max(0, c.product.stock_quantity - c.quantity),
-            })
-            .eq("id", c.product.id);
+      if (!("error" in itemsResult)) {
+        for (const c of cart) {
+          if (!c.product.id.startsWith("local-") && !c.product.id.startsWith("sale-")) {
+            await supabase
+              .from("products")
+              .update({
+                stock_quantity: Math.max(0, c.product.stock_quantity - c.quantity),
+              })
+              .eq("id", c.product.id);
+          }
         }
+
+        sale.id = result.id;
+        sale._pendingSync = false;
+        if (db) await db.sales.put(sale);
+
+        writeLocalSales(
+          readLocalSales(storeId).map((s) =>
+            s.id === localId ? { ...s, cloud_id: result.id } : s
+          ),
+          storeId
+        );
       }
-
-      sale.id = saleRow.id;
-      sale._pendingSync = false;
-      if (db) await db.sales.put(sale);
-
-      writeLocalSales(
-        readLocalSales(storeId).map((s) =>
-          s.id === localId ? { ...s, cloud_id: saleRow.id } : s
-        ),
-        storeId
-      );
     }
   }
 

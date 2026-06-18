@@ -235,6 +235,78 @@ async function applyMigration014IfPossible() {
   }
 }
 
+async function applyMigration015IfPossible() {
+  if (!DB_URL) return;
+
+  let postgres;
+  try {
+    postgres = (await import("postgres")).default;
+  } catch {
+    return;
+  }
+
+  const migrationPath = path.join(ROOT, "supabase/migrations/015_sales_external_id_unique.sql");
+  if (!fs.existsSync(migrationPath)) return;
+
+  const sql = fs.readFileSync(migrationPath, "utf8");
+  const db = postgres(DB_URL, { max: 1 });
+  try {
+    const applied = await db`
+      SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '015'
+    `;
+    if (applied.length) {
+      console.log("[ok] migration 015 déjà appliquée");
+      return;
+    }
+
+    await db.unsafe(sql);
+    await db`
+      INSERT INTO supabase_migrations.schema_migrations (version)
+      VALUES ('015')
+      ON CONFLICT DO NOTHING
+    `;
+    fixes.push("migration 015 (ventes cloud + RLS) appliquée");
+    console.log("[fixed] migration 015 appliquée");
+  } catch (e) {
+    issues.push(`[migration] 015: ${e.message}`);
+  } finally {
+    await db.end({ timeout: 5 });
+  }
+}
+
+async function checkSalesCloudWrite() {
+  const { data: store } = await admin
+    .from("stores")
+    .select("id")
+    .eq("slug", "boutique-test-roles-wazo")
+    .maybeSingle();
+  if (!store?.id) {
+    issues.push("[sales] boutique test introuvable pour smoke test");
+    return;
+  }
+
+  const extId = `audit-${Date.now()}`;
+  const { data: row, error } = await admin
+    .from("sales")
+    .insert({
+      store_id: store.id,
+      total_amount: 1,
+      total: 1,
+      payment_method: "cash",
+      payment_status: "completed",
+      external_local_id: extId,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    issues.push(`[sales] insert cloud: ${error.message}`);
+    return;
+  }
+  await admin.from("sales").delete().eq("id", row.id);
+  console.log("[ok] écriture ventes cloud (service role)");
+}
+
 async function checkStoragePoliciesSql() {
   if (!DB_URL) {
     console.log("[skip] SUPABASE_DB_URL absent — audit SQL (RLS storage, migrations) ignoré");
@@ -353,6 +425,8 @@ async function main() {
   await checkStorageUpload();
   await checkMigration013();
   await applyMigration014IfPossible();
+  await applyMigration015IfPossible();
+  await checkSalesCloudWrite();
   await checkStoragePoliciesSql();
 
   console.log("\n=== Résumé ===");

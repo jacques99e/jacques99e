@@ -34,6 +34,9 @@
 
 - [x] GitHub Action `Monitor production` verte (toutes les 6 h)
 - [x] `node scripts/monitor-production.mjs` en local si alerte
+- [x] `npm run production:ready` (app + landing) avant chaque release
+- [x] API ventes `/api/sales` (sync cloud fiable, déployée)
+- [ ] Migration SQL `015_sales_external_id_unique.sql` en prod (auto si `SUPABASE_DB_URL` dans `.env.local`)
 - [x] Secrets GitHub : `E2E_OWNER_EMAIL`, `E2E_OWNER_PASSWORD` (compte test)
 - [x] Secrets GitHub : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (E2E CI)
 - [ ] Optionnel : `MONITOR_WEBHOOK_URL` (Slack / Discord)
@@ -76,7 +79,8 @@ git push origin v1.0.0
 
 ## Phase 3 — Croissance (mois 1)
 
-- [ ] Google Search Console : `npm run launch:gsc` (Landing) puis balise Vercel
+- [x] Google Search Console : balise déployée (`npm run launch:gsc`)
+- [ ] GSC : cliquer « Vérifier » + soumettre sitemap dans la console Google
 - [x] IndexNow + sitemap soumis (cron `/api/cron/submit-indexing` — 11 URLs)
 - [ ] 1 post réseaux : `npm run launch:social register` ou `pilote`
 - [ ] Premier client payant (upgrade Pro via MoMo)

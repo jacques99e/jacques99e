@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { apiFetch } from "@/lib/api-client";
 import {
   mergeCloudClients,
   readLocalClients,
@@ -10,6 +11,11 @@ import {
   readLocalSales,
 } from "@/lib/local-sales";
 import { readLocalProducts } from "@/lib/local-products";
+import {
+  replaceSaleItems,
+  saleItemProductId,
+  upsertSaleByExternalId,
+} from "@/lib/sale-cloud";
 
 export interface CloudSyncResult {
   clientsPushed: number;
@@ -107,46 +113,69 @@ export async function pushSalesToCloud(
 
   for (const sale of sales) {
     const total = Number(sale.total ?? sale.total_amount ?? 0);
-    const salePayload = {
-      store_id: storeId,
-      total_amount: total,
-      total: total,
-      payment_method: sale.payment_method || "cash",
-      payment_status: sale.payment_status || "completed",
-      external_local_id: sale.id,
-    };
+    let cloudId: string | null = null;
 
-    const { data: saleRow, error } = await supabase
-      .from("sales")
-      .upsert(salePayload, { onConflict: "store_id,external_local_id" })
-      .select("id")
-      .maybeSingle();
-
-    if (error) {
-      errors.push(`Vente ${sale.id.slice(0, 12)}: ${formatSupabaseError(error)}`);
+    try {
+      const response = await apiFetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: storeId,
+          external_local_id: sale.id,
+          total_amount: total,
+          total,
+          payment_method: sale.payment_method || "cash",
+          payment_status: sale.payment_status || "completed",
+          items: sale.items || [],
+        }),
+      });
+      const data = (await response.json()) as { success?: boolean; id?: string; error?: string };
+      if (response.ok && data.success && data.id) {
+        cloudId = data.id;
+      } else if (!response.ok) {
+        errors.push(`Vente ${sale.id.slice(0, 12)}: ${data.error || response.statusText}`);
+        continue;
+      }
+    } catch (e) {
+      errors.push(
+        `Vente ${sale.id.slice(0, 12)}: ${e instanceof Error ? e.message : "Erreur réseau"}`
+      );
       continue;
     }
-    if (!saleRow) continue;
 
-    const items = sale.items || [];
-    if (items.length) {
-      await supabase.from("sale_items").delete().eq("sale_id", saleRow.id);
-      const { error: itemsError } = await supabase.from("sale_items").insert(
-        items.map((i) => ({
-          sale_id: saleRow.id,
-          product_id: i.product_id?.startsWith("local-") ? null : i.product_id || null,
-          product_name: i.name || i.product_name || "Produit",
-          quantity: i.quantity,
-          unit_price: Number(i.unit_price ?? 0),
-          subtotal: Number(i.line_total ?? i.subtotal ?? 0),
-        }))
-      );
-      if (itemsError) {
-        errors.push(`Lignes vente ${sale.id.slice(0, 12)}: ${formatSupabaseError(itemsError)}`);
+    if (!cloudId) {
+      const result = await upsertSaleByExternalId(supabase, storeId, {
+        total_amount: total,
+        total,
+        payment_method: sale.payment_method || "cash",
+        payment_status: sale.payment_status || "completed",
+        external_local_id: sale.id,
+      });
+      if ("error" in result) {
+        errors.push(`Vente ${sale.id.slice(0, 12)}: ${result.error}`);
+        continue;
+      }
+      cloudId = result.id;
+      const items = sale.items || [];
+      if (items.length) {
+        const itemsResult = await replaceSaleItems(
+          supabase,
+          cloudId,
+          items.map((i) => ({
+            product_id: saleItemProductId(i.product_id),
+            product_name: i.name || i.product_name || "Produit",
+            quantity: i.quantity,
+            unit_price: Number(i.unit_price ?? 0),
+            subtotal: Number(i.line_total ?? i.subtotal ?? 0),
+          }))
+        );
+        if ("error" in itemsResult) {
+          errors.push(`Lignes vente ${sale.id.slice(0, 12)}: ${itemsResult.error}`);
+        }
       }
     }
 
-    sale.cloud_id = saleRow.id;
+    sale.cloud_id = cloudId;
     pushed++;
   }
 
@@ -269,14 +298,16 @@ export async function syncStoreToCloud(storeId: string): Promise<CloudSyncResult
 
   void readLocalProducts();
 
+  const pendingAfter = readLocalSales(storeId).filter((s) => !s.cloud_id).length;
+
   return {
     clientsPushed,
     clientsPulled,
     salesPushed,
     salesPulled,
     localClients: localClients.length,
-    localSales: localSales.length,
-    localSalesPending,
+    localSales: readLocalSales(storeId).length,
+    localSalesPending: pendingAfter,
     errors,
   };
 }
