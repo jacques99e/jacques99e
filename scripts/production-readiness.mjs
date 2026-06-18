@@ -140,9 +140,9 @@ const failed = checks.filter((c) => !c).length;
 if (failed === 0) {
   console.log("Prêt pour la production (vérifications automatiques OK).");
   console.log("\nActions manuelles restantes :");
-  console.log("  1. Exécuter migration 015 dans Supabase SQL Editor (si audit migration)");
-  console.log("  2. Balade : Paramètres → Synchroniser maintenant");
-  console.log("  3. GSC : Vérifier propriété + soumettre sitemap");
+  console.log("  1. Migration 015 : ajoutez SUPABASE_DB_URL puis npm run audit:supabase (auto-fix RLS)");
+  console.log("  2. GSC : Vérifier propriété + soumettre sitemap");
+  console.log("  3. Recruter pilotes 2–5 : npm run pilot:prospects (Landing)");
 } else {
   console.log(`${failed} vérification(s) en échec — corriger avant go-live public.`);
   process.exit(1);
