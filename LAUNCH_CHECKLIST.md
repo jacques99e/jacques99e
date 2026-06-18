@@ -34,7 +34,8 @@
 
 - [ ] GitHub Action `Monitor production` verte (toutes les 6 h)
 - [x] `node scripts/monitor-production.mjs` en local si alerte
-- [ ] Secrets GitHub : `E2E_OWNER_EMAIL`, `E2E_OWNER_PASSWORD` (compte test)
+- [x] Secrets GitHub : `E2E_OWNER_EMAIL`, `E2E_OWNER_PASSWORD` (compte test)
+- [x] Secrets GitHub : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (E2E CI)
 - [ ] Optionnel : `MONITOR_WEBHOOK_URL` (Slack / Discord)
 - [x] Vercel : `CRON_SECRET`, VAPID, Resend configurés (`npm run audit:vercel`)
 
