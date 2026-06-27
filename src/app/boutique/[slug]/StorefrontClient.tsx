@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  ChevronRight,
   MessageCircle,
   Package,
   Phone,
@@ -148,46 +150,62 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {store.products.map((product) => {
               const inStock = product.stock_quantity > 0;
+              const productHref = `/boutique/${store.slug}/produit/${product.id}`;
               return (
                 <article
                   key={product.id}
                   className="group flex flex-col overflow-hidden rounded-3xl border border-[#075E54]/10 bg-white shadow-sm transition hover:border-[#075E54]/25 hover:shadow-wazo-lg"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-[#FFF8F0]">
-                    {product.image_url && !failedImages[product.id] ? (
-                      <img
-                        src={product.image_url}
-                        alt=""
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        onError={() =>
-                          setFailedImages((prev) => ({ ...prev, [product.id]: true }))
-                        }
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#075E54]/10 to-[#FF6F00]/10 text-5xl font-bold text-[#075E54]/40">
-                        {product.name[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <span
-                      className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                        inStock
-                          ? "bg-[#075E54]/90 text-white"
-                          : "bg-[#1A1A1A]/70 text-white"
-                      }`}
-                    >
-                      {inStock ? t("storefront.inStock") : t("storefront.outOfStock")}
-                    </span>
-                  </div>
+                  <Link
+                    href={productHref}
+                    className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#075E54]/40"
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#FFF8F0]">
+                      {product.image_url && !failedImages[product.id] ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          onError={() =>
+                            setFailedImages((prev) => ({ ...prev, [product.id]: true }))
+                          }
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#075E54]/10 to-[#FF6F00]/10 text-5xl font-bold text-[#075E54]/40">
+                          {product.name[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span
+                        className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                          inStock
+                            ? "bg-[#075E54]/90 text-white"
+                            : "bg-[#1A1A1A]/70 text-white"
+                        }`}
+                      >
+                        {inStock ? t("storefront.inStock") : t("storefront.outOfStock")}
+                      </span>
+                    </div>
 
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="text-lg font-bold text-[#1A1A1A]">{product.name}</h3>
-                    {product.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-[#1A1A1A]/60">{product.description}</p>
-                    ) : null}
-                    <p className="mt-3 text-xl font-extrabold text-[#FF6F00]">
-                      {formatCurrency(product.price)}
-                    </p>
+                    <div className="flex flex-1 flex-col p-4">
+                      <h3 className="text-lg font-bold text-[#1A1A1A] group-hover:text-[#075E54]">
+                        {product.name}
+                      </h3>
+                      {product.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-[#1A1A1A]/60">
+                          {product.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-3 text-xl font-extrabold text-[#FF6F00]">
+                        {formatCurrency(product.price)}
+                      </p>
+                      <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#075E54]">
+                        {t("storefront.viewDetails")}
+                        <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
+                  </Link>
 
+                  <div className="px-4 pb-4">
                     <a
                       href={
                         contactPhone
@@ -202,7 +220,7 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
                       target="_blank"
                       rel="noreferrer"
                       aria-disabled={!contactPhone}
-                      className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white transition ${
+                      className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white transition ${
                         contactPhone
                           ? "bg-[#25D366] hover:brightness-105"
                           : "cursor-not-allowed bg-[#25D366]/60 pointer-events-none"
