@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatCertificateId } from "@/lib/education-enrollment";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 export async function GET(
@@ -16,7 +17,7 @@ export async function GET(
     const { data: enrollment, error } = await supabase
       .from("course_enrollments")
       .select(
-        "id, student_name, progress_percent, completed_at, certificate_token, course_id, courses(title, invite_code)"
+        "id, student_name, progress_percent, completed_at, certificate_token, course_id, courses(title, invite_code, stores(name))"
       )
       .eq("certificate_token", certificateToken)
       .maybeSingle();
@@ -28,7 +29,11 @@ export async function GET(
       );
     }
 
-    const course = enrollment.courses as { title?: string; invite_code?: string } | null;
+    const course = enrollment.courses as {
+      title?: string;
+      invite_code?: string;
+      stores?: { name?: string } | null;
+    } | null;
     const valid = (enrollment.progress_percent ?? 0) >= 100 && Boolean(enrollment.completed_at);
 
     return NextResponse.json({
@@ -37,9 +42,11 @@ export async function GET(
       certificate: {
         student_name: enrollment.student_name,
         course_title: course?.title || "Formation",
+        organization_name: course?.stores?.name || "Wazo Digital",
         progress_percent: enrollment.progress_percent,
         completed_at: enrollment.completed_at,
         token: enrollment.certificate_token,
+        certificate_id: formatCertificateId(certificateToken),
       },
     });
   } catch (e) {

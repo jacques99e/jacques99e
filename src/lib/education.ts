@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { apiFetch } from "@/lib/api-client";
+import { normalizeStudentName } from "@/lib/education-enrollment";
 import { supabase } from "@/lib/supabase/client";
 import { generateLocalId } from "@/lib/sync";
 import type { Course, CourseEnrollment, CourseModule } from "@/types";
@@ -159,7 +160,19 @@ export async function listEnrollments(courseId: string): Promise<CourseEnrollmen
     .select("*")
     .eq("course_id", courseId)
     .order("created_at", { ascending: false });
-  return (data || []) as CourseEnrollment[];
+  const rows = (data || []) as CourseEnrollment[];
+  const byName = new Map<string, CourseEnrollment>();
+  for (const row of rows) {
+    const key = normalizeStudentName(row.student_name);
+    const prev = byName.get(key);
+    if (!prev || (row.progress_percent ?? 0) > (prev.progress_percent ?? 0)) {
+      byName.set(key, row);
+    }
+  }
+  return [...byName.values()].sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  );
 }
 
 export async function createCourseModule(
@@ -311,18 +324,28 @@ export async function createEnrollment(
   input: Pick<CourseEnrollment, "student_name"> & { student_email?: string | null }
 ): Promise<CourseEnrollment | null> {
   if (!navigator.onLine) return null;
-  const { data, error } = await supabase
-    .from("course_enrollments")
-    .insert({
+
+  const response = await apiFetch("/api/education/enrollments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       course_id: courseId,
       student_name: input.student_name,
       student_email: input.student_email ?? null,
-      progress_percent: 0,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data || null;
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    success: boolean;
+    enrollment?: CourseEnrollment;
+    error?: string;
+  };
+
+  if (!response.ok || !payload.success || !payload.enrollment) {
+    throw new Error(payload.error || "Inscription impossible");
+  }
+
+  return payload.enrollment;
 }
 
 export async function generateCertificatePdf(

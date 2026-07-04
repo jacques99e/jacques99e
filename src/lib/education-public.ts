@@ -58,6 +58,17 @@ export async function enrollPublicStudent(
 }
 
 const SESSION_KEY = "wazo_formation_session";
+const LEARNER_NAME_KEY = "wazo_formation_learner_name";
+
+export function saveLearnerNameForCourse(code: string, name: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`${LEARNER_NAME_KEY}:${code.toLowerCase()}`, name.trim());
+}
+
+export function loadLearnerNameForCourse(code: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(`${LEARNER_NAME_KEY}:${code.toLowerCase()}`);
+}
 
 export function saveFormationSession(code: string, enrollment: CourseEnrollment) {
   if (typeof window === "undefined") return;

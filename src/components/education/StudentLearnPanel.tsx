@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LessonVideoPlayer } from "@/components/LessonVideoPlayer";
 import { ModuleQuizPanel } from "@/components/education/ModuleQuizPanel";
 import { ModuleSubtitlesPanel } from "@/components/education/ModuleSubtitlesPanel";
-import { generateCertificatePdfWithQr, issueCertificateToken } from "@/lib/certificate";
+import { downloadCertificatePdfWithQr } from "@/lib/certificate";
 import {
   computeProgressPercent,
   getModuleQuiz,
@@ -49,6 +49,7 @@ export function StudentLearnPanel({
   const [tick, setTick] = useState(0);
   const [hasQuizByModuleId, setHasQuizByModuleId] = useState<Record<string, boolean>>({});
   const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState("");
 
   const sortedModules = useMemo(
     () => [...modules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
@@ -132,25 +133,42 @@ export function StudentLearnPanel({
   };
 
   const downloadCertificate = async () => {
-    if (!activeEnrollment || percent < 100) return;
+    if (!activeEnrollment || !enrollmentId) {
+      setCertError("Sélectionnez un apprenant.");
+      return;
+    }
+    if (percent < 100) {
+      setCertError("Terminez toutes les leçons et quiz avant de télécharger le certificat.");
+      return;
+    }
+    const progressMeta = readLocalProgress(courseId, enrollmentId);
     setCertLoading(true);
+    setCertError("");
     try {
-      const { token } = await issueCertificateToken({
-        enrollmentId: activeEnrollment.id,
-        inviteCode: publicInviteCode,
-      });
-      const blob = await generateCertificatePdfWithQr(
+      await saveLearnerProgress(
+        courseId,
+        enrollmentId,
+        progressMeta,
+        orderedIds,
+        hasQuizByModuleId,
+        publicInviteCode
+      );
+      await downloadCertificatePdfWithQr(
         activeEnrollment.student_name,
         courseTitle,
         "Wazo Digital",
-        token
+        {
+          enrollmentId: activeEnrollment.id,
+          inviteCode: publicInviteCode,
+          progressMeta,
+          orderedModuleIds: orderedIds,
+          hasQuizByModuleId,
+        }
       );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `certificat-${activeEnrollment.student_name.replace(/\s+/g, "-")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+    } catch (err) {
+      setCertError(
+        err instanceof Error ? err.message : "Impossible de télécharger le certificat."
+      );
     } finally {
       setCertLoading(false);
     }
@@ -220,8 +238,15 @@ export function StudentLearnPanel({
                   onClick={() => void downloadCertificate()}
                 >
                   <Award className="mr-1 h-4 w-4" />
-                  {certLoading ? "Génération…" : "Télécharger mon certificat PDF"}
+                  {certLoading ? "Préparation…" : "Télécharger mon certificat PDF"}
                 </Button>
+                {certLoading ? (
+                  <p className="text-xs text-gray-600">
+                    Le téléchargement va s&apos;ouvrir dans le navigateur. Si rien ne se passe,
+                    autorisez les téléchargements pour ce site.
+                  </p>
+                ) : null}
+                {certError ? <p className="text-xs text-red-600">{certError}</p> : null}
               </div>
             ) : null}
           </div>

@@ -15,7 +15,7 @@ import { uploadCourseVideo } from "@/lib/course-media";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
-import { generateCertificatePdfWithQr, issueCertificateToken } from "@/lib/certificate";
+import { downloadCertificatePdfWithQr } from "@/lib/certificate";
 import {
   createCourseModule,
   createEnrollment,
@@ -23,6 +23,8 @@ import {
   listEnrollments,
   setCoursePublic,
 } from "@/lib/education";
+import { normalizeStudentName } from "@/lib/education-enrollment";
+import { getModuleQuiz, moduleHasQuiz, readLocalProgress } from "@/lib/education-extras";
 import { LessonEditorCard } from "@/components/education/LessonEditorCard";
 import { formationUrl } from "@/lib/education-public";
 import { looksLikePhone } from "@/lib/sms";
@@ -124,23 +126,32 @@ export default function CourseDetailPage() {
     if (!course) return;
     const targetId =
       enrollmentId || enrollments.find((e) => e.student_name === name)?.id;
-    if (targetId) {
-      const { token } = await issueCertificateToken({ enrollmentId: targetId });
-      const blob = await generateCertificatePdfWithQr(
-        name,
-        course.title,
-        "Wazo Formateur",
-        token
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `certificat-${name}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+    if (!targetId) {
+      setError("Inscrivez l'apprenant avant d'émettre un certificat vérifiable.");
       return;
     }
-    setError("Inscrivez l'apprenant avant d'émettre un certificat vérifiable.");
+    const progressMeta = readLocalProgress(id, targetId);
+    const orderedIds = sortedModules.map((m) => m.id);
+    const hasQuizByModuleId: Record<string, boolean> = {};
+    await Promise.all(
+      sortedModules.map(async (m) => {
+        const quiz = await getModuleQuiz(m.id, id);
+        hasQuizByModuleId[m.id] = moduleHasQuiz(quiz);
+      })
+    );
+    try {
+      await downloadCertificatePdfWithQr(name, course.title, "Wazo Formateur", {
+        enrollmentId: targetId,
+        inviteCode: course.is_public ? course.invite_code ?? undefined : undefined,
+        progressMeta,
+        orderedModuleIds: orderedIds,
+        hasQuizByModuleId,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Impossible de télécharger le certificat."
+      );
+    }
   };
 
   const addModule = async () => {
@@ -163,10 +174,14 @@ export default function CourseDetailPage() {
       });
       const created = result.module;
       if (!result.synced) {
-        setNotice(result.message ?? "Module sauvegardé localement, synchronisation en attente.");
-      } else {
-        setNotice(mediaUrl ? "Leçon avec vidéo enregistrée." : "Module enregistré.");
+        setNotice("");
+        setError(
+          result.message ??
+            "Module sauvegardé localement uniquement. Vérifiez votre connexion puis réessayez."
+        );
+        return;
       }
+      setNotice(mediaUrl ? "Leçon avec vidéo enregistrée." : "Module enregistré.");
       await logAuditEvent({
         action: "course_module_created",
         entityType: "course_module",
@@ -179,6 +194,7 @@ export default function CourseDetailPage() {
       setVideoFile(null);
       await reload();
     } catch (err) {
+      setNotice("");
       setError(mapErrorToUserMessage(err, "Impossible d'ajouter le module pour le moment."));
     } finally {
       setSavingModule(false);
@@ -193,10 +209,16 @@ export default function CourseDetailPage() {
     try {
       const enrolledName = studentName.trim();
       const contact = studentEmail.trim();
+      const alreadyListed = enrollments.some(
+        (e) => normalizeStudentName(e.student_name) === normalizeStudentName(enrolledName)
+      );
       const created = await createEnrollment(id, {
         student_name: enrolledName,
         student_email: contact || null,
       });
+      if (alreadyListed) {
+        setNotice("Apprenant déjà inscrit — sa progression a été conservée.");
+      }
       await logAuditEvent({
         action: "course_enrollment_created",
         entityType: "course_enrollment",
@@ -475,6 +497,7 @@ export default function CourseDetailPage() {
           courseTitle={course.title}
           modules={sortedModules}
           enrollments={enrollments}
+          publicInviteCode={course.is_public ? course.invite_code ?? undefined : undefined}
           onProgressUpdated={() => void reload()}
         />
       </main>

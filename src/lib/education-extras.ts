@@ -233,7 +233,7 @@ async function savePublicProgress(
   meta: LearnerProgressMeta,
   percent: number
 ): Promise<void> {
-  await fetch(`/api/education/public/${encodeURIComponent(inviteCode)}/progress`, {
+  const res = await fetch(`/api/education/public/${encodeURIComponent(inviteCode)}/progress`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -242,6 +242,10 @@ async function savePublicProgress(
       progress_percent: percent,
     }),
   });
+  const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || "Synchronisation de la progression impossible");
+  }
 }
 
 export async function saveLearnerProgress(

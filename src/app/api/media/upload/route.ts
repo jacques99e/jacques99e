@@ -3,11 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
-const BUCKET_CONFIG: Record<string, { public: boolean }> = {
-  "product-images": { public: true },
-  "course-media": { public: true },
-  certificates: { public: true },
-  "health-docs": { public: false },
+const MB = 1024 * 1024;
+
+const BUCKET_CONFIG: Record<string, { public: boolean; fileSizeLimit: number }> = {
+  "product-images": { public: true, fileSizeLimit: 10 * MB },
+  "course-media": { public: true, fileSizeLimit: 50 * MB },
+  certificates: { public: true, fileSizeLimit: 10 * MB },
+  "health-docs": { public: false, fileSizeLimit: 10 * MB },
 };
 
 const ALLOWED_BUCKETS = new Set(Object.keys(BUCKET_CONFIG));
@@ -21,7 +23,7 @@ async function ensureBucket(service: SupabaseClient, bucket: string): Promise<st
   const config = BUCKET_CONFIG[bucket];
   const { error } = await service.storage.createBucket(bucket, {
     public: config.public,
-    fileSizeLimit: 10 * 1024 * 1024,
+    fileSizeLimit: config.fileSizeLimit,
   });
 
   if (error?.message?.toLowerCase().includes("already exists")) return null;

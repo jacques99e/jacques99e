@@ -11,7 +11,9 @@ import {
   enrollPublicStudent,
   fetchPublicCourse,
   loadFormationSession,
+  loadLearnerNameForCourse,
   saveFormationSession,
+  saveLearnerNameForCourse,
 } from "@/lib/education-public";
 import type { Course, CourseEnrollment, CourseModule, ModuleQuiz } from "@/types";
 
@@ -37,8 +39,28 @@ export default function PublicFormationPage() {
         setCourse(payload.course);
         setModules(payload.modules);
         setQuizzes(payload.quizzes);
-        const saved = loadFormationSession(code);
-        if (saved) setEnrollment(saved);
+
+        const savedSession = loadFormationSession(code);
+        if (savedSession) {
+          setEnrollment(savedSession);
+          setStudentName(savedSession.student_name);
+          return;
+        }
+
+        const rememberedName = loadLearnerNameForCourse(code);
+        if (rememberedName) {
+          setStudentName(rememberedName);
+          try {
+            const row = await enrollPublicStudent(code, rememberedName);
+            if (!cancelled) {
+              setEnrollment(row);
+              saveFormationSession(code, row);
+            }
+            return;
+          } catch {
+            /* formulaire avec nom prérempli */
+          }
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Cours introuvable");
@@ -54,12 +76,14 @@ export default function PublicFormationPage() {
 
   const join = async (e: FormEvent) => {
     e.preventDefault();
-    if (!studentName.trim()) return;
+    const name = studentName.trim();
+    if (!name) return;
     setJoining(true);
     setError("");
     try {
-      const row = await enrollPublicStudent(code, studentName.trim(), studentContact.trim());
+      const row = await enrollPublicStudent(code, name, studentContact.trim());
       setEnrollment(row);
+      saveLearnerNameForCourse(code, name);
       saveFormationSession(code, row);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
@@ -103,6 +127,10 @@ export default function PublicFormationPage() {
         {!enrollment ? (
           <form onSubmit={join} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-sm font-medium">Rejoindre le cours</p>
+            <p className="text-xs text-gray-500">
+              Un seul profil par nom et par cours — si vous revenez plus tard, votre progression
+              sera conservée.
+            </p>
             <Input
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
@@ -116,7 +144,7 @@ export default function PublicFormationPage() {
             />
             {error ? <p className="text-xs text-red-600">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={joining}>
-              {joining ? "Inscription…" : "Commencer"}
+              {joining ? "Connexion…" : "Commencer"}
             </Button>
           </form>
         ) : (

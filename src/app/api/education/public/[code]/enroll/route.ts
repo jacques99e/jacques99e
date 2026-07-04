@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getOrCreateEnrollment } from "@/lib/education-enrollment";
 import { buildFormationInviteSms, looksLikePhone, sendSms } from "@/lib/sms";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
@@ -33,55 +34,22 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Cours non public" }, { status: 403 });
     }
 
-    const { data: existing } = await supabase
-      .from("course_enrollments")
-      .select("id, student_name, progress_percent")
-      .eq("course_id", course.id)
-      .ilike("student_name", studentName)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ success: true, enrollment: existing });
-    }
-
-    const { data, error } = await supabase
-      .from("course_enrollments")
-      .insert({
-        course_id: course.id,
-        student_name: studentName,
-        student_email: body.student_email?.trim() || null,
-        progress_percent: 0,
-        progress_meta: { completedModuleIds: [], passedQuizModuleIds: [] },
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      const fallback = await supabase
-        .from("course_enrollments")
-        .insert({
-          course_id: course.id,
-          student_name: studentName,
-          student_email: body.student_email?.trim() || null,
-          progress_percent: 0,
-        })
-        .select("*")
-        .single();
-      if (fallback.error) {
-        return NextResponse.json({ success: false, error: fallback.error.message }, { status: 500 });
-      }
-      return NextResponse.json({ success: true, enrollment: fallback.data });
-    }
+    const enrollment = await getOrCreateEnrollment(
+      supabase,
+      course.id,
+      studentName,
+      body.student_email
+    );
 
     const contact = body.student_email?.trim();
-    if (contact && looksLikePhone(contact) && course.invite_code) {
+    if (contact && looksLikePhone(contact) && course.invite_code && !enrollment.invite_sms_sent_at) {
       const base = (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(
         /\/$/,
         ""
       );
       const link = `${base}/formation/${course.invite_code}`;
       const message = buildFormationInviteSms({
-        studentName,
+        studentName: enrollment.student_name,
         courseTitle: course.title,
         inviteCode: course.invite_code,
         formationLink: link,
@@ -91,11 +59,11 @@ export async function POST(
         await supabase
           .from("course_enrollments")
           .update({ invite_sms_sent_at: new Date().toISOString() })
-          .eq("id", data.id);
+          .eq("id", enrollment.id);
       }
     }
 
-    return NextResponse.json({ success: true, enrollment: data });
+    return NextResponse.json({ success: true, enrollment });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur serveur";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
