@@ -64,7 +64,7 @@ export default function AgriculturePage() {
           iconClassName={iconStyle}
         />
         <ModuleMenuLink
-          href="/products/add?category=Agriculture"
+          href="/agriculture/vendre"
           icon={ShoppingBasket}
           title={t("agri.menu.sell.title")}
           description={t("agri.menu.sell.desc")}

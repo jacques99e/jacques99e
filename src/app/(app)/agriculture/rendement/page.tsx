@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { estimateHarvestRevenue, readMarketPrices } from "@/lib/agriculture-markets";
+import { useLocalizedMarketPrices } from "@/hooks/useLocalizedMarketPrices";
+import { estimateHarvestRevenue } from "@/lib/agriculture-markets";
 import { formatCurrency } from "@/lib/utils";
 
 const regionalAverage = 2500; // mock kg/ha
 
 export default function YieldCalculatorPage() {
+  const { prices } = useLocalizedMarketPrices();
   const [harvestKg, setHarvestKg] = useState("");
   const [areaHa, setAreaHa] = useState("");
   const [computed, setComputed] = useState<number | null>(null);
@@ -115,7 +117,7 @@ export default function YieldCalculatorPage() {
                   {formatCurrency(
                     estimateHarvestRevenue(
                       Number(harvestKg),
-                      readMarketPrices().find((p) => p.id === "cacao")?.priceFcfa ?? 1450
+                      prices.find((p) => p.id === "cacao")?.priceFcfa ?? 1450
                     )
                   )}
                 </strong>

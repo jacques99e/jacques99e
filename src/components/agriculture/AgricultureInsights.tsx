@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudSun, Lightbulb, Sprout } from "lucide-react";
+import { CloudSun, Lightbulb, MapPin, Sprout } from "lucide-react";
 import { listParcels } from "@/lib/agriculture";
+import { apiFetch } from "@/lib/api-client";
 import { localStore } from "@/lib/db";
 
 interface WeatherData {
@@ -10,6 +11,9 @@ interface WeatherData {
   condition: string;
   humidity: number;
   alert: string | null;
+  location?: string;
+  source?: string;
+  error?: string;
 }
 
 export function AgricultureInsights() {
@@ -17,6 +21,7 @@ export function AgricultureInsights() {
   const [parcels, setParcels] = useState(0);
   const [cultures, setCultures] = useState(0);
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherError, setWeatherError] = useState("");
   const [tip, setTip] = useState<string>("");
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export function AgricultureInsights() {
   }, [storeId]);
 
   useEffect(() => {
-    void fetch("/api/agriculture/tips?crop=general")
+    void apiFetch("/api/agriculture/tips?crop=general")
       .then((res) => res.json())
       .then((json: { tips?: string[] }) => {
         const tips = json.tips ?? [];
@@ -39,27 +44,38 @@ export function AgricultureInsights() {
       })
       .catch(() => undefined);
 
+    const loadWeather = (lat?: number, lon?: number) => {
+      const query =
+        typeof lat === "number" && typeof lon === "number"
+          ? `/api/agriculture/weather?lat=${lat}&lon=${lon}`
+          : "/api/agriculture/weather";
+
+      void apiFetch(query)
+        .then(async (res) => {
+          const json = (await res.json()) as WeatherData & { success?: boolean; error?: string };
+          if (!res.ok || json.success === false) {
+            throw new Error(json.error || "Météo indisponible");
+          }
+          setWeatherError("");
+          setWeather(json);
+        })
+        .catch((err: unknown) => {
+          setWeather(null);
+          setWeatherError(
+            err instanceof Error ? err.message : "Impossible de charger la météo."
+          );
+        });
+    };
+
     if (!navigator.geolocation) {
-      void fetch("/api/agriculture/weather")
-        .then((res) => res.json())
-        .then((json: WeatherData) => setWeather(json));
+      loadWeather();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        void fetch(
-          `/api/agriculture/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`
-        )
-          .then((res) => res.json())
-          .then((json: WeatherData) => setWeather(json));
-      },
-      () => {
-        void fetch("/api/agriculture/weather")
-          .then((res) => res.json())
-          .then((json: WeatherData) => setWeather(json));
-      },
-      { timeout: 8000 }
+      (pos) => loadWeather(pos.coords.latitude, pos.coords.longitude),
+      () => loadWeather(),
+      { timeout: 10_000, maximumAge: 300_000 }
     );
   }, []);
 
@@ -83,12 +99,22 @@ export function AgricultureInsights() {
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-800">Météo locale</p>
+            {weather.location ? (
+              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-gray-500">
+                <MapPin className="h-3 w-3" />
+                {weather.location}
+              </p>
+            ) : null}
             <p className="text-lg font-bold text-sky-700">{weather.temp_c}°C</p>
             <p className="text-xs text-gray-600 capitalize">{weather.condition}</p>
             <p className="text-xs text-gray-500">Humidité {weather.humidity}%</p>
             {weather.alert ? <p className="mt-1 text-[10px] text-amber-700">{weather.alert}</p> : null}
           </div>
         </div>
+      ) : null}
+
+      {weatherError ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{weatherError}</p>
       ) : null}
 
       {tip ? (

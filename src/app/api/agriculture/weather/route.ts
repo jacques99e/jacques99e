@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  fetchAgricultureWeather,
+  resolveWeatherCoordinates,
+  withLocationHint,
+} from "@/lib/agriculture-weather";
 import { requireAuthContext } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
@@ -7,33 +12,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
-  const lat = request.nextUrl.searchParams.get("lat");
-  const lon = request.nextUrl.searchParams.get("lon");
-  const apiKey = process.env.OPENWEATHER_API_KEY;
+  const latParam = request.nextUrl.searchParams.get("lat");
+  const lonParam = request.nextUrl.searchParams.get("lon");
+  const { lat, lon, fromGps } = resolveWeatherCoordinates(latParam, lonParam);
 
-  if (apiKey && lat && lon) {
-    try {
-      const res = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=fr`
-      );
-      const data = await res.json();
-      return NextResponse.json({
-        temp_c: Math.round(data.main?.temp ?? 28),
-        condition: data.weather?.[0]?.description ?? "—",
-        humidity: data.main?.humidity ?? 60,
-        alert: null,
-        source: "openweathermap",
-      });
-    } catch {
-      /* mock fallback */
-    }
+  try {
+    const weather = withLocationHint(
+      await fetchAgricultureWeather(lat, lon, {
+        openWeatherApiKey: process.env.OPENWEATHER_API_KEY,
+      }),
+      fromGps
+    );
+
+    return NextResponse.json({
+      success: true,
+      ...weather,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Météo indisponible";
+    return NextResponse.json({ success: false, error: message }, { status: 502 });
   }
-
-  return NextResponse.json({
-    temp_c: 29,
-    condition: "Partiellement nuageux",
-    humidity: 62,
-    alert: "Simulation météo — configurez OPENWEATHER_API_KEY pour données réelles.",
-    source: "mock",
-  });
 }
