@@ -18,6 +18,12 @@ import {
 } from "@/lib/local-clients";
 import { getBusinessSettings } from "@/lib/business-settings";
 import { buildMessageFromTemplate, openWhatsAppChat } from "@/lib/whatsapp";
+import {
+  advanceFollowUpSequence,
+  startFollowUpSequence,
+  todayISO,
+} from "@/lib/followup-sequences";
+import { FollowUpSequencePanel } from "@/components/FollowUpSequencePanel";
 import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 
@@ -142,7 +148,13 @@ export default function ClientsPage() {
       nextFollowUp: nextFollowUp || null,
       note: note.trim(),
     };
-    saveAll([record, ...clients]);
+    const withSequence =
+      !record.nextFollowUp &&
+      record.phone.trim() &&
+      (status === "prospect" || status === "relance")
+        ? startFollowUpSequence(record, todayISO())
+        : record;
+    saveAll([withSequence, ...clients]);
     setName("");
     setPhone("");
     setTagsInput("");
@@ -195,9 +207,13 @@ export default function ClientsPage() {
       return;
     }
     saveAll(
-      clients.map((c) =>
-        c.id === client.id ? { ...c, status: "relance" as const } : c
-      )
+      clients.map((c) => {
+        if (c.id !== client.id) return c;
+        if (c.sequenceStep === 1 || c.sequenceStep === 2) {
+          return advanceFollowUpSequence(c, todayISO());
+        }
+        return { ...c, status: "relance" as const };
+      })
     );
   };
 
@@ -244,6 +260,12 @@ export default function ClientsPage() {
             { value: reminderBuckets.overdue.length, label: "Relances en retard", accent: "text-red-600" },
             { value: reminderBuckets.todayDue.length, label: "Relances aujourd'hui", accent: "text-amber-600" },
           ]}
+        />
+
+        <FollowUpSequencePanel
+          clients={clients}
+          storeName={storeLabel}
+          onChange={saveAll}
         />
 
         {(reminderBuckets.overdue.length > 0 || reminderBuckets.todayDue.length > 0) && (
@@ -351,7 +373,12 @@ export default function ClientsPage() {
                 <p className="mt-1 text-xs text-gray-600">Tags: {client.tags.join(", ")}</p>
               ) : null}
               {client.nextFollowUp ? (
-                <p className="mt-1 text-xs text-amber-700">Relance: {client.nextFollowUp}</p>
+                <p className="mt-1 text-xs text-amber-700">
+                  Relance: {client.nextFollowUp}
+                  {client.sequenceStep
+                    ? ` · Séquence J+${client.sequenceStep === 1 ? "1" : "3"}`
+                    : ""}
+                </p>
               ) : null}
               {client.note ? <p className="mt-1 text-xs text-gray-700">{client.note}</p> : null}
               <div className="mt-2 flex flex-wrap gap-2">

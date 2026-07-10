@@ -1,6 +1,10 @@
 import { getBusinessSettings } from "@/lib/business-settings";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { localStore } from "@/lib/db";
+import {
+  getDueSequenceItems,
+  sequenceStepLabel,
+} from "@/lib/followup-sequences";
 import { readLocalClients } from "@/lib/local-clients";
 import { readLocalProducts } from "@/lib/local-products";
 import { readLocalSales } from "@/lib/local-sales";
@@ -250,8 +254,30 @@ export function computeDailyActions(options?: {
   const dormantCutoff = new Date(today);
   dormantCutoff.setDate(dormantCutoff.getDate() - DORMANT_DAYS);
 
+  // Priorité : séquences J+1 / J+3 dues aujourd'hui
+  const dueSequence = getDueSequenceItems(clients);
+  for (const item of dueSequence.slice(0, 3)) {
+    const { client, step, reason, overdue } = item;
+    actions.push({
+      id: `seq-${step}-${client.id}`,
+      type: "relance_client",
+      priority: overdue ? 1 : 2,
+      title: `${sequenceStepLabel(step)} · ${client.name}`,
+      reason,
+      ctaLabel: "WhatsApp",
+      href: "/clients",
+      whatsapp: {
+        phone: client.phone,
+        templateId: step === 1 ? "followup_j1" : "followup_j3",
+        draftHint: reason,
+      },
+      entity: { kind: "client", id: client.id, name: client.name },
+    });
+  }
+
   const dormantClients = clients
     .filter((c) => c.phone?.trim())
+    .filter((c) => !dueSequence.some((d) => d.client.id === c.id))
     .map((c) => {
       const last = lastSaleDateForClient(sales, c.id, c.phone);
       const overdueFollowUp =

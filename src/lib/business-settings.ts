@@ -24,6 +24,26 @@ C'est {{storeName}}. Nous souhaitions prendre de vos nouvelles et savoir si vous
 Merci et à bientôt.`,
   },
   {
+    id: "followup_j1",
+    name: "Séquence J+1",
+    body: `Bonjour {{clientName}},
+
+C'est {{storeName}}. Je voulais juste m'assurer que vous avez bien reçu nos infos.
+Dites-moi si vous souhaitez commander ou si vous avez une question.
+{{noteLine}}
+Bonne journée !`,
+  },
+  {
+    id: "followup_j3",
+    name: "Séquence J+3",
+    body: `Bonjour {{clientName}},
+
+{{storeName}} ici. Je reviens vers vous rapidement : nos produits sont toujours disponibles.
+Répondez à ce message pour réserver ou passer commande.
+{{noteLine}}
+Merci et à très bientôt.`,
+  },
+  {
     id: "promo",
     name: "Offre spéciale",
     body: `Bonjour {{clientName}},
@@ -49,6 +69,14 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   whatsappTemplates: DEFAULT_TEMPLATES,
 };
 
+function mergeWhatsAppTemplates(saved: WhatsAppTemplate[]): WhatsAppTemplate[] {
+  const byId = new Map(saved.map((t) => [t.id, t]));
+  for (const def of DEFAULT_TEMPLATES) {
+    if (!byId.has(def.id)) byId.set(def.id, def);
+  }
+  return [...byId.values()];
+}
+
 export function getBusinessSettings(): BusinessSettings {
   if (typeof window === "undefined") return DEFAULT_BUSINESS_SETTINGS;
   try {
@@ -57,7 +85,7 @@ export function getBusinessSettings(): BusinessSettings {
     const parsed = JSON.parse(raw) as Partial<BusinessSettings>;
     const templates =
       Array.isArray(parsed.whatsappTemplates) && parsed.whatsappTemplates.length > 0
-        ? parsed.whatsappTemplates
+        ? mergeWhatsAppTemplates(parsed.whatsappTemplates)
         : DEFAULT_TEMPLATES;
     const threshold = Number(parsed.lowStockThreshold);
     return {

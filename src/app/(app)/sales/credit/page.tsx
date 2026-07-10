@@ -59,11 +59,33 @@ export default function CreditLedgerPage() {
     setNote("");
   };
 
-  const remind = (name: string, phone: string, balance: number) => {
-    const msg = t("credit.remindMsg", {
+  const remind = async (name: string, phone: string, balance: number) => {
+    const fallback = t("credit.remindMsg", {
       name,
       amount: formatCurrency(balance),
     });
+    let msg = fallback;
+    if (navigator.onLine) {
+      try {
+        const { apiFetch } = await import("@/lib/api-client");
+        const res = await apiFetch("/api/assistant/draft-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "credit_reminder",
+            storeName: localStore.get()?.name || "Wazo Digital",
+            clientName: name,
+            context: `Crédit restant: ${formatCurrency(balance)}`,
+          }),
+        });
+        const data = (await res.json()) as { success?: boolean; message?: string };
+        if (res.ok && data.success && data.message?.trim()) {
+          msg = data.message.trim();
+        }
+      } catch {
+        /* keep fallback */
+      }
+    }
     if (phone) {
       window.open(buildWhatsAppShareUrl(msg, phone), "_blank", "noopener,noreferrer");
     } else {
@@ -154,7 +176,7 @@ export default function CreditLedgerPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => remind(last?.clientName ?? key, last?.clientPhone ?? "", bal)}
+                      onClick={() => void remind(last?.clientName ?? key, last?.clientPhone ?? "", bal)}
                     >
                       <MessageCircle className="h-3 w-3" />
                     </Button>

@@ -11,6 +11,10 @@ export interface LocalClientRecord {
   status: ClientStatus;
   nextFollowUp: string | null;
   note: string;
+  /** 1 = prochaine J+1, 2 = prochaine J+3, null = pas / terminé */
+  sequenceStep?: 1 | 2 | null;
+  sequenceStartedAt?: string | null;
+  lastRelanceAt?: string | null;
   cloud_id?: string | null;
   updated_at?: string;
 }
@@ -36,6 +40,9 @@ export function readLocalClients(storeId?: string): LocalClientRecord[] {
         ...c,
         store_id: c.store_id || storeId,
         tags: Array.isArray(c.tags) ? c.tags : [],
+        sequenceStep: c.sequenceStep === 1 || c.sequenceStep === 2 ? c.sequenceStep : null,
+        sequenceStartedAt: c.sequenceStartedAt ?? null,
+        lastRelanceAt: c.lastRelanceAt ?? null,
       }));
     } catch {
       continue;
@@ -92,6 +99,10 @@ export function mergeCloudClients(
       nextFollowUp: row.next_follow_up,
       note: row.note || "",
       updated_at: row.updated_at,
+      // Champs séquence locaux (pas encore en cloud)
+      sequenceStep: existing?.sequenceStep ?? null,
+      sequenceStartedAt: existing?.sequenceStartedAt ?? null,
+      lastRelanceAt: existing?.lastRelanceAt ?? null,
     };
     if (existing) {
       const localTime = existing.updated_at ? Date.parse(existing.updated_at) : 0;
