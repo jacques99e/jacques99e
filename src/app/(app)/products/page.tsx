@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, CreditCard, Megaphone, Pencil, Plus, Search } from "lucide-react";
+import { Copy, CreditCard, Megaphone, Package, Pencil, Plus, Search } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,6 +203,13 @@ export default function ProductsPage() {
         <ModulePublicPortals moduleId="commerce" />
         <ModuleCompetitiveEdge moduleId="commerce" />
 
+        <ModuleMenuLink
+          href="/products/orders"
+          icon={Package}
+          title="Commandes COD"
+          description="Paiement à la livraison — confirmer, livrer, WhatsApp client"
+          iconClassName="bg-[#FF6F00]/10 text-[#FF6F00]"
+        />
         <ModuleMenuLink
           href="/sales/credit"
           icon={CreditCard}
