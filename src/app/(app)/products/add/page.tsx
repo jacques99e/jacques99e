@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
+import { ProductPhotoAiButton } from "@/components/ProductPhotoAiButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ export default function AddProductPage() {
   const [billing, setBilling] = useState<BillingSubscription | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>("");
+  const [whatsappPitch, setWhatsappPitch] = useState("");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -100,6 +102,47 @@ export default function AddProductPage() {
       <main className="mx-auto max-w-lg p-4">
         <form onSubmit={handleSave} className="space-y-4 rounded-2xl bg-white p-4 shadow-sm">
           <div>
+            <Label>Photo du produit</Label>
+            <label className="mt-1 flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
+              {imagePreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagePreviewUrl} alt="" className="h-full w-full rounded-xl object-cover" />
+              ) : (
+                <Camera className="h-6 w-6" />
+              )}
+              <span className="mt-1 text-xs">
+                {imagePreviewUrl ? "Changer la photo" : "Prendre / uploader une photo"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setImageFile(file);
+                  setImagePreviewUrl(URL.createObjectURL(file));
+                  setWhatsappPitch("");
+                }}
+              />
+            </label>
+            <ProductPhotoAiButton
+              className="mt-2"
+              imageFile={imageFile}
+              onFilled={(result) => {
+                if (result.name && result.name !== "Produit") setName(result.name);
+                else if (!name.trim()) setName(result.name);
+                if (result.description) setDescription(result.description);
+                if (result.suggestedPriceFcfa && !price.trim()) {
+                  setPrice(String(result.suggestedPriceFcfa));
+                }
+                if (result.whatsappPitch) setWhatsappPitch(result.whatsappPitch);
+              }}
+            />
+          </div>
+
+          <div>
             <Label>Nom du produit</Label>
             <Input
               value={name}
@@ -145,29 +188,27 @@ export default function AddProductPage() {
             </div>
           </div>
 
-          <div>
-            <Label>Photo du produit</Label>
-            <label className="mt-1 flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
-              {imagePreviewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreviewUrl} alt="" className="h-full w-full rounded-xl object-cover" />
-              ) : (
-                <Camera className="h-6 w-6" />
-              )}
-              <span className="mt-1 text-xs">{imagePreviewUrl ? "Photo prete" : "Uploader une photo"}</span>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setImageFile(file);
-                  setImagePreviewUrl(URL.createObjectURL(file));
+          {whatsappPitch ? (
+            <div className="rounded-xl border border-green-100 bg-green-50 p-3">
+              <p className="text-xs font-semibold text-green-900">Pitch WhatsApp suggéré</p>
+              <p className="mt-1 whitespace-pre-wrap text-xs text-green-800">{whatsappPitch}</p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2 bg-[#075E54] hover:bg-[#064e47]"
+                onClick={() => {
+                  void navigator.clipboard.writeText(whatsappPitch);
+                  window.open(
+                    `https://wa.me/?text=${encodeURIComponent(whatsappPitch)}`,
+                    "_blank",
+                    "noopener,noreferrer"
+                  );
                 }}
-              />
-            </label>
-          </div>
+              >
+                Partager sur WhatsApp
+              </Button>
+            </div>
+          ) : null}
 
           <Button
             type="submit"
@@ -189,4 +230,3 @@ export default function AddProductPage() {
     </>
   );
 }
-

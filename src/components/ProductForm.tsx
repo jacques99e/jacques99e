@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { ProductPhotoAiButton } from "./ProductPhotoAiButton";
 import { useI18n } from "@/contexts/I18nContext";
 import type { Product } from "@/types";
 import { saveProduct, uploadProductImage } from "@/lib/products";
@@ -102,6 +103,18 @@ export function ProductForm({ product, storeId, userId }: ProductFormProps) {
         />
       </label>
       <p className="text-center text-xs text-gray-500">{t("products.photo")}</p>
+      <ProductPhotoAiButton
+        imageFile={imageFile}
+        onFilled={(result) => {
+          if (result.name && (!name.trim() || result.source === "ai")) {
+            setName(result.name);
+          }
+          if (result.description) setDescription(result.description);
+          if (result.suggestedPriceFcfa && (!price.trim() || price === "0")) {
+            setPrice(String(result.suggestedPriceFcfa));
+          }
+        }}
+      />
 
       <div>
         <Label>{t("products.name")}</Label>
