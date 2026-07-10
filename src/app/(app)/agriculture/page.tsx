@@ -3,6 +3,7 @@
 import { BookOpen, BookMarked, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
+import { ParcelDecisionPanel } from "@/components/agriculture/ParcelDecisionPanel";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
@@ -20,6 +21,7 @@ export default function AgriculturePage() {
         <ModulePublicPortals moduleId="agriculture" />
         <ModuleCompetitiveEdge moduleId="agriculture" />
         <AgricultureInsights />
+        <ParcelDecisionPanel />
 
         <ModuleMenuLink
           href="/agriculture/journal"
