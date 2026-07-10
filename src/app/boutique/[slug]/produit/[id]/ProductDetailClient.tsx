@@ -77,34 +77,28 @@ export function ProductDetailClient({
         error?: string;
         whatsappMessage?: string;
         persisted?: boolean;
-        whatsappSent?: boolean;
       };
       if (!res.ok || !data.success) {
         setCodError(data.error || "Commande impossible");
         return;
       }
       setCodOk(
-        data.whatsappSent
-          ? "Commande enregistrée. Le vendeur a été notifié sur WhatsApp."
-          : data.persisted
-            ? "Commande enregistrée. Le vendeur a été notifié."
-            : "Commande prête — ouvrez WhatsApp pour l’envoyer au vendeur."
+        data.persisted
+          ? "Commande enregistrée. Le vendeur a été notifié."
+          : "Commande prête — ouvrez WhatsApp pour l’envoyer au vendeur."
       );
-      // Si l’API a déjà notifié le vendeur, ne pas ouvrir wa.me côté client
-      if (!data.whatsappSent) {
-        if (contactPhone && data.whatsappMessage) {
-          window.open(
-            getWhatsAppLink(contactPhone, data.whatsappMessage),
-            "_blank",
-            "noopener,noreferrer"
-          );
-        } else if (data.whatsappMessage) {
-          window.open(
-            `https://wa.me/?text=${encodeURIComponent(data.whatsappMessage)}`,
-            "_blank",
-            "noopener,noreferrer"
-          );
-        }
+      if (contactPhone && data.whatsappMessage) {
+        window.open(
+          getWhatsAppLink(contactPhone, data.whatsappMessage),
+          "_blank",
+          "noopener,noreferrer"
+        );
+      } else if (data.whatsappMessage) {
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(data.whatsappMessage)}`,
+          "_blank",
+          "noopener,noreferrer"
+        );
       }
     } catch {
       setCodError("Impossible d’envoyer la commande.");

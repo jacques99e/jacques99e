@@ -14,8 +14,8 @@ import {
   todayISO,
   type SequenceDueItem,
 } from "@/lib/followup-sequences";
+import { openWhatsAppChat } from "@/lib/whatsapp";
 import { apiFetch } from "@/lib/api-client";
-import { sendWhatsAppAuto } from "@/lib/whatsapp-send-client";
 
 interface FollowUpSequencePanelProps {
   clients: LocalClientRecord[];
@@ -94,15 +94,9 @@ export function FollowUpSequencePanel({
       const drafted = await maybeAiDraft(item, storeName);
       const message =
         drafted || buildSequenceMessage(item.client, storeName, item.step);
-      const result = await sendWhatsAppAuto({
-        phone: item.client.phone,
-        message,
-      });
-      if (!result.ok) {
-        setError(
-          result.error ||
-            "Numéro invalide. Utilisez le format international."
-        );
+      const opened = openWhatsAppChat(item.client.phone, message);
+      if (!opened) {
+        setError("Numéro invalide. Utilisez le format international.");
         return;
       }
       onChange(
@@ -110,16 +104,10 @@ export function FollowUpSequencePanel({
           c.id === item.client.id ? advanceFollowUpSequence(c, today) : c
         )
       );
-      const via =
-        result.sentViaApi && !result.simulated
-          ? "envoyée automatiquement"
-          : result.simulated
-            ? "simulée (API)"
-            : "ouverte dans WhatsApp";
       setInfo(
         item.step === 1
-          ? `${item.client.name} : J+1 ${via} → J+3 planifiée.`
-          : `${item.client.name} : séquence terminée (${via}).`
+          ? `${item.client.name} : J+1 envoyée → J+3 planifiée.`
+          : `${item.client.name} : séquence terminée.`
       );
     } finally {
       setLoadingId(null);
@@ -184,7 +172,7 @@ export function FollowUpSequencePanel({
                 >
                   <MessageCircle className="h-3.5 w-3.5" />
                   {loadingId === item.client.id
-                    ? "Envoi…"
+                    ? "Rédaction…"
                     : `Envoyer ${item.label}`}
                 </Button>
                 {!item.client.sequenceStep ? (

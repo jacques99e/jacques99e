@@ -251,12 +251,6 @@ export default function SettingsPage() {
             >
               SMS (formation, livraisons, santé) →
             </Link>
-            <Link
-              href="/settings/whatsapp"
-              className="block rounded-xl bg-[#075E54]/10 p-4 text-sm font-medium text-[#075E54]"
-            >
-              WhatsApp Business API (envoi auto) →
-            </Link>
           </>
         )}
         <section className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">

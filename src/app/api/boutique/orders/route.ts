@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { notifyStoreSubscribers } from "@/lib/push-server";
-import { notifySellerWhatsApp } from "@/lib/whatsapp-api";
 
 /**
  * Commande COD publique (paiement à la livraison).
@@ -59,9 +58,6 @@ export async function POST(request: Request) {
   let orderId: string | null = null;
   let persisted = false;
   let pushSent = 0;
-  let whatsappSent = false;
-  let whatsappSimulated = false;
-  let whatsappError: string | null = null;
 
   if (body.storeId && body.productId) {
     try {
@@ -98,17 +94,6 @@ export async function POST(request: Request) {
     }
   }
 
-  // Envoi auto vendeur si WhatsApp Business API configurée
-  const sellerNotify = await notifySellerWhatsApp(
-    body.sellerPhone,
-    whatsappMessage
-  );
-  if (sellerNotify) {
-    whatsappSent = sellerNotify.ok;
-    whatsappSimulated = sellerNotify.simulated ?? false;
-    if (!sellerNotify.ok) whatsappError = sellerNotify.error || null;
-  }
-
   return NextResponse.json({
     success: true,
     persisted,
@@ -117,9 +102,6 @@ export async function POST(request: Request) {
     sellerPhone: body.sellerPhone || null,
     total,
     pushSent,
-    whatsappSent,
-    whatsappSimulated,
-    whatsappError,
   });
 }
 
