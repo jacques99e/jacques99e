@@ -13,6 +13,7 @@ import { DashboardHero } from "@/components/DashboardHero";
 import { EngagementHub } from "@/components/EngagementHub";
 import { ModuleQuickActions } from "@/components/ModuleQuickActions";
 import { TodayPulse } from "@/components/TodayPulse";
+import { DailyActionsCard } from "@/components/DailyActionsCard";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
@@ -281,6 +282,9 @@ export default function DashboardPage() {
           todaySalesCount={todaySalesCount}
           todaySalesTotal={todayTotal}
         />
+        {hasCommerce ? (
+          <DailyActionsCard storeName={storeName || greeting} limit={3} />
+        ) : null}
         <ModuleQuickActions activeModules={activeModules} />
         {(hasCommerce && alerts.total > 0) ? (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">

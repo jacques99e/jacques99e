@@ -1,5 +1,5 @@
 const resendKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.REPORT_EMAIL_FROM || "Wazo Digital <reports@wazo-digital.app>";
+const fromEmail = process.env.REPORT_EMAIL_FROM || "Wazo Digital <onboarding@wazo-digital.com>";
 
 export async function sendWeeklyReportEmail(params: {
   to: string;

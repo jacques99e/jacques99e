@@ -8,11 +8,11 @@ import {
   Target,
   Package,
   Users,
-  Lightbulb,
 } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { SalesChart } from "@/components/SalesChart";
+import { DailyActionsCard } from "@/components/DailyActionsCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { useRole } from "@/hooks/useRole";
@@ -245,20 +245,11 @@ export default function InsightsPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="mb-2 flex items-center gap-2 text-amber-900">
-            <Lightbulb className="h-4 w-4" />
-            <h2 className="text-sm font-semibold">Recommandations IA</h2>
-          </div>
-          <ul className="space-y-2 text-xs text-amber-900">
-            {insights.recommendations.map((rec, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="font-bold">{i + 1}.</span>
-                <span>{rec}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <DailyActionsCard
+          storeName={storeName}
+          limit={5}
+          variant="full"
+        />
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button

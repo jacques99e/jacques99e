@@ -1,4 +1,8 @@
 import { getBusinessSettings } from "@/lib/business-settings";
+import {
+  computeDailyActions,
+  dailyActionsToRecommendationLines,
+} from "@/lib/daily-actions";
 import { localStore } from "@/lib/db";
 import { readLocalClients as readClientsForStore } from "@/lib/local-clients";
 import { readLocalProducts } from "@/lib/local-products";
@@ -228,42 +232,48 @@ export function computeBusinessInsights(): BusinessInsights {
     clients.length > 0 ? Math.round((activeClients / clients.length) * 100) : 0;
 
   const recommendations: string[] = [];
-  if (outOfStockCount > 0) {
-    recommendations.push(
-      `${outOfStockCount} produit(s) en rupture — planifiez un réapprovisionnement urgent.`
-    );
-  }
-  if (lowStockCount > 0) {
-    recommendations.push(
-      `${lowStockCount} produit(s) sous le seuil (${threshold} unités) — vérifiez vos commandes fournisseurs.`
-    );
-  }
-  if (weekGrowthPercent != null && weekGrowthPercent < 0) {
-    recommendations.push(
-      `CA en baisse de ${Math.abs(weekGrowthPercent)}% vs la semaine précédente — relancez vos clients VIP.`
-    );
-  } else if (weekGrowthPercent != null && weekGrowthPercent >= 15) {
-    recommendations.push(
-      `Belle dynamique (+${weekGrowthPercent}% sur 7 jours) — renforcez le stock des best-sellers.`
-    );
-  }
-  if (monthlyTarget && targetProgressPercent != null && targetProgressPercent < 50) {
-    const dayOfMonth = today.getDate();
-    if (dayOfMonth > 15) {
-      recommendations.push(
-        `Objectif mensuel à ${targetProgressPercent}% — intensifiez les ventes et relances CRM.`
-      );
-    }
-  }
-  if (clients.length > 0 && crmActiveRate < 40) {
-    recommendations.push(
-      `Seulement ${crmActiveRate}% de clients actifs — utilisez WhatsApp pour réactiver vos prospects.`
-    );
+  if (typeof window !== "undefined") {
+    const actions = computeDailyActions({ limit: 5 });
+    recommendations.push(...dailyActionsToRecommendationLines(actions));
   }
   if (recommendations.length === 0) {
-    recommendations.push(
-      "Activité stable. Consultez vos analytics et exportez le rapport hebdo pour votre équipe."
-    );
+    if (outOfStockCount > 0) {
+      recommendations.push(
+        `${outOfStockCount} produit(s) en rupture — planifiez un réapprovisionnement urgent.`
+      );
+    }
+    if (lowStockCount > 0) {
+      recommendations.push(
+        `${lowStockCount} produit(s) sous le seuil (${threshold} unités) — vérifiez vos commandes fournisseurs.`
+      );
+    }
+    if (weekGrowthPercent != null && weekGrowthPercent < 0) {
+      recommendations.push(
+        `CA en baisse de ${Math.abs(weekGrowthPercent)}% vs la semaine précédente — relancez vos clients VIP.`
+      );
+    } else if (weekGrowthPercent != null && weekGrowthPercent >= 15) {
+      recommendations.push(
+        `Belle dynamique (+${weekGrowthPercent}% sur 7 jours) — renforcez le stock des best-sellers.`
+      );
+    }
+    if (monthlyTarget && targetProgressPercent != null && targetProgressPercent < 50) {
+      const dayOfMonth = today.getDate();
+      if (dayOfMonth > 15) {
+        recommendations.push(
+          `Objectif mensuel à ${targetProgressPercent}% — intensifiez les ventes et relances CRM.`
+        );
+      }
+    }
+    if (clients.length > 0 && crmActiveRate < 40) {
+      recommendations.push(
+        `Seulement ${crmActiveRate}% de clients actifs — utilisez WhatsApp pour réactiver vos prospects.`
+      );
+    }
+    if (recommendations.length === 0) {
+      recommendations.push(
+        "Activité stable. Consultez vos analytics et exportez le rapport hebdo pour votre équipe."
+      );
+    }
   }
 
   return {

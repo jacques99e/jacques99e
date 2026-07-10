@@ -29,6 +29,10 @@ export async function GET() {
       resendConfigured,
       simulate: process.env.REPORT_EMAIL_SIMULATE === "true",
     },
+    assistant: {
+      simulate: process.env.ASSISTANT_SIMULATE === "true",
+      model: process.env.ASSISTANT_MODEL?.trim() || "openai/gpt-5-mini",
+    },
     push: {
       configured: isPushConfigured(),
     },

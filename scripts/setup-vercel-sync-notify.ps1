@@ -42,7 +42,7 @@ if (-not $vapidPublic -or -not $vapidPrivate) {
 
 $resendKey = Read-DotEnvValue "RESEND_API_KEY"
 $emailFrom = Read-DotEnvValue "REPORT_EMAIL_FROM"
-if (-not $emailFrom) { $emailFrom = "Wazo Digital <onboarding@resend.dev>" }
+if (-not $emailFrom) { $emailFrom = "Wazo Digital <onboarding@wazo-digital.com>" }
 
 Set-VercelEnv "CRON_SECRET" $cronSecret
 Set-VercelEnv "NEXT_PUBLIC_VAPID_PUBLIC_KEY" $vapidPublic
