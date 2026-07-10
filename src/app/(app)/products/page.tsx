@@ -12,6 +12,7 @@ import { type LocalProduct } from "@/lib/local-products";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
+import { ProductLandingButton } from "@/components/ProductLandingButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
@@ -393,6 +394,19 @@ export default function ProductsPage() {
                       <Copy className="h-3 w-3" />
                       Dupliquer
                     </button>
+                    {storeId ? (
+                      <ProductLandingButton
+                        storeId={storeId}
+                        product={p}
+                        onUpdated={(description) => {
+                          setProducts((prev) =>
+                            prev.map((row) =>
+                              row.id === p.id ? { ...row, description } : row
+                            )
+                          );
+                        }}
+                      />
+                    ) : null}
                   </div>
                 </div>
               </li>

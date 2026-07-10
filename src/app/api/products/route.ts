@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
       price?: number;
       stock_quantity?: number;
       category?: string | null;
+      landing_content?: unknown;
+      landing_published?: boolean;
+      slug?: string;
     };
 
     const storeId = body.store_id?.trim();
@@ -101,12 +104,38 @@ export async function POST(request: NextRequest) {
       category: body.category ?? null,
     });
 
+    if (body.landing_content != null) {
+      row.landing_content = body.landing_content;
+    }
+    if (typeof body.landing_published === "boolean") {
+      row.landing_published = body.landing_published;
+    }
+    if (body.slug?.trim()) {
+      row.slug = body.slug.trim();
+    }
+
     const service = await createServiceSupabase();
     const query = hasServerId
       ? service.from("products").update(row).eq("id", body.id!).eq("store_id", storeId).select().single()
       : service.from("products").insert(row).select().single();
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    // Si colonnes landing absentes (migration 017 non appliquée), réessayer sans.
+    if (
+      error &&
+      (body.landing_content != null ||
+        typeof body.landing_published === "boolean" ||
+        body.slug?.trim())
+    ) {
+      delete row.landing_content;
+      delete row.landing_published;
+      delete row.slug;
+      const retry = hasServerId
+        ? service.from("products").update(row).eq("id", body.id!).eq("store_id", storeId).select().single()
+        : service.from("products").insert(row).select().single();
+      ({ data, error } = await retry);
+    }
     if (error || !data) {
       return NextResponse.json(
         { success: false, error: error?.message || "Enregistrement impossible." },

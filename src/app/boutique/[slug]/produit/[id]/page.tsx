@@ -98,6 +98,18 @@ export default async function ProductDetailPage({ params }: PageProps) {
   );
 
   const product = rowToProduct(productRow as Record<string, unknown>);
+  const rawLanding = (productRow as { landing_content?: unknown }).landing_content;
+  const landing =
+    rawLanding && typeof rawLanding === "object"
+      ? (rawLanding as {
+          headline?: string;
+          subheadline?: string;
+          bullets?: string[];
+          cta?: string;
+          whatsappPitch?: string;
+          deliveryNote?: string;
+        })
+      : null;
 
   return (
     <ProductDetailClient
@@ -109,6 +121,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
       }}
       product={product}
       contactPhone={contactPhone}
+      landing={
+        landing?.headline
+          ? {
+              headline: String(landing.headline),
+              subheadline: String(landing.subheadline || product.description || ""),
+              bullets: Array.isArray(landing.bullets)
+                ? landing.bullets.map(String)
+                : [],
+              cta: String(landing.cta || "Commander"),
+              whatsappPitch: String(landing.whatsappPitch || ""),
+              deliveryNote: String(landing.deliveryNote || ""),
+            }
+          : null
+      }
     />
   );
 }
