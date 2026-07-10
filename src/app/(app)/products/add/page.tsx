@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { ProductPhotoAiButton } from "@/components/ProductPhotoAiButton";
+import { ProductPhotoField } from "@/components/ProductPhotoField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,31 +102,14 @@ export default function AddProductPage() {
       <main className="mx-auto max-w-lg p-4">
         <form onSubmit={handleSave} className="space-y-4 rounded-2xl bg-white p-4 shadow-sm">
           <div>
-            <Label>Photo du produit</Label>
-            <label className="mt-1 flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500">
-              {imagePreviewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreviewUrl} alt="" className="h-full w-full rounded-xl object-cover" />
-              ) : (
-                <Camera className="h-6 w-6" />
-              )}
-              <span className="mt-1 text-xs">
-                {imagePreviewUrl ? "Changer la photo" : "Prendre / uploader une photo"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setImageFile(file);
-                  setImagePreviewUrl(URL.createObjectURL(file));
-                  setWhatsappPitch("");
-                }}
-              />
-            </label>
+            <ProductPhotoField
+              previewUrl={imagePreviewUrl}
+              onChange={(file, preview) => {
+                setImageFile(file);
+                setImagePreviewUrl(preview);
+                setWhatsappPitch("");
+              }}
+            />
             <ProductPhotoAiButton
               className="mt-2"
               imageFile={imageFile}

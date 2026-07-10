@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { analyzeProductImage } from "@/lib/assistant-product-vision";
 
-const MAX_BYTES = 4 * 1024 * 1024;
+export const maxDuration = 60;
+export const runtime = "nodejs";
+
+const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const auth = await requireAuthContext();
@@ -24,23 +27,31 @@ export async function POST(request: Request) {
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File)) {
+  if (!(file instanceof Blob)) {
     return NextResponse.json(
       { success: false, error: "Photo requise" },
       { status: 400 }
     );
   }
 
-  if (!file.type.startsWith("image/")) {
+  const mediaType =
+    (file.type && file.type.startsWith("image/")
+      ? file.type
+      : "image/jpeg") || "image/jpeg";
+
+  if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { success: false, error: "Le fichier doit être une image" },
+      {
+        success: false,
+        error: "Image trop lourde (max 5 Mo). Prenez une photo plus légère.",
+      },
       { status: 400 }
     );
   }
 
-  if (file.size > MAX_BYTES) {
+  if (file.size < 100) {
     return NextResponse.json(
-      { success: false, error: "Image trop lourde (max 4 Mo). Prenez une photo plus légère." },
+      { success: false, error: "Fichier image vide ou invalide." },
       { status: 400 }
     );
   }
@@ -48,15 +59,17 @@ export async function POST(request: Request) {
   const buffer = new Uint8Array(await file.arrayBuffer());
   const result = await analyzeProductImage({
     imageBytes: buffer,
-    mediaType: file.type || "image/jpeg",
+    mediaType,
   });
 
-  if (result.source === "fallback" && result.error) {
+  if (result.source === "fallback") {
     return NextResponse.json({
       success: true,
       source: result.source,
       suggestion: result.suggestion,
-      warning: result.error,
+      warning:
+        result.error ||
+        "IA indisponible — complétez la fiche manuellement.",
     });
   }
 

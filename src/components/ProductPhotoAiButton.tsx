@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { normalizeProductImageFile } from "@/lib/product-image";
 
 export type ProductAiFillResult = {
   name: string;
@@ -33,7 +34,7 @@ export function ProductPhotoAiButton({
     setError("");
     setHint("");
     if (!imageFile) {
-      setError("Ajoutez d’abord une photo du produit.");
+      setError("Ajoutez d’abord une photo (Galerie ou Caméra).");
       return;
     }
     if (!navigator.onLine) {
@@ -43,12 +44,23 @@ export function ProductPhotoAiButton({
 
     setLoading(true);
     try {
+      const file = await normalizeProductImageFile(imageFile);
       const form = new FormData();
-      form.append("file", imageFile);
-      const res = await apiFetch("/api/assistant/product-from-image", {
-        method: "POST",
-        body: form,
-      });
+      form.append("file", file, file.name || "produit.jpg");
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000);
+      let res: Response;
+      try {
+        res = await apiFetch("/api/assistant/product-from-image", {
+          method: "POST",
+          body: form,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
       const data = (await res.json()) as {
         success?: boolean;
         error?: string;
@@ -64,7 +76,10 @@ export function ProductPhotoAiButton({
       };
 
       if (!res.ok || !data.success || !data.suggestion) {
-        setError(data.error || "Analyse impossible. Remplissez la fiche à la main.");
+        setError(
+          data.error ||
+            "Analyse impossible. Vérifiez votre connexion puis réessayez."
+        );
         return;
       }
 
@@ -76,14 +91,19 @@ export function ProductPhotoAiButton({
       if (data.source === "ai") {
         setHint("Fiche préremplie — vérifiez le nom et le prix.");
       } else {
-        setHint(
-          data.warning
-            ? "IA indisponible — complétez la fiche manuellement."
-            : "Complétez la fiche manuellement."
+        setError(
+          data.warning ||
+            "IA indisponible pour le moment. Complétez la fiche manuellement."
         );
+        setHint("");
       }
-    } catch {
-      setError("Analyse impossible. Remplissez la fiche à la main.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setError(
+        msg.includes("expire") || msg.toLowerCase().includes("abort")
+          ? "Analyse trop longue. Réessayez avec une photo plus légère."
+          : msg || "Analyse impossible. Remplissez la fiche à la main."
+      );
     } finally {
       setLoading(false);
     }
@@ -106,8 +126,15 @@ export function ProductPhotoAiButton({
         )}
         {loading ? "Analyse de la photo…" : "Remplir la fiche avec la photo"}
       </Button>
+      {!imageFile ? (
+        <p className="mt-1 text-xs text-gray-500">
+          Choisissez d’abord une photo via Galerie ou Caméra.
+        </p>
+      ) : null}
       {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
-      {hint && !error ? <p className="mt-1 text-xs text-green-700">{hint}</p> : null}
+      {hint && !error ? (
+        <p className="mt-1 text-xs text-green-700">{hint}</p>
+      ) : null}
     </div>
   );
 }
