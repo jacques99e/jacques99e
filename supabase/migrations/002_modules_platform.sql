@@ -257,9 +257,14 @@ CREATE INDEX idx_messages_room ON messages(room_id, created_at DESC);
 
 -- RLS helper
 CREATE OR REPLACE FUNCTION user_store_ids()
-RETURNS SETOF UUID AS $$
+RETURNS SETOF UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
   SELECT id FROM stores WHERE owner_id = auth.uid();
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$;
 
 -- Enable RLS on new tables
 ALTER TABLE store_modules ENABLE ROW LEVEL SECURITY;

@@ -1,7 +1,6 @@
 -- Supabase security linter fixes (0011 search_path, 0028/0029 RPC exposure)
--- Run in Supabase SQL Editor after migrations 007-008.
+-- Run in Supabase SQL Editor or: npm run apply:linter-fixes (requires SUPABASE_DB_URL)
 
--- 1) user_store_ids: fixed search_path + staff stores included
 CREATE OR REPLACE FUNCTION public.user_store_ids()
 RETURNS SETOF UUID
 LANGUAGE sql
@@ -18,7 +17,53 @@ AS $$
   WHERE m.user_id = auth.uid();
 $$;
 
--- 2) Ensure can_write_store_data has immutable search_path (from 007)
+CREATE OR REPLACE FUNCTION public.can_access_store(target_store_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.stores s
+    WHERE s.id = target_store_id
+      AND (
+        s.owner_id = auth.uid()
+        OR EXISTS (
+          SELECT 1
+          FROM public.store_members m
+          WHERE m.store_id = s.id
+            AND m.user_id = auth.uid()
+        )
+      )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_manage_store(target_store_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.stores s
+    WHERE s.id = target_store_id
+      AND (
+        s.owner_id = auth.uid()
+        OR EXISTS (
+          SELECT 1
+          FROM public.store_members m
+          WHERE m.store_id = s.id
+            AND m.user_id = auth.uid()
+            AND m.role = 'manager'
+        )
+      )
+  );
+$$;
+
 CREATE OR REPLACE FUNCTION public.can_write_store_data(target_store_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -38,7 +83,6 @@ AS $$
   );
 $$;
 
--- 3) handle_new_user (trigger only — not callable via PostgREST RPC)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -53,7 +97,6 @@ BEGIN
 END;
 $$;
 
--- 4) Block direct RPC access; functions remain usable inside RLS policies
 REVOKE ALL ON FUNCTION public.can_access_store(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.can_access_store(uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.can_access_store(uuid) FROM authenticated;
@@ -74,7 +117,6 @@ REVOKE ALL ON FUNCTION public.user_store_ids() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.user_store_ids() FROM anon;
 REVOKE ALL ON FUNCTION public.user_store_ids() FROM authenticated;
 
--- Optional Supabase-managed helper (if present on project)
 DO $$
 BEGIN
   IF EXISTS (

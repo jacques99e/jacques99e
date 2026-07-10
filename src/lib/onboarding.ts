@@ -44,7 +44,7 @@ export const ONBOARDING_BY_VERTICAL: Record<BusinessVertical, OnboardingTaskDef[
     { id: "parcel", href: "/agriculture/parcels/new" },
     { id: "marches", href: "/agriculture/marches" },
     { id: "rendement", href: "/agriculture/rendement" },
-    { id: "sale", href: "/products/add?category=Agriculture" },
+    { id: "sale", href: "/agriculture/vendre" },
     { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   logistics: [

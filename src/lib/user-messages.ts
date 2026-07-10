@@ -16,6 +16,9 @@ export function mapErrorToUserMessage(
   const message = raw.toLowerCase();
 
   if (!message) return fallback;
+  if (message.includes("vidéo") || message.includes("video")) {
+    return raw;
+  }
   if (
     message.includes("unauthorized") ||
     message.includes("session expir") ||

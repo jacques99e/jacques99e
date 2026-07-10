@@ -53,12 +53,14 @@ if (!SUPA || !SERVICE) {
   process.exit(1);
 }
 
-/** Buckets requis par l'app (id, public). */
+const MB = 1024 * 1024;
+
+/** Buckets requis par l'app (id, public, fileSizeLimit). */
 const BUCKETS = [
-  { id: "product-images", public: true },
-  { id: "course-media", public: true },
-  { id: "certificates", public: true },
-  { id: "health-docs", public: false },
+  { id: "product-images", public: true, fileSizeLimit: 10 * MB },
+  { id: "course-media", public: true, fileSizeLimit: 50 * MB },
+  { id: "certificates", public: true, fileSizeLimit: 10 * MB },
+  { id: "health-docs", public: false, fileSizeLimit: 10 * MB },
 ];
 
 const admin = createClient(SUPA, SERVICE, {
@@ -76,13 +78,21 @@ async function main() {
 
   for (const bucket of BUCKETS) {
     if (ids.has(bucket.id)) {
-      console.log(`[ok] ${bucket.id} existe déjà`);
+      const { error: updateErr } = await admin.storage.updateBucket(bucket.id, {
+        public: bucket.public,
+        fileSizeLimit: bucket.fileSizeLimit,
+      });
+      if (updateErr) {
+        console.warn(`[warn] ${bucket.id} limite non mise à jour:`, updateErr.message);
+      } else {
+        console.log(`[ok] ${bucket.id} limite ${Math.round(bucket.fileSizeLimit / MB)} Mo`);
+      }
       continue;
     }
 
     const { error } = await admin.storage.createBucket(bucket.id, {
       public: bucket.public,
-      fileSizeLimit: 10 * 1024 * 1024,
+      fileSizeLimit: bucket.fileSizeLimit,
     });
 
     if (error) {
