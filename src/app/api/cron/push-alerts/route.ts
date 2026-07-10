@@ -122,6 +122,23 @@ export async function GET(request: Request) {
       });
     }
 
+    const { data: codOrders } = await supabase
+      .from("product_orders")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("status", "pending");
+    const codPending = codOrders?.length ?? 0;
+    if (codPending > 0) {
+      messages.push({
+        title: "Commandes COD",
+        body:
+          codPending === 1
+            ? "1 commande en attente de confirmation"
+            : `${codPending} commandes en attente de confirmation`,
+        url: "/products/orders",
+      });
+    }
+
     if (messages.length === 0) {
       results.push({ store_id: storeId, ok: true, detail: "no_alerts" });
       continue;

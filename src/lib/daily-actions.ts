@@ -17,7 +17,8 @@ export type DailyActionType =
   | "share_catalog"
   | "first_product"
   | "first_sale"
-  | "celebrate_growth";
+  | "celebrate_growth"
+  | "cod_orders";
 
 export type DailyAction = {
   id: string;
@@ -473,4 +474,21 @@ export function mapActionTypeToDraftType(
     default:
       return "relance_client";
   }
+}
+
+/** Action prioritaire pour commandes COD en attente (injectée depuis le client). */
+export function buildCodOrdersAction(pendingCount: number): DailyAction | null {
+  if (pendingCount <= 0) return null;
+  return {
+    id: "cod-orders-pending",
+    type: "cod_orders",
+    priority: 1,
+    title:
+      pendingCount === 1
+        ? "1 commande COD en attente"
+        : `${pendingCount} commandes COD en attente`,
+    reason: "Confirmez, contactez le client ou marquez comme livrée.",
+    ctaLabel: "Voir commandes",
+    href: "/products/orders",
+  };
 }

@@ -35,3 +35,37 @@ export async function sendWebPush(
     JSON.stringify(payload)
   );
 }
+
+/** Envoie une notif push à tous les abonnés d'une boutique. */
+export async function notifyStoreSubscribers(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (t: string) => any },
+  storeId: string,
+  payload: { title: string; body: string; url?: string }
+): Promise<number> {
+  if (!isPushConfigured()) return 0;
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .eq("store_id", storeId);
+
+  let sent = 0;
+  for (const sub of subs || []) {
+    try {
+      await sendWebPush(
+        {
+          endpoint: sub.endpoint as string,
+          keys: {
+            p256dh: sub.p256dh as string,
+            auth: sub.auth as string,
+          },
+        },
+        payload
+      );
+      sent += 1;
+    } catch {
+      /* expired */
+    }
+  }
+  return sent;
+}

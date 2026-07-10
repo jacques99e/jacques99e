@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { notifyStoreSubscribers } from "@/lib/push-server";
 
 /**
  * Commande COD publique (paiement à la livraison).
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
 
   let orderId: string | null = null;
   let persisted = false;
+  let pushSent = 0;
 
   if (body.storeId && body.productId) {
     try {
@@ -81,6 +83,11 @@ export async function POST(request: Request) {
       if (!error && data?.id) {
         orderId = data.id as string;
         persisted = true;
+        pushSent = await notifyStoreSubscribers(supabase, body.storeId, {
+          title: "Nouvelle commande COD",
+          body: `${productName} ×${quantity} — ${customerName}`,
+          url: "/products/orders",
+        });
       }
     } catch {
       /* table may not exist yet */
@@ -94,6 +101,7 @@ export async function POST(request: Request) {
     whatsappMessage,
     sellerPhone: body.sellerPhone || null,
     total,
+    pushSent,
   });
 }
 
@@ -188,7 +196,7 @@ const ALLOWED_STATUS = new Set([
   "cancelled",
 ]);
 
-/** Met à jour le statut d'une commande COD. */
+/** Met à jour le statut d'une commande COD (+ baisse stock à la confirmation). */
 export async function PATCH(request: Request) {
   const auth = await requireAuthContext();
   if (!auth.ok) {
@@ -229,6 +237,26 @@ export async function PATCH(request: Request) {
   }
 
   const service = await createServiceSupabase();
+
+  const { data: existing, error: fetchError } = await service
+    .from("product_orders")
+    .select("id, status, product_id, quantity")
+    .eq("id", id)
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (fetchError || !existing) {
+    return NextResponse.json(
+      { success: false, error: fetchError?.message || "Commande introuvable" },
+      { status: 404 }
+    );
+  }
+
+  const prevStatus = existing.status as string;
+  const shouldDecrementStock =
+    (status === "confirmed" || status === "delivered") &&
+    prevStatus === "pending";
+
   const { data, error } = await service
     .from("product_orders")
     .update({ status })
@@ -244,5 +272,36 @@ export async function PATCH(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, order: data });
+  let stockUpdated = false;
+  if (shouldDecrementStock) {
+    const productId = existing.product_id as string;
+    const qty = Math.max(1, Number(existing.quantity) || 1);
+    const { data: product } = await service
+      .from("products")
+      .select("id, stock, stock_quantity")
+      .eq("id", productId)
+      .eq("store_id", storeId)
+      .maybeSingle();
+
+    if (product) {
+      const current = Number(
+        (product as { stock?: number; stock_quantity?: number }).stock ??
+          (product as { stock_quantity?: number }).stock_quantity ??
+          0
+      );
+      const nextStock = Math.max(0, current - qty);
+      const { error: stockError } = await service
+        .from("products")
+        .update({ stock: nextStock })
+        .eq("id", productId)
+        .eq("store_id", storeId);
+      stockUpdated = !stockError;
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    order: data,
+    stockUpdated,
+  });
 }

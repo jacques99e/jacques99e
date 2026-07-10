@@ -6,6 +6,7 @@ import { Check, Lightbulb, MessageCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import {
+  buildCodOrdersAction,
   computeDailyActions,
   dismissDailyAction,
   mapActionTypeToDraftType,
@@ -72,7 +73,29 @@ export function DailyActionsCard({
     storeName || localStore.get()?.name || "Wazo Digital";
 
   const refresh = useCallback(() => {
-    setActions(computeDailyActions({ storeName: resolvedName, limit }));
+    const base = computeDailyActions({ storeName: resolvedName, limit });
+    setActions(base);
+
+    const storeId = localStore.get()?.id;
+    if (!storeId || !navigator.onLine) return;
+
+    void apiFetch(`/api/boutique/orders?storeId=${encodeURIComponent(storeId)}&status=pending`, {
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        const data = (await res.json()) as {
+          success?: boolean;
+          orders?: unknown[];
+        };
+        if (!res.ok || !data.success) return;
+        const cod = buildCodOrdersAction(data.orders?.length || 0);
+        if (!cod) return;
+        setActions((prev) => {
+          const without = prev.filter((a) => a.id !== cod.id);
+          return [cod, ...without].slice(0, limit);
+        });
+      })
+      .catch(() => undefined);
   }, [resolvedName, limit]);
 
   useEffect(() => {
