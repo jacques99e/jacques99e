@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import {
   buildCodOrdersAction,
+  buildDailyActionWhatsAppMessage,
   computeDailyActions,
   dismissDailyAction,
   mapActionTypeToDraftType,
@@ -14,6 +15,7 @@ import {
   type DailyAction,
 } from "@/lib/daily-actions";
 import { localStore } from "@/lib/db";
+import { sendWhatsAppAuto } from "@/lib/whatsapp-send-client";
 
 interface DailyActionsCardProps {
   storeName?: string;
@@ -132,10 +134,33 @@ export function DailyActionsCard({
     setLoadingId(action.id);
     try {
       const drafted = await fetchAiDraft(action, resolvedName);
-      const ok = runDailyActionWhatsApp(action, resolvedName, drafted || undefined);
-      if (!ok) {
-        setWaError("Impossible d’ouvrir WhatsApp. Vérifiez le numéro du client.");
-        return;
+      const message =
+        drafted?.trim() ||
+        buildDailyActionWhatsAppMessage(action, resolvedName) ||
+        "";
+      const phone = action.whatsapp?.phone?.trim();
+
+      if (phone && message) {
+        const result = await sendWhatsAppAuto({ phone, message });
+        if (!result.ok) {
+          setWaError(
+            result.error ||
+              "Impossible d’envoyer WhatsApp. Vérifiez le numéro du client."
+          );
+          return;
+        }
+      } else {
+        const ok = runDailyActionWhatsApp(
+          action,
+          resolvedName,
+          drafted || undefined
+        );
+        if (!ok) {
+          setWaError(
+            "Impossible d’ouvrir WhatsApp. Vérifiez le numéro du client."
+          );
+          return;
+        }
       }
       dismissDailyAction(action.id);
       setActions((prev) => prev.filter((a) => a.id !== action.id));
@@ -184,7 +209,7 @@ export function DailyActionsCard({
                       ) : (
                         <MessageCircle className="h-3.5 w-3.5" />
                       )}
-                      {loadingId === action.id ? "Rédaction…" : action.ctaLabel}
+                      {loadingId === action.id ? "Envoi…" : action.ctaLabel}
                     </Button>
                   ) : action.href ? (
                     <Button asChild size="sm" variant="orange">
@@ -213,8 +238,8 @@ export function DailyActionsCard({
 
       {variant === "full" ? (
         <p className="mt-3 text-[11px] text-amber-800/80">
-          Actions basées sur votre stock, ventes et clients. Les messages WhatsApp
-          sont rédigés automatiquement quand l’IA est disponible.
+          Actions basées sur votre stock, ventes et clients. Si WhatsApp Business
+          API est configurée, l’envoi est automatique ; sinon ouverture de wa.me.
         </p>
       ) : (
         <Link
