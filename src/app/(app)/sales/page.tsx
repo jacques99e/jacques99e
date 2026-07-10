@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
+import { VoiceSaleButton } from "@/components/VoiceSaleButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { syncStoreToCloud } from "@/lib/cloud-sync";
@@ -15,6 +16,7 @@ import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
 import { productToLegacy } from "@/lib/product-legacy-mirror";
 import type { LocalProduct } from "@/lib/local-products";
+import type { ParsedSaleResult } from "@/lib/parse-sale-local";
 
 interface CartItem {
   productId: string;
@@ -45,6 +47,7 @@ export default function SalesPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [voiceHint, setVoiceHint] = useState("");
   const [confirmation, setConfirmation] = useState<{
     total: number;
     whatsappLink: string;
@@ -110,6 +113,36 @@ export default function SalesPage() {
 
   const removeItem = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.productId !== productId));
+  };
+
+  const applyVoiceSale = (result: ParsedSaleResult) => {
+    const nextCart: CartItem[] = [];
+    for (const item of result.items) {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product || product.stock <= 0) continue;
+      const disc = discountForProduct(product.id, store?.id);
+      const unitPrice = disc
+        ? applyDiscount(product.price, disc.percent)
+        : product.price;
+      const quantity = Math.min(item.quantity, product.stock);
+      nextCart.push({
+        productId: product.id,
+        name: disc ? `${product.name} (-${disc.percent}%)` : product.name,
+        unitPrice,
+        quantity,
+      });
+    }
+    if (!nextCart.length) {
+      setVoiceHint("Aucun produit du stock n’a pu être ajouté.");
+      return;
+    }
+    setCart(nextCart);
+    if (result.paymentMethod) setPaymentMethod(result.paymentMethod);
+    setVoiceHint(
+      `Panier prérempli (${result.source === "ai" ? "IA" : "local"}) : ${nextCart
+        .map((i) => `${i.quantity}× ${i.name}`)
+        .join(", ")}. Vérifiez puis finalisez.`
+    );
   };
 
   const finalizeSale = async () => {
@@ -219,6 +252,22 @@ export default function SalesPage() {
             Créer une promotion flash
           </Link>
         )}
+
+        <VoiceSaleButton
+          products={products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            stock: p.stock,
+          }))}
+          onParsed={applyVoiceSale}
+        />
+        {voiceHint ? (
+          <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+            {voiceHint}
+          </p>
+        ) : null}
+
         {confirmation && (
           <section className="app-card space-y-3 border-green-200 bg-green-50/50 p-4">
             <p className="text-sm font-medium text-green-700">
