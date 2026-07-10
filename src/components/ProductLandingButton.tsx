@@ -58,6 +58,7 @@ export function ProductLandingButton({
       const data = (await res.json()) as {
         success?: boolean;
         error?: string;
+        warning?: string;
         content?: ProductLandingContent;
         source?: string;
       };
@@ -112,11 +113,12 @@ export function ProductLandingButton({
       }
 
       onUpdated?.(description);
-      setMessage(
-        data.source === "ai"
-          ? "Page vente générée et description mise à jour."
-          : "Page vente créée (modèle local) — description mise à jour."
-      );
+      if (data.source === "ai") {
+        setMessage("Page vente générée par l’IA — description mise à jour.");
+      } else {
+        setMessage("Page vente créée (modèle local) — description mise à jour.");
+        if (data.warning) setError(data.warning);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {

@@ -1,10 +1,13 @@
-import { generateText } from "ai";
+import {
+  generateAssistantText,
+  getAssistantModel,
+  humanizeAiError,
+  isAssistantSimulated,
+} from "@/lib/assistant-ai";
 import {
   buildFallbackLanding,
   type ProductLandingContent,
 } from "@/lib/product-landing";
-
-const MODEL = process.env.ASSISTANT_MODEL?.trim() || "openai/gpt-5-mini";
 
 function extractJson(text: string): unknown {
   const trimmed = text.trim();
@@ -20,18 +23,30 @@ function extractJson(text: string): unknown {
   }
 }
 
-function normalizeContent(raw: unknown, fallback: ProductLandingContent): ProductLandingContent {
-  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+function normalizeContent(
+  raw: unknown,
+  fallback: ProductLandingContent
+): ProductLandingContent {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
   const bullets = Array.isArray(obj.bullets)
     ? obj.bullets.map((b) => String(b).trim()).filter(Boolean).slice(0, 5)
     : fallback.bullets;
   return {
     headline: String(obj.headline || fallback.headline).trim().slice(0, 80),
-    subheadline: String(obj.subheadline || fallback.subheadline).trim().slice(0, 200),
+    subheadline: String(obj.subheadline || fallback.subheadline)
+      .trim()
+      .slice(0, 200),
     bullets: bullets.length ? bullets : fallback.bullets,
     cta: String(obj.cta || fallback.cta).trim().slice(0, 60),
-    whatsappPitch: String(obj.whatsappPitch || fallback.whatsappPitch).trim().slice(0, 400),
-    deliveryNote: String(obj.deliveryNote || fallback.deliveryNote).trim().slice(0, 200),
+    whatsappPitch: String(obj.whatsappPitch || fallback.whatsappPitch)
+      .trim()
+      .slice(0, 400),
+    deliveryNote: String(obj.deliveryNote || fallback.deliveryNote)
+      .trim()
+      .slice(0, 200),
   };
 }
 
@@ -40,16 +55,26 @@ export async function generateProductLanding(input: {
   description?: string | null;
   price: number;
   storeName: string;
-}): Promise<{ content: ProductLandingContent; source: "ai" | "fallback"; error?: string }> {
+}): Promise<{
+  content: ProductLandingContent;
+  source: "ai" | "fallback";
+  error?: string;
+}> {
   const fallback = buildFallbackLanding(input);
 
-  if (process.env.ASSISTANT_SIMULATE === "true") {
-    return { content: fallback, source: "fallback" };
+  if (isAssistantSimulated()) {
+    return {
+      content: fallback,
+      source: "fallback",
+      error: "Mode simulation IA (ASSISTANT_SIMULATE=true)",
+    };
   }
 
   try {
-    const result = await generateText({
-      model: MODEL,
+    const text = await generateAssistantText({
+      model: getAssistantModel(),
+      maxOutputTokens: 500,
+      temperature: 0.6,
       prompt: `Tu rédiges une mini page de vente pour un commerçant en Afrique francophone.
 
 Produit: ${input.name}
@@ -68,11 +93,17 @@ Réponds UNIQUEMENT avec JSON:
 }
 
 Règles: français simple, pas de prix inventé autre que celui fourni, pas de markdown.`,
-      maxOutputTokens: 450,
-      temperature: 0.6,
     });
 
-    const parsed = extractJson(result.text || "");
+    if (!text) {
+      return {
+        content: fallback,
+        source: "fallback",
+        error: "Réponse IA vide",
+      };
+    }
+
+    const parsed = extractJson(text);
     return {
       content: normalizeContent(parsed, fallback),
       source: "ai",
@@ -81,7 +112,7 @@ Règles: français simple, pas de prix inventé autre que celui fourni, pas de m
     return {
       content: fallback,
       source: "fallback",
-      error: err instanceof Error ? err.message : "Erreur IA",
+      error: humanizeAiError(err),
     };
   }
 }

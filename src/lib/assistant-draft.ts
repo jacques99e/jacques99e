@@ -1,4 +1,8 @@
-import { generateText } from "ai";
+import {
+  generateAssistantText,
+  humanizeAiError,
+  isAssistantSimulated,
+} from "@/lib/assistant-ai";
 import { buildMessageFromTemplate } from "@/lib/whatsapp";
 
 export type DraftMessageType =
@@ -16,8 +20,6 @@ export type DraftMessageInput = {
   context?: string;
   boutiqueUrl?: string;
 };
-
-const MODEL = process.env.ASSISTANT_MODEL?.trim() || "openai/gpt-5-mini";
 
 function typeLabel(type: DraftMessageType): string {
   switch (type) {
@@ -96,25 +98,34 @@ export async function generateDraftMessage(
 ): Promise<{ message: string; source: "ai" | "fallback"; error?: string }> {
   const fallback = buildFallbackDraft(input);
 
-  if (process.env.ASSISTANT_SIMULATE === "true") {
-    return { message: fallback, source: "fallback" };
+  if (isAssistantSimulated()) {
+    return {
+      message: fallback,
+      source: "fallback",
+      error: "Mode simulation IA (ASSISTANT_SIMULATE=true)",
+    };
   }
 
   try {
-    const result = await generateText({
-      model: MODEL,
+    const message = await generateAssistantText({
       prompt: buildPrompt(input),
       maxOutputTokens: 280,
       temperature: 0.7,
     });
 
-    const message = (result.text || "").trim();
     if (!message || message.length < 20) {
-      return { message: fallback, source: "fallback", error: "Réponse IA trop courte" };
+      return {
+        message: fallback,
+        source: "fallback",
+        error: "Réponse IA trop courte",
+      };
     }
     return { message, source: "ai" };
   } catch (err) {
-    const error = err instanceof Error ? err.message : "Erreur IA";
-    return { message: fallback, source: "fallback", error };
+    return {
+      message: fallback,
+      source: "fallback",
+      error: humanizeAiError(err),
+    };
   }
 }

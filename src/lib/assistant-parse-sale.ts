@@ -1,4 +1,8 @@
-import { generateText } from "ai";
+import {
+  generateAssistantText,
+  humanizeAiError,
+  isAssistantSimulated,
+} from "@/lib/assistant-ai";
 import {
   detectPayment,
   parseSaleLocally,
@@ -8,8 +12,6 @@ import {
 } from "@/lib/parse-sale-local";
 
 export type { CatalogProduct, ParsedSaleItem, ParsedSaleResult };
-
-const MODEL = process.env.ASSISTANT_MODEL?.trim() || "openai/gpt-5-mini";
 
 function extractJson(text: string): unknown {
   const trimmed = text.trim();
@@ -31,7 +33,7 @@ export async function parseSaleWithAi(
 ): Promise<ParsedSaleResult> {
   const local = parseSaleLocally(transcript, catalog);
 
-  if (process.env.ASSISTANT_SIMULATE === "true") {
+  if (isAssistantSimulated()) {
     return local;
   }
 
@@ -41,8 +43,9 @@ export async function parseSaleWithAi(
     .join("\n");
 
   try {
-    const result = await generateText({
-      model: MODEL,
+    const text = await generateAssistantText({
+      maxOutputTokens: 400,
+      temperature: 0.2,
       prompt: `Tu convertis une dictée de vente en JSON pour une caisse africaine francophone.
 
 Catalogue:
@@ -63,11 +66,9 @@ Règles:
 - quantity >= 1, ne pas dépasser le stock
 - Si aucun produit reconnu: items = []
 - Pas de markdown`,
-      maxOutputTokens: 400,
-      temperature: 0.2,
     });
 
-    const parsed = extractJson(result.text || "") as {
+    const parsed = extractJson(text) as {
       items?: Array<{ productId?: string; quantity?: number }>;
       paymentMethod?: string | null;
       clientName?: string | null;
@@ -110,7 +111,8 @@ Règles:
       source: "ai",
       transcript,
     };
-  } catch {
+  } catch (err) {
+    console.warn("[parse-sale-ai]", humanizeAiError(err));
     return local;
   }
 }

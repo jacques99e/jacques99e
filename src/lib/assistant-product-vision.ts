@@ -1,4 +1,9 @@
-import { gateway, generateText } from "ai";
+import {
+  generateAssistantText,
+  getVisionModel,
+  humanizeAiError,
+  isAssistantSimulated,
+} from "@/lib/assistant-ai";
 
 export type ProductVisionSuggestion = {
   name: string;
@@ -7,11 +12,6 @@ export type ProductVisionSuggestion = {
   category: string | null;
   whatsappPitch: string | null;
 };
-
-const MODEL =
-  process.env.ASSISTANT_VISION_MODEL?.trim() ||
-  process.env.ASSISTANT_MODEL?.trim() ||
-  "google/gemini-2.5-flash";
 
 const PROMPT = `Tu analyses une photo de produit pour un commerçant en Afrique francophone (Wazo Digital).
 
@@ -99,32 +99,7 @@ function normalizeMediaType(mediaType: string): string {
   ) {
     return t;
   }
-  // HEIC / inconnu → on envoie comme jpeg (le client normalise en général)
   return "image/jpeg";
-}
-
-function humanizeAiError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err || "");
-  const lower = raw.toLowerCase();
-  if (
-    lower.includes("ai_gateway") ||
-    lower.includes("gateway") ||
-    lower.includes("unauthorized") ||
-    lower.includes("api key") ||
-    lower.includes("oidc")
-  ) {
-    return "Passerelle IA non configurée sur Vercel (AI Gateway). Activez-la ou ajoutez AI_GATEWAY_API_KEY.";
-  }
-  if (lower.includes("quota") || lower.includes("billing") || lower.includes("credit")) {
-    return "Crédit IA épuisé. Vérifiez la facturation AI Gateway.";
-  }
-  if (lower.includes("timeout") || lower.includes("aborted")) {
-    return "Analyse trop longue. Réessayez avec une photo plus légère.";
-  }
-  if (lower.includes("unsupported") || lower.includes("media") || lower.includes("image")) {
-    return "Format d’image non supporté. Utilisez une photo JPEG/PNG.";
-  }
-  return raw.slice(0, 220) || "Erreur vision IA";
 }
 
 export async function analyzeProductImage(params: {
@@ -143,7 +118,7 @@ export async function analyzeProductImage(params: {
     whatsappPitch: null,
   };
 
-  if (process.env.ASSISTANT_SIMULATE === "true") {
+  if (isAssistantSimulated()) {
     return {
       suggestion: fallback,
       source: "fallback",
@@ -153,39 +128,33 @@ export async function analyzeProductImage(params: {
 
   const mediaType = normalizeMediaType(params.mediaType);
   const dataUrl = `data:${mediaType};base64,${toBase64(params.imageBytes)}`;
+  const model = getVisionModel();
 
   try {
-    const result = await generateText({
-      model: gateway(MODEL),
+    const text = await generateAssistantText({
+      model,
+      maxOutputTokens: 500,
+      temperature: 0.2,
+      fallbackModels: [model, "google/gemini-2.5-flash", "openai/gpt-5-mini"],
       messages: [
         {
           role: "user",
           content: [
             { type: "text", text: PROMPT },
-            {
-              type: "image",
-              image: dataUrl,
-            },
+            { type: "image", image: dataUrl },
           ],
         },
       ],
-      maxOutputTokens: 500,
-      temperature: 0.2,
-      providerOptions: {
-        gateway: {
-          models: [
-            MODEL,
-            "google/gemini-2.5-flash",
-            "openai/gpt-5-mini",
-          ],
-        },
-      },
     });
 
-    const parsed = extractJsonObject(result.text || "");
+    const parsed = extractJsonObject(text || "");
     const suggestion = normalizeSuggestion(parsed);
     if (suggestion.name === "Produit" && !suggestion.description) {
-      return { suggestion: fallback, source: "fallback", error: "Réponse IA vide" };
+      return {
+        suggestion: fallback,
+        source: "fallback",
+        error: "Réponse IA vide",
+      };
     }
     return { suggestion, source: "ai" };
   } catch (err) {

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { generateProductLanding } from "@/lib/assistant-product-landing";
 
+export const maxDuration = 60;
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const auth = await requireAuthContext();
   if (!auth.ok) {
@@ -20,13 +23,19 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return NextResponse.json({ success: false, error: "JSON invalide" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "JSON invalide" },
+      { status: 400 }
+    );
   }
 
   const name = body.name?.trim();
   const storeName = body.storeName?.trim() || "Wazo Digital";
   if (!name) {
-    return NextResponse.json({ success: false, error: "Nom produit requis" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Nom produit requis" },
+      { status: 400 }
+    );
   }
 
   const result = await generateProductLanding({
