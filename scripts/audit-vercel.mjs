@@ -36,11 +36,11 @@ async function checkAppConfig(health) {
     console.log("[ok] app service role configuré");
   }
 
-  if (health.crons && "configured" in health.crons && health.crons.configured === false) {
+  if (health.crons === false || health.crons?.configured === false) {
     issues.push(
       "app: CRON_SECRET manquant — crons Vercel (rapport, push, indexation) renvoient 401"
     );
-  } else if (health.crons?.configured === true) {
+  } else if (health.crons === true || health.crons?.configured === true) {
     console.log("[ok] app CRON_SECRET configuré");
   } else if (!("crons" in health)) {
     warnings.push(
@@ -49,7 +49,11 @@ async function checkAppConfig(health) {
   }
 
   if ("email" in health) {
-    if (!health.email?.resendConfigured && !health.email?.simulate) {
+    const emailOk =
+      health.email === true ||
+      health.email?.resendConfigured === true ||
+      health.email?.simulate === true;
+    if (!emailOk) {
       warnings.push("app: RESEND_API_KEY absent — rapports hebdo désactivés");
     } else {
       console.log("[ok] app email (Resend ou simulation)");
@@ -57,15 +61,18 @@ async function checkAppConfig(health) {
   }
 
   if ("push" in health) {
-    if (!health.push?.configured) {
+    const pushOk = health.push === true || health.push?.configured === true;
+    if (!pushOk) {
       warnings.push("app: clés VAPID absentes — alertes push cron inactives");
     } else {
       console.log("[ok] app push VAPID configuré");
     }
   }
 
-  if (health.payment && !health.payment.paydunyaConfigured) {
-    warnings.push("app: clés PayDunya incomplètes");
+  if (health.payment) {
+    const payOk =
+      health.payment.configured === true || health.payment.paydunyaConfigured === true;
+    if (!payOk) warnings.push("app: clés PayDunya incomplètes");
   }
 
   if (health.celo && !health.celo.configured) {

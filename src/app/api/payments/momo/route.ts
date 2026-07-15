@@ -172,6 +172,18 @@ export async function POST(request: NextRequest) {
         ""
       );
       const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET?.trim() ?? "";
+      const isProd =
+        process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+      if (isProd && !callbackSecret) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "PAYMENT_CALLBACK_SECRET manquant. Configurez-le sur Vercel avant d'accepter des paiements.",
+          },
+          { status: 503 }
+        );
+      }
       const callbackQuery = new URLSearchParams({ tx: transactionId });
       if (callbackSecret) {
         callbackQuery.set("secret", callbackSecret);

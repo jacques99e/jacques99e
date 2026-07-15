@@ -4,8 +4,10 @@ out
 .env
 .env.local
 .env.vercel.production
+.env.vercel.runtime
 .env.vercel.prod
 .env.vercel.tmp
+.env.vercel.*
 *.log
 .DS_Store
 public/workbox-*.js

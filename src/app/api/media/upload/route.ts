@@ -14,6 +14,70 @@ const BUCKET_CONFIG: Record<string, { public: boolean; fileSizeLimit: number }> 
 
 const ALLOWED_BUCKETS = new Set(Object.keys(BUCKET_CONFIG));
 
+/** MIME autorisés par bucket (validation côté API, en plus des limites Storage). */
+const ALLOWED_MIME_BY_BUCKET: Record<string, Set<string>> = {
+  "product-images": new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  "course-media": new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "video/mp4",
+    "video/webm",
+    "application/pdf",
+  ]),
+  certificates: new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
+  "health-docs": new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ]),
+};
+
+const EXT_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  pdf: "application/pdf",
+};
+
+function sniffMime(buffer: Buffer, declared: string, ext: string): string | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  if (buffer.length >= 6 && buffer.toString("ascii", 0, 6) === "GIF87a") return "image/gif";
+  if (buffer.length >= 6 && buffer.toString("ascii", 0, 6) === "GIF89a") return "image/gif";
+  if (buffer.length >= 4 && buffer.toString("ascii", 0, 4) === "%PDF") return "application/pdf";
+  if (buffer.length >= 12 && buffer.toString("ascii", 4, 8) === "ftyp") {
+    return declared.startsWith("video/") ? declared : "video/mp4";
+  }
+  // Fallback contrôlé : uniquement si déclaration + extension cohérentes et autorisées
+  const fromExt = EXT_MIME[ext];
+  if (declared && fromExt && declared === fromExt) return declared;
+  return fromExt || null;
+}
+
 async function ensureBucket(service: SupabaseClient, bucket: string): Promise<string | null> {
   const { data: buckets, error: listError } = await service.storage.listBuckets();
   if (listError) return listError.message;
@@ -47,9 +111,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Bucket non autorise." }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${auth.userId}/${Date.now()}.${ext}`;
+    const sizeLimit = BUCKET_CONFIG[bucket].fileSizeLimit;
+    if (file.size <= 0 || file.size > sizeLimit) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Fichier trop volumineux (max ${Math.round(sizeLimit / MB)} Mo).`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const rawExt = file.name.split(".").pop()?.toLowerCase() || "";
+    const ext = EXT_MIME[rawExt] ? rawExt : "bin";
+    if (ext === "bin") {
+      return NextResponse.json(
+        { success: false, error: "Extension de fichier non autorisee." },
+        { status: 400 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
+    const mime = sniffMime(buffer, file.type || "", ext);
+    const allowed = ALLOWED_MIME_BY_BUCKET[bucket];
+    if (!mime || !allowed?.has(mime)) {
+      return NextResponse.json(
+        { success: false, error: "Type de fichier non autorise pour ce bucket." },
+        { status: 400 }
+      );
+    }
+
+    const safeExt = mime === "image/jpeg" ? "jpg" : mime.split("/")[1] || ext;
+    const path = `${auth.userId}/${Date.now()}.${safeExt}`;
 
     const service = await createServiceSupabase();
     const bucketError = await ensureBucket(service, bucket);
@@ -61,8 +154,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { error } = await service.storage.from(bucket).upload(path, buffer, {
-      contentType: file.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
-      upsert: true,
+      contentType: mime,
+      upsert: false,
     });
 
     if (error) {

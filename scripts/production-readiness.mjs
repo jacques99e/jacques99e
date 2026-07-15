@@ -53,18 +53,50 @@ async function testSalesApi(env) {
     return false;
   }
 
+  const { createClient } = await import("@supabase/supabase-js");
+  let accessToken = "";
+
   const authRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: anonKey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const auth = await authRes.json().catch(() => ({}));
-  if (!authRes.ok) {
-    console.log(`[!!] auth: ${auth.error_description || authRes.status}`);
-    return false;
+  if (authRes.ok && auth.access_token) {
+    accessToken = auth.access_token;
+  } else {
+    const msg = String(auth.error_description || auth.msg || auth.error || authRes.status);
+    if (!/captcha/i.test(msg) || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.log(`[!!] auth: ${msg}`);
+      return false;
+    }
+    // CAPTCHA Auth actif → session via magic link admin (scripts uniquement)
+    const adminAuth = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: linkData, error: linkError } = await adminAuth.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.log(`[!!] auth magiclink: ${linkError?.message || "no token"}`);
+      return false;
+    }
+    const anon = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: otp, error: otpError } = await anon.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: "email",
+    });
+    if (otpError || !otp?.session?.access_token) {
+      console.log(`[!!] auth verifyOtp: ${otpError?.message || "no session"}`);
+      return false;
+    }
+    accessToken = otp.session.access_token;
+    console.log("[ok] auth via magiclink admin (CAPTCHA contourné pour script)");
   }
 
-  const { createClient } = await import("@supabase/supabase-js");
   const admin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
@@ -82,7 +114,7 @@ async function testSalesApi(env) {
   const res = await fetch(`${APP}/api/sales`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${auth.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -117,7 +149,9 @@ const appHealth = await fetchJson(`${APP}/api/health`);
 checks.push(appHealth.ok && appHealth.body.ok === true);
 console.log(appHealth.ok ? `[ok] app health v${appHealth.body.version}` : `[!!] app health`);
 if (appHealth.body.serviceRole === false) console.log("[!!] SUPABASE_SERVICE_ROLE_KEY manquant Vercel");
-if (appHealth.body.crons?.configured === false) console.log("[!!] CRON_SECRET manquant Vercel");
+if (appHealth.body.crons === false || appHealth.body.crons?.configured === false) {
+  console.log("[!!] CRON_SECRET manquant Vercel");
+}
 
 const gscRes = await fetch(SITE, { cache: "no-store" });
 const gscHtml = await gscRes.text();

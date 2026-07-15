@@ -1,6 +1,6 @@
 # Audit sécurité API — Wazo Digital
 
-Dernière revue : juin 2026.
+Dernière revue : juillet 2026.
 
 ## Résumé
 
@@ -8,7 +8,8 @@ Dernière revue : juin 2026.
 |-----------|--------|------------|
 | Données boutique (CRUD) | billing, team, push, logistics, education, health, blockchain, reports, sms | `requireAuthContext()` + `checkStoreAccess()` |
 | Crons | `/api/cron/*` | `Authorization: Bearer CRON_SECRET` |
-| Callback paiement | `/api/payments/momo/callback` POST | `PAYMENT_CALLBACK_SECRET` (header ou query) |
+| Callback paiement | `/api/payments/momo/callback` | `PAYMENT_CALLBACK_SECRET` **obligatoire en prod** (header ou query) |
+| Upload media | `/api/media/upload` | Auth + MIME sniff + taille max bucket |
 | Portails publics | `/api/education/public/*`, `/api/logistics/public/*`, `/api/blockchain/public/*` | Accès limité par code/hash (intentionnel) |
 | Vérification certificat | `/api/education/certificates/verify/[token]` | Lecture publique par token (intentionnel) |
 | Météo & conseils agri | `/api/agriculture/weather`, `/api/agriculture/tips` | Session requise (évite abus clé OpenWeather) |
@@ -54,6 +55,8 @@ Ces endpoints ne exposent que les données prévues pour un usage public (pas de
 2. Activer RLS Supabase sur toutes les tables métier (voir migrations).
 3. Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` côté client.
 4. Désactiver « Confirm email » uniquement pour les environnements de test.
+5. Ne pas committer `.env.vercel.*` (gitignorés) — rotater toute clé si exposée.
+6. Activer Cloudflare Turnstile sur la Landing + CAPTCHA Auth Supabase.
 
 ## Test manuel rapide
 

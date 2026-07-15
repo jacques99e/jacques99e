@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/billing";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
+function isProductionLike(): boolean {
+  return (
+    process.env.VERCEL_ENV === "production" ||
+    process.env.NODE_ENV === "production"
+  );
+}
+
+function assertCallbackSecret(request: NextRequest): NextResponse | null {
+  const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET?.trim();
+  if (!callbackSecret) {
+    if (isProductionLike()) {
+      console.error("[payments/callback] PAYMENT_CALLBACK_SECRET manquant en production");
+      return NextResponse.json(
+        { success: false, error: "Callback paiement non configure." },
+        { status: 503 }
+      );
+    }
+    return null;
+  }
+
+  const headerSecret = request.headers.get("x-callback-secret");
+  const querySecret = request.nextUrl.searchParams.get("secret");
+  const validHeader = Boolean(headerSecret && headerSecret === callbackSecret);
+  const validQuery = Boolean(querySecret && querySecret === callbackSecret);
+  if (!validHeader && !validQuery) {
+    return NextResponse.json(
+      { success: false, error: "Signature callback invalide." },
+      { status: 401 }
+    );
+  }
+  return null;
+}
+
 function extractTransactionId(payload: Record<string, unknown>, fallback: string | null): string | null {
   const direct = payload.transaction_id ?? payload.txid ?? payload.tx ?? payload.cpm_trans_id;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
@@ -24,16 +57,8 @@ function isSuccessfulPayment(payload: Record<string, unknown>): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET;
-    if (callbackSecret) {
-      const headerSecret = request.headers.get("x-callback-secret");
-      const querySecret = request.nextUrl.searchParams.get("secret");
-      const validHeader = Boolean(headerSecret && headerSecret === callbackSecret);
-      const validQuery = Boolean(querySecret && querySecret === callbackSecret);
-      if (!validHeader && !validQuery) {
-        return NextResponse.json({ success: false, error: "Signature callback invalide." }, { status: 401 });
-      }
-    }
+    const authError = assertCallbackSecret(request);
+    if (authError) return authError;
 
     const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const fallbackTx = request.nextUrl.searchParams.get("tx");
@@ -87,16 +112,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET;
-  if (callbackSecret) {
-    const headerSecret = request.headers.get("x-callback-secret");
-    const querySecret = request.nextUrl.searchParams.get("secret");
-    const validHeader = Boolean(headerSecret && headerSecret === callbackSecret);
-    const validQuery = Boolean(querySecret && querySecret === callbackSecret);
-    if (!validHeader && !validQuery) {
-      return NextResponse.json({ success: false, error: "Signature callback invalide." }, { status: 401 });
-    }
-  }
+  const authError = assertCallbackSecret(request);
+  if (authError) return authError;
 
   return NextResponse.json({ success: true, message: "Callback abonnement actif." });
 }
