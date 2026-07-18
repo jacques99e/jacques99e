@@ -23,7 +23,7 @@ export function AppHeader({ title, subtitle, right }: AppHeaderProps) {
               Wazo Digital
             </p>
           )}
-          <h1 className="truncate text-lg font-bold leading-tight">{title}</h1>
+          <h1 className="truncate text-lg font-extrabold leading-tight tracking-tight">{title}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <HeaderAlerts />

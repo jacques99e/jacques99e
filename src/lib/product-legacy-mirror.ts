@@ -12,6 +12,7 @@ export function productToLegacy(p: Product): LocalProduct {
     stock_quantity: p.stock_quantity,
     category: "Autre",
     createdAt: p.created_at ?? new Date().toISOString(),
+    image_url: p.image_url ?? null,
   };
 }
 

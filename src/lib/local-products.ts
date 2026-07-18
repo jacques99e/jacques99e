@@ -9,6 +9,7 @@ export interface LocalProduct {
   category?: string;
   createdAt?: string;
   stock_quantity?: number;
+  image_url?: string | null;
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -27,6 +28,7 @@ function normalizeProduct(input: Partial<LocalProduct>): LocalProduct {
     stock_quantity: stock,
     category: input.category ? String(input.category) : "Autre",
     createdAt: input.createdAt ? String(input.createdAt) : new Date().toISOString(),
+    image_url: input.image_url ? String(input.image_url) : null,
   };
 }
 

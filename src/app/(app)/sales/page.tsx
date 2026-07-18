@@ -299,86 +299,128 @@ export default function SalesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher un produit"
+          className="h-12"
         />
-        <select
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-          className="app-input-field h-12 text-sm"
-        >
-          <option value="cash">Espèces</option>
-          <option value="momo">Mobile money</option>
-          <option value="card">Carte</option>
-        </select>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["cash", "Espèces"],
+              ["momo", "MoMo"],
+              ["card", "Carte"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPaymentMethod(value)}
+              className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${
+                paymentMethod === value
+                  ? "bg-wazo-green text-white shadow-sm"
+                  : "border border-gray-200 bg-white text-gray-600"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {filtered.length === 0 ? (
-            <p className="rounded-xl bg-white p-3 text-xs text-gray-500 shadow-sm">
+            <p className="col-span-2 rounded-xl bg-white p-3 text-xs text-gray-500 shadow-sm">
               Aucun produit pour cette recherche.
             </p>
           ) : null}
           {filtered.map((p) => (
-            <div key={p.id} className="app-list-item justify-between">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{p.name}</p>
-                <p className="text-sm text-[#075E54]">{formatCurrency(p.price)}</p>
-                <p className="text-xs text-gray-500">Stock: {p.stock}</p>
+            <button
+              key={p.id}
+              type="button"
+              disabled={p.stock <= 0}
+              onClick={() => addToCart(p)}
+              className="overflow-hidden rounded-2xl border border-gray-100 bg-white text-left shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+            >
+              <div className="relative aspect-[4/3] bg-gray-100">
+                {p.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-300">
+                    <Plus className="h-8 w-8" />
+                  </div>
+                )}
+                {p.stock > 0 ? (
+                  <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-wazo-orange text-white shadow-md">
+                    <Plus className="h-4 w-4" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span className="absolute inset-x-2 bottom-2 rounded-md bg-black/60 px-2 py-1 text-center text-[10px] font-bold text-white">
+                    Rupture
+                  </span>
+                )}
               </div>
-              {p.stock > 0 ? (
-                <Button size="icon" variant="default" className="h-10 w-10 shrink-0" onClick={() => addToCart(p)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" className="text-gray-400" disabled>
-                  Rupture
-                </Button>
-              )}
-            </div>
+              <div className="space-y-0.5 p-2.5">
+                <p className="line-clamp-2 text-xs font-bold leading-snug text-gray-900">{p.name}</p>
+                <p className="text-sm font-extrabold text-wazo-green">{formatCurrency(p.price)}</p>
+              </div>
+            </button>
           ))}
         </div>
 
         {cart.length > 0 && (
-          <div className="fixed bottom-20 left-0 right-0 safe-bottom">
+          <div className="fixed bottom-20 left-0 right-0 z-40 safe-bottom">
             <div className="mx-auto max-w-lg px-3">
-            <div className="space-y-2 rounded-t-3xl border border-gray-100 bg-white/95 p-4 shadow-wazo-lg backdrop-blur-xl">
-              <h2 className="text-sm font-bold text-gray-800">Panier</h2>
-              {cart.map((item) => (
-                <div key={item.productId} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => updateQty(item.productId, -1)}>
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="w-5 text-center">{item.quantity}</span>
-                    <button type="button" onClick={() => updateQty(item.productId, 1)}>
-                      <Plus className="h-4 w-4" />
-                    </button>
+              <div className="overflow-hidden rounded-t-3xl border border-wazo-green/15 bg-[#FAFAF7] shadow-wazo-lg">
+                <div className="border-b border-dashed border-gray-300 bg-white px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-extrabold uppercase tracking-widest text-wazo-green">
+                      Ticket
+                    </h2>
+                    <span className="text-[10px] font-medium text-gray-400">
+                      {cart.reduce((n, i) => n + i.quantity, 0)} article(s)
+                    </span>
                   </div>
-                  <span className="w-20 text-right font-medium">
-                    {formatCurrency(item.unitPrice * item.quantity)}
-                  </span>
-                  <button type="button" onClick={() => removeItem(item.productId)} aria-label="Retirer">
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </button>
                 </div>
-              ))}
-              <div className="flex items-center justify-between border-t pt-2 text-sm">
-                <span>Sous-total</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <div className="max-h-40 space-y-2 overflow-y-auto px-4 py-3">
+                  {cart.map((item) => (
+                    <div key={item.productId} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+                      <div className="flex items-center gap-1.5 rounded-full bg-white px-1.5 py-0.5 shadow-sm">
+                        <button type="button" onClick={() => updateQty(item.productId, -1)} className="p-0.5">
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-4 text-center text-xs font-bold">{item.quantity}</span>
+                        <button type="button" onClick={() => updateQty(item.productId, 1)} className="p-0.5">
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <span className="w-[4.5rem] text-right text-xs font-bold tabular-nums">
+                        {formatCurrency(item.unitPrice * item.quantity)}
+                      </span>
+                      <button type="button" onClick={() => removeItem(item.productId)} aria-label="Retirer">
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2 border-t border-dashed border-gray-300 bg-white px-4 py-3">
+                  <div className="flex items-end justify-between">
+                    <span className="text-sm font-semibold text-gray-600">TOTAL</span>
+                    <span className="text-2xl font-extrabold tracking-tight text-wazo-orange tabular-nums">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
+                  <Button variant="orange" size="lg" className="h-12 w-full text-base font-bold" onClick={finalizeSale}>
+                    Encaisser · {paymentMethod === "momo" ? "MoMo" : paymentMethod === "card" ? "Carte" : "Espèces"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center justify-between font-bold">
-                <span>TOTAL</span>
-                <span className="text-wazo-orange">{formatCurrency(total)}</span>
-              </div>
-              <Button variant="orange" size="lg" className="w-full" onClick={finalizeSale}>
-                Finaliser la vente
-              </Button>
-            </div>
             </div>
           </div>
         )}
 
         {cart.length === 0 && (
-          <p className="py-8 text-center text-gray-500">Panier vide</p>
+          <p className="py-6 text-center text-sm text-gray-400">
+            Touchez un produit pour commencer la vente
+          </p>
         )}
       </main>
     </>

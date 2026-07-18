@@ -340,68 +340,90 @@ export default function ProductsPage() {
             </Button>
           </div>
         ) : (
-          <ul className="space-y-2">
-            {filtered.map((p) => (
-              <li key={p.id} className="app-list-item">
-                <div className="flex items-center gap-3">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt="" className="h-14 w-14 rounded-lg object-cover" />
-                  ) : (
-                    <div className="h-14 w-14 rounded-lg bg-gray-200" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-bold text-gray-900">{p.name}</p>
-                    <p className="text-sm text-[#075E54]">{formatCurrency(p.price)}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                      <span>Stock: {stockValue(p)}</span>
-                      <button
-                        type="button"
-                        onClick={() => void updateStock(p.id, -1)}
-                        className="rounded border px-1.5 hover:bg-gray-100"
-                        aria-label={`Diminuer le stock de ${p.name}`}
+          <ul className="grid grid-cols-2 gap-3">
+            {filtered.map((p) => {
+              const stock = stockValue(p);
+              const stockTone =
+                stock <= 0
+                  ? "bg-red-500"
+                  : stock <= 5
+                    ? "bg-amber-500"
+                    : "bg-wazo-green";
+              return (
+                <li
+                  key={p.id}
+                  className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-wazo"
+                >
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/products/${encodeURIComponent(p.id)}`)}
+                    className="block w-full text-left"
+                  >
+                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50">
+                      {p.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-gray-400">
+                          <Package className="h-8 w-8" />
+                          <span className="text-[10px] font-medium">Sans photo</span>
+                        </div>
+                      )}
+                      <span
+                        className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${stockTone}`}
                       >
-                        -1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void updateStock(p.id, 1)}
-                        className="rounded border px-1.5 hover:bg-gray-100"
-                        aria-label={`Augmenter le stock de ${p.name}`}
-                      >
-                        +1
-                      </button>
+                        Stock {stock}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        stockValue(p) <= 0
-                          ? "bg-red-100 text-red-700"
-                          : stockValue(p) <= 5
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-gray-100 text-gray-700"
-                      }`}
+                    <div className="space-y-1 p-3">
+                      <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900">
+                        {p.name}
+                      </p>
+                      <p className="text-base font-extrabold tracking-tight text-wazo-green">
+                        {formatCurrency(p.price)}
+                      </p>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1 border-t border-gray-50 px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={() => void updateStock(p.id, -1)}
+                      className="flex h-8 flex-1 items-center justify-center rounded-lg bg-gray-50 text-sm font-semibold text-gray-700 active:bg-gray-100"
+                      aria-label={`Diminuer le stock de ${p.name}`}
                     >
-                      {p.barcode ?? "Produit"}
-                    </span>
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void updateStock(p.id, 1)}
+                      className="flex h-8 flex-1 items-center justify-center rounded-lg bg-gray-50 text-sm font-semibold text-gray-700 active:bg-gray-100"
+                      aria-label={`Augmenter le stock de ${p.name}`}
+                    >
+                      +
+                    </button>
                     <button
                       type="button"
                       onClick={() => router.push(`/products/${encodeURIComponent(p.id)}`)}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
+                      aria-label={`Modifier ${p.name}`}
                     >
-                      <Pencil className="h-3 w-3" />
-                      Modifier
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => void duplicateProduct(p)}
-                      className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50"
+                      aria-label={`Dupliquer ${p.name}`}
                     >
-                      <Copy className="h-3 w-3" />
-                      Dupliquer
+                      <Copy className="h-3.5 w-3.5" />
                     </button>
-                    {storeId ? (
+                  </div>
+                  {storeId ? (
+                    <div className="border-t border-gray-50 px-2 pb-2">
                       <ProductLandingButton
                         storeId={storeId}
                         product={p}
@@ -413,11 +435,11 @@ export default function ProductsPage() {
                           );
                         }}
                       />
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            ))}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
 

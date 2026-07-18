@@ -44,7 +44,7 @@ export function DashboardHero({
         <p className="text-xs font-medium uppercase tracking-wider text-white/70">
           {t("dashboard.subtitle")}
         </p>
-        <h2 className="mt-1 text-xl font-bold">
+        <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
           {t("dashboard.hello")} {storeName}
         </h2>
 

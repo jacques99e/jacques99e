@@ -18,10 +18,9 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
+          "var(--font-wazo)",
+          "Plus Jakarta Sans",
           "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
           "sans-serif",
         ],
       },

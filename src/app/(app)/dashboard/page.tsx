@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Store, AlertCircle, BarChart3, Blocks } from "lucide-react";
+import { Store, AlertCircle, BarChart3, Blocks, ChevronDown } from "lucide-react";
 import { getOrderedActiveModules, MODULES } from "@/lib/modules/config";
 import { useI18n } from "@/contexts/I18nContext";
 import { useModuleLabelFn } from "@/hooks/useModuleLabel";
@@ -105,8 +105,12 @@ export default function DashboardPage() {
   const [onboardingTick, setOnboardingTick] = useState(0);
   const [billing, setBilling] = useState<BillingSubscription | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   const onboarding = getOnboardingProgress(businessVertical);
+  const billingStatus = billing ? normalizeBillingStatus(billing) : null;
+  const billingNeedsAttention =
+    billingStatus === "expired" || billingStatus === "trial";
 
   useEffect(() => {
     if (!activeModules.length) return;
@@ -271,21 +275,11 @@ export default function DashboardPage() {
         {offlineInfo ? (
           <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">{offlineInfo}</p>
         ) : null}
-        <EngagementHub
-          storeId={cachedStore?.id}
-          storeName={storeName}
-          activeModules={activeModules}
-        />
-        <TodayPulse
-          storeId={cachedStore?.id}
-          activeModules={activeModules}
-          todaySalesCount={todaySalesCount}
-          todaySalesTotal={todayTotal}
-        />
         {hasCommerce ? (
-          <DailyActionsCard storeName={storeName || greeting} limit={3} />
-        ) : null}
-        <ModuleQuickActions activeModules={activeModules} />
+          <DailyActionsCard storeName={storeName || greeting} limit={1} />
+        ) : (
+          <ModuleQuickActions activeModules={activeModules} />
+        )}
         {(hasCommerce && alerts.total > 0) ? (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-red-800">
@@ -323,34 +317,74 @@ export default function DashboardPage() {
             </div>
           </section>
         ) : null}
-        {billing ? (
+        {billing && billingNeedsAttention ? (
           <section
             className={`rounded-2xl p-3 text-xs shadow-sm ${
-              normalizeBillingStatus(billing) === "expired"
+              billingStatus === "expired"
                 ? "bg-red-50 text-red-700"
-                : normalizeBillingStatus(billing) === "trial"
-                  ? "bg-amber-50 text-amber-700"
-                  : "bg-green-50 text-green-700"
+                : "bg-amber-50 text-amber-700"
             }`}
           >
             <p className="font-semibold">
               {t("dashboard.billing.label")}: {vitrinePlanByBillingId(billing.plan).title}
             </p>
             <p>
-              {normalizeBillingStatus(billing) === "expired"
+              {billingStatus === "expired"
                 ? t("dashboard.billing.expired")
-                : normalizeBillingStatus(billing) === "trial"
-                  ? t("dashboard.billing.trial", { days: getTrialDaysLeft(billing) })
-                  : t("dashboard.billing.active", {
-                      plan: vitrinePlanByBillingId(billing.plan).title,
-                      date: billing.current_period_end ?? "-",
-                    })}
+                : t("dashboard.billing.trial", { days: getTrialDaysLeft(billing) })}
             </p>
             <Link
               href={billingDashboardHref(billing)}
               className="mt-2 inline-block rounded-lg bg-[#FF6F00] px-3 py-1.5 text-xs font-semibold text-white no-underline hover:opacity-90"
             >
-              {normalizeBillingStatus(billing) === "active" && billing.plan !== "starter"
+              {t("dashboard.billing.payPro")}
+            </Link>
+          </section>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          className="flex w-full items-center justify-between rounded-2xl border border-wazo-green/15 bg-white/80 px-4 py-3 text-left text-sm font-semibold text-wazo-green shadow-sm transition hover:border-wazo-green/30"
+        >
+          <span>{showMore ? "Masquer le détail" : "Voir analyses et modules"}</span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-wazo-green/70 transition-transform ${showMore ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {showMore ? (
+        <div className="space-y-4 animate-fade-in">
+        <EngagementHub
+          storeId={cachedStore?.id}
+          storeName={storeName}
+          activeModules={activeModules}
+        />
+        <TodayPulse
+          storeId={cachedStore?.id}
+          activeModules={activeModules}
+          todaySalesCount={todaySalesCount}
+          todaySalesTotal={todayTotal}
+        />
+        {hasCommerce ? (
+          <ModuleQuickActions activeModules={activeModules} />
+        ) : null}
+        {billing && !billingNeedsAttention ? (
+          <section className="rounded-2xl bg-green-50 p-3 text-xs text-green-700 shadow-sm">
+            <p className="font-semibold">
+              {t("dashboard.billing.label")}: {vitrinePlanByBillingId(billing.plan).title}
+            </p>
+            <p>
+              {t("dashboard.billing.active", {
+                plan: vitrinePlanByBillingId(billing.plan).title,
+                date: billing.current_period_end ?? "-",
+              })}
+            </p>
+            <Link
+              href={billingDashboardHref(billing)}
+              className="mt-2 inline-block rounded-lg bg-[#FF6F00] px-3 py-1.5 text-xs font-semibold text-white no-underline hover:opacity-90"
+            >
+              {billing.plan !== "starter"
                 ? t("dashboard.billing.manageActive")
                 : t("dashboard.billing.payPro")}
             </Link>
@@ -611,6 +645,8 @@ export default function DashboardPage() {
             })}
           </div>
         </section>
+        ) : null}
+        </div>
         ) : null}
       </main>
     </>

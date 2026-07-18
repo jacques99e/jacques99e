@@ -20,7 +20,8 @@ html {
 
 body {
   @apply bg-wazo-cream text-gray-900 antialiased;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-wazo), "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .dark body,
