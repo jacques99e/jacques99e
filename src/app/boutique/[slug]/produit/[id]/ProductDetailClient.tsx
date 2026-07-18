@@ -109,31 +109,32 @@ export function ProductDetailClient({
 
   return (
     <div className="storefront-page min-h-screen pb-10">
-      <div className="border-b border-[#075E54]/10 bg-gradient-to-r from-[#075E54] to-[#0a7a6e] px-4 py-2 text-center text-xs font-medium text-white">
+      <div className="bg-[#075E54] px-4 py-2 text-center text-[11px] font-medium text-white/90">
         {t("storefront.poweredBy")}{" "}
-        <a href={landingUrl} className="font-bold underline underline-offset-2 hover:text-[#FF6F00]">
+        <a href={landingUrl} className="font-bold text-white underline underline-offset-2">
           Wazo Digital
         </a>
       </div>
 
-      <header className="border-b border-[#075E54]/10 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 md:px-6">
+      <header className="sticky top-0 z-20 border-b border-[#075E54]/10 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:px-6">
           <Link
             href={catalogHref}
-            className="inline-flex items-center gap-2 rounded-full border border-[#075E54]/15 px-4 py-2 text-sm font-semibold text-[#075E54] transition hover:bg-[#075E54]/5"
+            className="inline-flex items-center gap-2 rounded-full border border-[#075E54]/15 px-3.5 py-2 text-sm font-semibold text-[#075E54] transition hover:bg-[#075E54]/5"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("storefront.backToCatalog")}
           </Link>
-          <p className="truncate text-sm font-semibold text-[#1A1A1A]/70">{store.name}</p>
+          <p className="truncate text-sm font-bold text-[#075E54]">{store.name}</p>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-        <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-          <div className="overflow-hidden rounded-3xl border border-[#075E54]/10 bg-[#FFF8F0] shadow-sm">
-            <div className="relative aspect-square">
+      <main className="mx-auto max-w-6xl md:px-6 md:py-8">
+        <div className="grid gap-0 lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-0">
+          <div className="relative overflow-hidden bg-[#F3F1EB] lg:rounded-3xl lg:shadow-sm">
+            <div className="relative aspect-square w-full">
               {product.image_url && !imageFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={product.image_url}
                   alt={product.name}
@@ -141,13 +142,13 @@ export function ProductDetailClient({
                   onError={() => setImageFailed(true)}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#075E54]/10 to-[#FF6F00]/10 text-7xl font-bold text-[#075E54]/40">
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#075E54]/12 to-[#FF6F00]/10 text-7xl font-extrabold text-[#075E54]/40">
                   {product.name[0]?.toUpperCase()}
                 </div>
               )}
               <span
-                className={`absolute left-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
-                  inStock ? "bg-[#075E54]/90 text-white" : "bg-[#1A1A1A]/70 text-white"
+                className={`absolute left-4 top-4 rounded-md px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white ${
+                  inStock ? "bg-[#075E54]/90" : "bg-black/70"
                 }`}
               >
                 {inStock ? t("storefront.inStock") : t("storefront.outOfStock")}
@@ -155,20 +156,17 @@ export function ProductDetailClient({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-[#075E54]/10 bg-white p-6 shadow-sm md:p-8">
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#FF6F00]">
-              {t("storefront.productDetail")}
-            </p>
-            <h1 className="mt-2 text-3xl font-extrabold text-[#075E54] md:text-4xl">
+          <div className="bg-white px-4 py-6 md:rounded-3xl md:border md:border-[#075E54]/10 md:p-8 md:shadow-sm">
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#075E54] md:text-4xl">
               {headline}
             </h1>
 
-            <p className="mt-4 text-3xl font-extrabold text-[#FF6F00]">
+            <p className="mt-3 text-3xl font-extrabold tracking-tight text-[#FF6F00] md:text-4xl">
               {formatCurrency(product.price)}
             </p>
 
             {inStock ? (
-              <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#075E54]/10 px-3 py-1.5 text-sm font-medium text-[#075E54]">
+              <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-[#075E54]/80">
                 <Package className="h-4 w-4" />
                 {t("storefront.stockAvailable", { count: product.stock_quantity })}
               </p>
@@ -204,7 +202,7 @@ export function ProductDetailClient({
                 href={getWhatsAppLink(contactPhone, orderMessage)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-4 text-base font-bold text-white transition hover:brightness-105"
+                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-[#25D366]/25 transition hover:brightness-105"
               >
                 <MessageCircle className="h-5 w-5" />
                 {cta}
@@ -216,9 +214,9 @@ export function ProductDetailClient({
             )}
 
             {inStock ? (
-              <form onSubmit={submitCod} className="mt-6 space-y-3 rounded-2xl border border-[#075E54]/10 bg-[#F8FFFC] p-4">
-                <p className="text-sm font-semibold text-[#075E54]">
-                  Commander avec paiement à la livraison
+              <form onSubmit={submitCod} className="mt-6 space-y-3 border-t border-[#075E54]/10 pt-6">
+                <p className="text-sm font-bold text-[#075E54]">
+                  Ou payer à la livraison
                 </p>
                 <input
                   required
