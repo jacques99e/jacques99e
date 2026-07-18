@@ -3,7 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, CreditCard, Megaphone, Package, Pencil, Plus, Search } from "lucide-react";
+import {
+  ChevronDown,
+  Copy,
+  CreditCard,
+  Megaphone,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+} from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +42,7 @@ export default function ProductsPage() {
   const [persistError, setPersistError] = useState("");
   const [syncMessage, setSyncMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [showTools, setShowTools] = useState(false);
 
   useEffect(() => {
     const store = localStore.get();
@@ -194,58 +204,6 @@ export default function ProductsPage() {
         {syncMessage ? (
           <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800 shadow-sm">{syncMessage}</p>
         ) : null}
-        <div className="flex justify-end">
-          <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
-            {syncing ? "Synchronisation…" : "Publier sur la boutique"}
-          </Button>
-        </div>
-
-        <ModulePublicPortals moduleId="commerce" />
-        <ModuleCompetitiveEdge moduleId="commerce" />
-
-        <ModuleMenuLink
-          href="/products/orders"
-          icon={Package}
-          title="Commandes COD"
-          description="Paiement à la livraison — confirmer, livrer, WhatsApp client"
-          iconClassName="bg-[#FF6F00]/10 text-[#FF6F00]"
-        />
-        <ModuleMenuLink
-          href="/sales/credit"
-          icon={CreditCard}
-          title="Carnet crédit clients"
-          description="Dettes, acomptes et relance WhatsApp"
-          iconClassName="bg-wazo-green/10 text-wazo-green"
-        />
-        <ModuleMenuLink
-          href="/sales/promotions"
-          icon={Megaphone}
-          title="Promotions flash"
-          description="Réductions % appliquées à la caisse + partage WhatsApp"
-          iconClassName="bg-orange-500/10 text-orange-700"
-        />
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full border-[#25D366] text-[#128C7E]"
-          onClick={() => {
-            const store = localStore.get();
-            const boutiqueUrl =
-              store?.slug && typeof window !== "undefined"
-                ? `${window.location.origin}/boutique/${store.slug}`
-                : undefined;
-            const text = buildWhatsAppCatalog({
-              storeName: store?.name || "Ma boutique",
-              products: filtered.map(toLocalProduct),
-              boutiqueUrl,
-            });
-            window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
-          }}
-          disabled={filtered.length === 0}
-        >
-          Partager catalogue WhatsApp
-        </Button>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -253,34 +211,36 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher un produit"
-            className="pl-9"
+            className="h-12 pl-9"
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="app-card p-3">
-            <p className="text-xl font-bold text-wazo-green">{products.length}</p>
-            <p className="mt-0.5 text-gray-500">Total</p>
+        <div className="flex items-center gap-3 text-center text-xs">
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-extrabold tracking-tight text-wazo-green">{products.length}</p>
+            <p className="text-gray-500">Total</p>
           </div>
-          <div className="app-card p-3">
-            <p className="text-xl font-bold text-amber-600">
+          <div className="h-8 w-px bg-gray-200" />
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-extrabold tracking-tight text-amber-600">
               {products.filter((p) => stockValue(p) <= 5 && stockValue(p) > 0).length}
             </p>
-            <p className="mt-0.5 text-gray-500">Stock bas</p>
+            <p className="text-gray-500">Stock bas</p>
           </div>
-          <div className="app-card p-3">
-            <p className="text-xl font-bold text-red-600">
+          <div className="h-8 w-px bg-gray-200" />
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-extrabold tracking-tight text-red-600">
               {products.filter((p) => stockValue(p) <= 0).length}
             </p>
-            <p className="mt-0.5 text-gray-500">Rupture</p>
+            <p className="text-gray-500">Rupture</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2">
           <select
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as "all" | "low" | "out")}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
           >
             <option value="all">Tous stocks</option>
             <option value="low">Stock bas</option>
@@ -289,7 +249,7 @@ export default function ProductsPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as "name" | "price" | "stock")}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
           >
             <option value="name">Tri: nom</option>
             <option value="price">Tri: prix</option>
@@ -297,47 +257,52 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button
-            variant="outline"
-            onClick={() =>
-              downloadCsv(
-                `produits-${new Date().toISOString().slice(0, 10)}.csv`,
-                filtered.map((p) => ({
-                  id: p.id,
-                  nom: p.name,
-                  categorie: "Autre",
-                  prix: p.price,
-                  stock: stockValue(p),
-                }))
-              )
-            }
-          >
-            Export CSV
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
+            {syncing ? "Sync…" : "Publier boutique"}
           </Button>
           <Button
+            type="button"
             variant="outline"
-            onClick={async () =>
-              downloadSimplePdf(
-                "Inventaire Produits",
-                filtered.map(
-                  (p) =>
-                    `${p.name} | Autre | ${formatCurrency(p.price)} | Stock ${stockValue(p)}`
-                ),
-                `inventaire-${new Date().toISOString().slice(0, 10)}.pdf`
-              )
-            }
+            size="sm"
+            className="border-[#25D366] text-[#128C7E]"
+            onClick={() => {
+              const store = localStore.get();
+              const boutiqueUrl =
+                store?.slug && typeof window !== "undefined"
+                  ? `${window.location.origin}/boutique/${store.slug}`
+                  : undefined;
+              const text = buildWhatsAppCatalog({
+                storeName: store?.name || "Ma boutique",
+                products: filtered.map(toLocalProduct),
+                boutiqueUrl,
+              });
+              window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+            }}
+            disabled={filtered.length === 0}
           >
-            Export PDF
+            WhatsApp
           </Button>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
-            <p className="text-gray-500">Aucun produit pour le moment</p>
-            <Button asChild variant="orange" className="mt-4 w-full bg-[#FF6F00] hover:opacity-90">
-              <Link href="/products/add">Ajouter votre premier produit</Link>
-            </Button>
+          <div className="rounded-3xl border border-dashed border-wazo-green/25 bg-white px-6 py-10 text-center shadow-sm">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-wazo-green/10 text-wazo-green">
+              <Package className="h-7 w-7" />
+            </div>
+            <p className="text-base font-bold text-gray-900">
+              {products.length === 0 ? "Votre catalogue est vide" : "Aucun résultat"}
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              {products.length === 0
+                ? "Ajoutez un produit avec photo pour vendre plus vite."
+                : "Essayez un autre filtre ou une autre recherche."}
+            </p>
+            {products.length === 0 ? (
+              <Button asChild variant="orange" className="mt-5 w-full">
+                <Link href="/products/add">Ajouter votre premier produit</Link>
+              </Button>
+            ) : null}
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-3">
@@ -449,6 +414,79 @@ export default function ProductsPage() {
             Ajouter un produit
           </Link>
         </Button>
+
+        <button
+          type="button"
+          onClick={() => setShowTools((v) => !v)}
+          className="flex w-full items-center justify-between rounded-2xl border border-gray-100 bg-white px-4 py-3 text-left text-sm font-semibold text-gray-700 shadow-sm"
+        >
+          <span>{showTools ? "Masquer les outils" : "Outils (commandes, crédit, export…)"}</span>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-400 transition-transform ${showTools ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {showTools ? (
+          <div className="space-y-3 animate-fade-in">
+            <ModulePublicPortals moduleId="commerce" />
+            <ModuleCompetitiveEdge moduleId="commerce" />
+            <ModuleMenuLink
+              href="/products/orders"
+              icon={Package}
+              title="Commandes COD"
+              description="Paiement à la livraison — confirmer, livrer, WhatsApp client"
+              iconClassName="bg-[#FF6F00]/10 text-[#FF6F00]"
+            />
+            <ModuleMenuLink
+              href="/sales/credit"
+              icon={CreditCard}
+              title="Carnet crédit clients"
+              description="Dettes, acomptes et relance WhatsApp"
+              iconClassName="bg-wazo-green/10 text-wazo-green"
+            />
+            <ModuleMenuLink
+              href="/sales/promotions"
+              icon={Megaphone}
+              title="Promotions flash"
+              description="Réductions % appliquées à la caisse + partage WhatsApp"
+              iconClassName="bg-orange-500/10 text-orange-700"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  downloadCsv(
+                    `produits-${new Date().toISOString().slice(0, 10)}.csv`,
+                    filtered.map((p) => ({
+                      id: p.id,
+                      nom: p.name,
+                      categorie: "Autre",
+                      prix: p.price,
+                      stock: stockValue(p),
+                    }))
+                  )
+                }
+              >
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () =>
+                  downloadSimplePdf(
+                    "Inventaire Produits",
+                    filtered.map(
+                      (p) =>
+                        `${p.name} | Autre | ${formatCurrency(p.price)} | Stock ${stockValue(p)}`
+                    ),
+                    `inventaire-${new Date().toISOString().slice(0, 10)}.pdf`
+                  )
+                }
+              >
+                Export PDF
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </main>
     </>
   );

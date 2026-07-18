@@ -417,11 +417,20 @@ export default function SalesPage() {
           </div>
         )}
 
-        {cart.length === 0 && (
-          <p className="py-6 text-center text-sm text-gray-400">
+        {cart.length === 0 && filtered.length > 0 ? (
+          <p className="rounded-2xl border border-dashed border-gray-200 bg-white/60 py-5 text-center text-sm text-gray-400">
             Touchez un produit pour commencer la vente
           </p>
-        )}
+        ) : null}
+        {products.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-wazo-orange/30 bg-white px-5 py-8 text-center">
+            <p className="font-bold text-gray-900">Aucun produit en caisse</p>
+            <p className="mt-1 text-sm text-gray-500">Ajoutez d’abord un article au catalogue.</p>
+            <Button asChild variant="orange" className="mt-4 w-full">
+              <Link href="/products/add">Ajouter un produit</Link>
+            </Button>
+          </div>
+        ) : null}
       </main>
     </>
   );
