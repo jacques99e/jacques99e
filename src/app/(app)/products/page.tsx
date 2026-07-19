@@ -22,6 +22,7 @@ import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ProductLandingButton } from "@/components/ProductLandingButton";
+import { SocialPublishButton } from "@/components/SocialPublishButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
@@ -257,9 +258,9 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
-            {syncing ? "Sync…" : "Publier boutique"}
+            {syncing ? "Sync…" : "Sync cloud"}
           </Button>
           <Button
             type="button"
@@ -283,6 +284,13 @@ export default function ProductsPage() {
           >
             WhatsApp
           </Button>
+          {storeId ? (
+            <SocialPublishButton storeId={storeId} kind="boutique" label="Facebook" />
+          ) : (
+            <Button type="button" variant="outline" size="sm" disabled>
+              Facebook
+            </Button>
+          )}
         </div>
 
         {filtered.length === 0 ? (
@@ -388,7 +396,7 @@ export default function ProductsPage() {
                     </button>
                   </div>
                   {storeId ? (
-                    <div className="border-t border-gray-50 px-2 pb-2">
+                    <div className="space-y-1 border-t border-gray-50 px-2 pb-2">
                       <ProductLandingButton
                         storeId={storeId}
                         product={p}
@@ -399,6 +407,12 @@ export default function ProductsPage() {
                             )
                           );
                         }}
+                      />
+                      <SocialPublishButton
+                        storeId={storeId}
+                        kind="product"
+                        productId={p.id}
+                        label="Publier FB"
                       />
                     </div>
                   ) : null}
