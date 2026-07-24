@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Trash2, Megaphone } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { VoiceSaleButton } from "@/components/VoiceSaleButton";
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,27 @@ interface LocalSale {
   payment_status?: string;
 }
 
-export default function SalesPage() {
+function buildWhatsappReceipt(items: LocalSale["items"], saleTotal: number) {
+  const receiptText = [
+    "Reçu Wazo Digital",
+    ...items.map((i) => `- ${i.name} x${i.quantity} = ${formatCurrency(i.line_total)}`),
+    `TOTAL: ${formatCurrency(saleTotal)}`,
+    "Paiement: Mobile Money",
+  ].join("\n");
+  return `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
+}
+
+function SalesPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<LocalProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [voiceHint, setVoiceHint] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [momoStatus, setMomoStatus] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     total: number;
     whatsappLink: string;
@@ -60,6 +74,98 @@ export default function SalesPage() {
     if (!store?.id) return;
     void getProducts(store.id).then((rows) => setProducts(rows.map(productToLegacy)));
   }, []);
+
+  useEffect(() => {
+    const tx = searchParams.get("tx");
+    const momo = searchParams.get("momo");
+    const status = searchParams.get("status");
+    if (!tx || momo !== "1") return;
+
+    if (status === "cancelled") {
+      setPayError("Paiement Mobile Money annulé.");
+      setMomoStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    setMomoStatus("Vérification du paiement Mobile Money…");
+    setPayError(null);
+
+    const poll = async () => {
+      for (let i = 0; i < 15; i++) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`/api/payments/sale/status?tx=${encodeURIComponent(tx)}`);
+          const data = (await res.json()) as {
+            success?: boolean;
+            status?: string;
+            amount?: number;
+            sale_payload?: {
+              items?: LocalSale["items"];
+              total?: number;
+              external_local_id?: string;
+            };
+            error?: string;
+          };
+          if (!res.ok) {
+            setPayError(data.error || "Impossible de vérifier le paiement.");
+            setMomoStatus(null);
+            return;
+          }
+          if (data.status === "succeeded") {
+            const items = data.sale_payload?.items || [];
+            const saleTotal = Number(data.amount ?? data.sale_payload?.total ?? 0);
+            const store = localStore.get();
+            const storeId = store?.id || "local-store";
+            if (items.length && data.sale_payload?.external_local_id) {
+              appendLocalSale(storeId, {
+                id: data.sale_payload.external_local_id,
+                store_id: storeId,
+                items,
+                total: saleTotal,
+                date: new Date().toISOString(),
+                payment_method: "momo",
+                payment_status: "completed",
+              });
+            }
+            if (store?.id) {
+              void getProducts(store.id).then((rows) => setProducts(rows.map(productToLegacy)));
+            }
+            setConfirmation({
+              total: saleTotal,
+              whatsappLink: buildWhatsappReceipt(items, saleTotal),
+              paymentMethod: "momo",
+            });
+            setCart([]);
+            setPaymentMethod("cash");
+            setMomoStatus(null);
+            router.replace("/sales");
+            return;
+          }
+          if (data.status === "failed" || data.status === "cancelled") {
+            setPayError("Le paiement Mobile Money a échoué.");
+            setMomoStatus(null);
+            return;
+          }
+          setMomoStatus(`En attente de confirmation PayDunya… (${i + 1}/15)`);
+        } catch {
+          setPayError("Erreur réseau pendant la vérification.");
+          setMomoStatus(null);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      setPayError(
+        "Paiement encore en attente. Si vous avez payé, réessayez dans un instant."
+      );
+      setMomoStatus(null);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -75,9 +181,7 @@ export default function SalesPage() {
   const addToCart = (product: LocalProduct) => {
     if (product.stock <= 0) return;
     const disc = discountForProduct(product.id, store?.id);
-    const unitPrice = disc
-      ? applyDiscount(product.price, disc.percent)
-      : product.price;
+    const unitPrice = disc ? applyDiscount(product.price, disc.percent) : product.price;
     setCart((prev) => {
       const existing = prev.find((c) => c.productId === product.id);
       if (existing) {
@@ -99,16 +203,16 @@ export default function SalesPage() {
   };
 
   const updateQty = (productId: string, delta: number) => {
-    setCart((prev) => {
-      return prev
+    setCart((prev) =>
+      prev
         .map((item) => {
           if (item.productId !== productId) return item;
           const maxStock = products.find((p) => p.id === productId)?.stock ?? 0;
           const nextQty = Math.max(0, Math.min(item.quantity + delta, maxStock));
           return { ...item, quantity: nextQty };
         })
-        .filter((item) => item.quantity > 0);
-    });
+        .filter((item) => item.quantity > 0)
+    );
   };
 
   const removeItem = (productId: string) => {
@@ -121,9 +225,7 @@ export default function SalesPage() {
       const product = products.find((p) => p.id === item.productId);
       if (!product || product.stock <= 0) continue;
       const disc = discountForProduct(product.id, store?.id);
-      const unitPrice = disc
-        ? applyDiscount(product.price, disc.percent)
-        : product.price;
+      const unitPrice = disc ? applyDiscount(product.price, disc.percent) : product.price;
       const quantity = Math.min(item.quantity, product.stock);
       nextCart.push({
         productId: product.id,
@@ -145,67 +247,155 @@ export default function SalesPage() {
     );
   };
 
+  const completeLocalSale = async (sale: LocalSale, syncWarning?: string) => {
+    const storeId = sale.store_id || "local-store";
+    appendLocalSale(storeId, { ...sale, store_id: storeId });
+
+    const receiptText = [
+      "Reçu Wazo Digital",
+      ...sale.items.map((i) => `- ${i.name} x${i.quantity} = ${formatCurrency(i.line_total)}`),
+      `TOTAL: ${formatCurrency(sale.total)}`,
+      sale.payment_method === "momo" ? "Paiement: Mobile Money" : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
+
+    setConfirmation({
+      total: sale.total,
+      whatsappLink,
+      paymentMethod: sale.payment_method,
+      syncWarning,
+    });
+    setCart([]);
+    setPaymentMethod("cash");
+  };
+
   const finalizeSale = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || paying) return;
+    setPayError(null);
+
+    const currentStore = localStore.get();
+    const storeId = currentStore?.id || "local-store";
+    const saleId = `sale-${crypto.randomUUID()}`;
+    const saleItems = cart.map((item) => ({
+      product_id: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      line_total: item.quantity * item.unitPrice,
+    }));
+
+    if (paymentMethod === "momo") {
+      if (!currentStore?.id) {
+        setPayError("Créez une boutique avant d'encaisser en Mobile Money.");
+        return;
+      }
+      if (!navigator.onLine) {
+        setPayError("Mobile Money nécessite une connexion internet.");
+        return;
+      }
+      setPaying(true);
+      try {
+        const res = await fetch("/api/payments/sale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            store_id: currentStore.id,
+            amount: total,
+            external_local_id: saleId,
+            items: saleItems,
+          }),
+        });
+        const data = (await res.json()) as {
+          success?: boolean;
+          checkout_url?: string;
+          status?: string;
+          amount?: number;
+          error?: string;
+        };
+        if (!res.ok || !data.success) {
+          setPayError(data.error || "Impossible de démarrer le paiement MoMo.");
+          return;
+        }
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url;
+          return;
+        }
+        if (data.status === "succeeded") {
+          const updatedProducts = products.map((product) => {
+            const cartItem = cart.find((c) => c.productId === product.id);
+            if (!cartItem) return product;
+            const nextStock = Math.max(0, product.stock - cartItem.quantity);
+            return { ...product, stock: nextStock, stock_quantity: nextStock };
+          });
+          setProducts(updatedProducts);
+          await completeLocalSale({
+            id: saleId,
+            store_id: storeId,
+            items: saleItems,
+            total: Number(data.amount ?? total),
+            date: new Date().toISOString(),
+            payment_method: "momo",
+            payment_status: "completed",
+          });
+          return;
+        }
+        setPayError("Réponse paiement inattendue.");
+      } catch {
+        setPayError("Erreur réseau pendant le paiement MoMo.");
+      } finally {
+        setPaying(false);
+      }
+      return;
+    }
 
     const updatedProducts = products.map((product) => {
       const cartItem = cart.find((c) => c.productId === product.id);
       if (!cartItem) return product;
       const nextStock = Math.max(0, product.stock - cartItem.quantity);
-      return {
-        ...product,
-        stock: nextStock,
-        stock_quantity: nextStock,
-      };
+      return { ...product, stock: nextStock, stock_quantity: nextStock };
     });
     setProducts(updatedProducts);
 
-    const store = localStore.get();
-    const storeId = store?.id || "local-store";
-
-    if (store?.id) {
+    if (currentStore?.id) {
       for (const product of updatedProducts) {
         const cartItem = cart.find((c) => c.productId === product.id);
         if (!cartItem) continue;
         try {
-          await saveProduct(store.id, {
+          await saveProduct(currentStore.id, {
             id: product.id,
             name: product.name,
             description: product.description ?? null,
             price: product.price,
             stock_quantity: product.stock,
             barcode: null,
-            image_url: null,
+            image_url: product.image_url ?? null,
             is_active: true,
           });
         } catch {
-          // Sale still recorded locally if cloud stock update fails.
+          // keep local sale
         }
       }
     }
+
     const sale: LocalSale = {
-      id: `sale-${crypto.randomUUID()}`,
+      id: saleId,
       store_id: storeId,
-      items: cart.map((item) => ({
-        product_id: item.productId,
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        line_total: item.quantity * item.unitPrice,
-      })),
+      items: saleItems,
       total,
       date: new Date().toISOString(),
       payment_method: paymentMethod,
       payment_status: "completed",
     };
 
-    appendLocalSale(storeId, { ...sale, store_id: storeId });
     if (!navigator.onLine) {
       localStorage.setItem("wazo_offline_sale", "1");
     }
 
     let syncWarning: string | undefined;
-    if (store?.id && navigator.onLine) {
+    appendLocalSale(storeId, { ...sale, store_id: storeId });
+    if (currentStore?.id && navigator.onLine) {
       const syncResult = await syncStoreToCloud(storeId);
       if (syncResult.errors.length) {
         syncWarning = syncResult.errors.join(" · ");
@@ -215,24 +405,13 @@ export default function SalesPage() {
       }
     }
 
-    const receiptText = [
-      "Reçu Wazo Digital",
-      ...sale.items.map((i) => `- ${i.name} x${i.quantity} = ${formatCurrency(i.line_total)}`),
-      `TOTAL: ${formatCurrency(sale.total)}`,
-    ].join("\n");
-    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
-
-    setConfirmation({ total: sale.total, whatsappLink, paymentMethod, syncWarning });
-    setCart([]);
-    setPaymentMethod("cash");
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 3000);
+    await completeLocalSale(sale, syncWarning);
   };
 
   const startNewSale = () => {
     setConfirmation(null);
     setCart([]);
+    setPayError(null);
   };
 
   return (
@@ -252,6 +431,17 @@ export default function SalesPage() {
             Créer une promotion flash
           </Link>
         )}
+
+        {momoStatus ? (
+          <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+            {momoStatus}
+          </p>
+        ) : null}
+        {payError ? (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+            {payError}
+          </p>
+        ) : null}
 
         <VoiceSaleButton
           products={products.map((p) => ({
@@ -274,7 +464,12 @@ export default function SalesPage() {
               Vente enregistrée avec succès ! Total: {formatCurrency(confirmation.total)}
             </p>
             <p className="text-xs text-gray-600">
-              Méthode de paiement: {confirmation.paymentMethod === "cash" ? "Espèces" : confirmation.paymentMethod}
+              Méthode de paiement:{" "}
+              {confirmation.paymentMethod === "cash"
+                ? "Espèces"
+                : confirmation.paymentMethod === "momo"
+                  ? "Mobile Money"
+                  : confirmation.paymentMethod}
             </p>
             {confirmation.syncWarning ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -323,6 +518,11 @@ export default function SalesPage() {
             </button>
           ))}
         </div>
+        {paymentMethod === "momo" ? (
+          <p className="text-center text-[11px] text-gray-500">
+            MoMo ouvre PayDunya (Orange Money / MTN / Moov). Minimum 200 FCFA. La vente est validée après paiement.
+          </p>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-2.5">
           {filtered.length === 0 ? (
@@ -408,30 +608,36 @@ export default function SalesPage() {
                       {formatCurrency(total)}
                     </span>
                   </div>
-                  <Button variant="orange" size="lg" className="h-12 w-full text-base font-bold" onClick={finalizeSale}>
-                    Encaisser · {paymentMethod === "momo" ? "MoMo" : paymentMethod === "card" ? "Carte" : "Espèces"}
+                  <Button
+                    variant="orange"
+                    className="w-full"
+                    disabled={paying}
+                    onClick={() => void finalizeSale()}
+                  >
+                    {paying
+                      ? "Redirection MoMo…"
+                      : `Encaisser · ${
+                          paymentMethod === "momo"
+                            ? "MoMo"
+                            : paymentMethod === "card"
+                              ? "Carte"
+                              : "Espèces"
+                        }`}
                   </Button>
                 </div>
               </div>
             </div>
           </div>
         )}
-
-        {cart.length === 0 && filtered.length > 0 ? (
-          <p className="rounded-2xl border border-dashed border-gray-200 bg-white/60 py-5 text-center text-sm text-gray-400">
-            Touchez un produit pour commencer la vente
-          </p>
-        ) : null}
-        {products.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-wazo-orange/30 bg-white px-5 py-8 text-center">
-            <p className="font-bold text-gray-900">Aucun produit en caisse</p>
-            <p className="mt-1 text-sm text-gray-500">Ajoutez d’abord un article au catalogue.</p>
-            <Button asChild variant="orange" className="mt-4 w-full">
-              <Link href="/products/add">Ajouter un produit</Link>
-            </Button>
-          </div>
-        ) : null}
       </main>
     </>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<div className="app-page p-4 text-sm text-gray-500">Chargement caisse…</div>}>
+      <SalesPageInner />
+    </Suspense>
   );
 }

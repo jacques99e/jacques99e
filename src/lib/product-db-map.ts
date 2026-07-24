@@ -33,8 +33,8 @@ export function rowToProduct(row: Record<string, unknown>): Product {
 export function productToRow(
   product: Pick<
     Product,
-    "store_id" | "name" | "description" | "price" | "stock_quantity" | "barcode" | "image_url"
-  > & { id?: string; category?: string | null }
+    "store_id" | "name" | "description" | "price" | "stock_quantity" | "barcode"
+  > & { id?: string; category?: string | null; image_url?: string | null }
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {
     store_id: product.store_id,
@@ -43,8 +43,10 @@ export function productToRow(
     price: product.price,
     stock: product.stock_quantity,
     barcode: product.barcode,
-    photo_url: product.image_url,
   };
+  if (product.image_url !== undefined) {
+    row.photo_url = product.image_url;
+  }
   if (product.category) row.category = product.category;
   if (product.id && isProductUuid(product.id)) row.id = product.id;
   return row;

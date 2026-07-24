@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
       price,
       stock_quantity,
       barcode: body.barcode ?? null,
-      image_url: body.image_url ?? null,
+      // Omit image_url on updates that don't send it → keep existing photo_url.
+      image_url: body.image_url === undefined ? undefined : body.image_url,
       category: body.category ?? null,
     });
 

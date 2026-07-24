@@ -62,7 +62,7 @@ export function collectLocalProductSnapshots(
       price: legacy.price,
       stock_quantity: legacy.stock ?? legacy.stock_quantity ?? 0,
       barcode: null,
-      image_url: null,
+      image_url: legacy.image_url ?? null,
       is_active: true,
     });
   }

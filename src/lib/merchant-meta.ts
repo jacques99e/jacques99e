@@ -18,8 +18,18 @@ export function appPublicUrl() {
   );
 }
 
+/**
+ * Callback OAuth sur le domaine racine (Landing).
+ * Meta refuse souvent le sous-domaine app.* s'il n'est pas bien déclaré ;
+ * Landing proxifie vers l'app ensuite.
+ */
 export function metaOAuthRedirectUri() {
-  return `${appPublicUrl()}/api/social/meta/callback`;
+  const override = process.env.META_OAUTH_REDIRECT_URI?.trim();
+  if (override) return override.replace(/\/$/, "");
+  const landing =
+    process.env.NEXT_PUBLIC_LANDING_URL?.trim().replace(/\/$/, "") ||
+    "https://wazo-digital.com";
+  return `${landing}/api/social/meta/callback`;
 }
 
 export function buildMetaOAuthUrl(state: string) {

@@ -28,10 +28,6 @@ export interface CloudSyncResult {
   errors: string[];
 }
 
-function formatSupabaseError(error: { message: string; code?: string }): string {
-  return error.code ? `${error.message} (${error.code})` : error.message;
-}
-
 function toIsoDate(d: string | null | undefined): string | null {
   if (!d) return null;
   return d.slice(0, 10);
@@ -45,39 +41,33 @@ export async function pushClientsToCloud(
   let pushed = 0;
 
   for (const client of clients) {
-    const row = {
-      store_id: storeId,
-      external_local_id: client.id,
-      name: client.name,
-      phone: client.phone || null,
-      tags: client.tags,
-      status: client.status,
-      next_follow_up: toIsoDate(client.nextFollowUp),
-      note: client.note || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (client.cloud_id) {
-      const { error } = await supabase
-        .from("crm_clients")
-        .update(row)
-        .eq("id", client.cloud_id);
-      if (!error) pushed++;
-      else errors.push(`Client ${client.name}: ${formatSupabaseError(error)}`);
-      continue;
-    }
-
-    const { data, error } = await supabase
-      .from("crm_clients")
-      .upsert(row, { onConflict: "store_id,external_local_id" })
-      .select("id")
-      .maybeSingle();
-
-    if (!error && data?.id) {
-      client.cloud_id = data.id;
-      pushed++;
-    } else if (error) {
-      errors.push(`Client ${client.name}: ${formatSupabaseError(error)}`);
+    try {
+      const response = await apiFetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_id: storeId,
+          id: client.cloud_id || undefined,
+          external_local_id: client.id,
+          name: client.name,
+          phone: client.phone || null,
+          tags: client.tags,
+          status: client.status,
+          next_follow_up: toIsoDate(client.nextFollowUp),
+          note: client.note || null,
+        }),
+      });
+      const data = (await response.json()) as { success?: boolean; id?: string; error?: string };
+      if (response.ok && data.success && data.id) {
+        client.cloud_id = data.id;
+        pushed++;
+      } else {
+        errors.push(`Client ${client.name}: ${data.error || response.statusText}`);
+      }
+    } catch (e) {
+      errors.push(
+        `Client ${client.name}: ${e instanceof Error ? e.message : "Erreur réseau"}`
+      );
     }
   }
 
@@ -89,19 +79,37 @@ export async function pullClientsFromCloud(
   storeId: string,
   errors: string[]
 ): Promise<number> {
-  const { data, error } = await supabase
-    .from("crm_clients")
-    .select("*")
-    .eq("store_id", storeId)
-    .order("updated_at", { ascending: false });
-
-  if (error) {
-    errors.push(`Lecture clients cloud: ${formatSupabaseError(error)}`);
+  try {
+    const response = await apiFetch(`/api/clients?storeId=${encodeURIComponent(storeId)}`);
+    const data = (await response.json()) as {
+      success?: boolean;
+      clients?: Record<string, unknown>[];
+      error?: string;
+    };
+    if (!response.ok || !data.success) {
+      errors.push(`Lecture clients cloud: ${data.error || response.statusText}`);
+      return 0;
+    }
+    const rows = (data.clients || []).map((row) => ({
+      id: String(row.id ?? ""),
+      external_local_id: (row.external_local_id as string | null) ?? null,
+      name: String(row.name ?? ""),
+      phone: (row.phone as string | null) ?? null,
+      tags: row.tags,
+      status: String(row.status ?? "prospect"),
+      next_follow_up: (row.next_follow_up as string | null) ?? null,
+      note: (row.note as string | null) ?? null,
+      updated_at: row.updated_at as string | undefined,
+    }));
+    if (!rows.length) return 0;
+    mergeCloudClients(storeId, rows);
+    return rows.length;
+  } catch (e) {
+    errors.push(
+      `Lecture clients cloud: ${e instanceof Error ? e.message : "Erreur réseau"}`
+    );
     return 0;
   }
-  if (!data) return 0;
-  mergeCloudClients(storeId, data);
-  return data.length;
 }
 
 export async function pushSalesToCloud(
@@ -192,43 +200,48 @@ export async function pullSalesFromCloud(
   storeId: string,
   errors: string[]
 ): Promise<number> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select(
-      `
-      id,
-      external_local_id,
-      total_amount,
-      total,
-      payment_method,
-      payment_status,
-      created_at,
-      sale_items (
-        product_id,
-        product_name,
-        quantity,
-        unit_price,
-        subtotal
-      )
-    `
-    )
-    .eq("store_id", storeId)
-    .order("created_at", { ascending: false })
-    .limit(500);
-
-  if (error) {
-    errors.push(`Lecture ventes cloud: ${formatSupabaseError(error)}`);
+  try {
+    const response = await apiFetch(`/api/sales?storeId=${encodeURIComponent(storeId)}`);
+    const data = (await response.json()) as {
+      success?: boolean;
+      sales?: Array<Record<string, unknown> & { sale_items?: unknown }>;
+      error?: string;
+    };
+    if (!response.ok || !data.success) {
+      errors.push(`Lecture ventes cloud: ${data.error || response.statusText}`);
+      return 0;
+    }
+    const rows = (data.sales || []).map((row) => {
+      const items = Array.isArray(row.sale_items) ? row.sale_items : [];
+      return {
+        id: String(row.id ?? ""),
+        external_local_id: (row.external_local_id as string | null) ?? null,
+        total_amount: Number(row.total_amount ?? row.total ?? 0),
+        total: Number(row.total ?? row.total_amount ?? 0),
+        payment_method: (row.payment_method as string | null) ?? null,
+        payment_status: (row.payment_status as string | null) ?? null,
+        created_at: String(row.created_at ?? new Date().toISOString()),
+        sale_items: items.map((item) => {
+          const i = item as Record<string, unknown>;
+          return {
+            product_id: (i.product_id as string | null) ?? null,
+            product_name: (i.product_name as string | null) ?? null,
+            quantity: Number(i.quantity ?? 1),
+            unit_price: Number(i.unit_price ?? 0),
+            subtotal: Number(i.subtotal ?? 0),
+          };
+        }),
+      };
+    });
+    if (!rows.length) return 0;
+    mergeCloudSales(storeId, rows);
+    return rows.length;
+  } catch (e) {
+    errors.push(
+      `Lecture ventes cloud: ${e instanceof Error ? e.message : "Erreur réseau"}`
+    );
     return 0;
   }
-  if (!data) return 0;
-
-  const rows = data.map((row) => ({
-    ...row,
-    sale_items: Array.isArray(row.sale_items) ? row.sale_items : [],
-  }));
-
-  mergeCloudSales(storeId, rows);
-  return rows.length;
 }
 
 export async function syncStoreToCloud(storeId: string): Promise<CloudSyncResult> {

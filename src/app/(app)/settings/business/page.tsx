@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
-import { StoreSocialPanel } from "@/components/StoreSocialPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -292,8 +291,6 @@ export default function BusinessSettingsPage() {
             {identityMessage ? <p className="text-xs text-gray-600">{identityMessage}</p> : null}
           </section>
         ) : null}
-
-        {storeIdentity?.id ? <StoreSocialPanel storeId={storeIdentity.id} /> : null}
 
         <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
           <h2 className="text-sm font-semibold">Stock & objectifs</h2>

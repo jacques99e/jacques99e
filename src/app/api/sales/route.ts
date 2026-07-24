@@ -13,6 +13,64 @@ type SaleItemBody = {
   subtotal?: number;
 };
 
+/** GET /api/sales?storeId= — historique ventes + lignes (service role). */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireAuthContext();
+    if (!auth.ok) {
+      return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+    }
+
+    const storeId =
+      request.nextUrl.searchParams.get("storeId")?.trim() ||
+      request.nextUrl.searchParams.get("store_id")?.trim();
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: "storeId requis." }, { status: 400 });
+    }
+
+    const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "read");
+    if (!access.ok) {
+      return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+    }
+
+    const service = await createServiceSupabase();
+    const { data, error } = await service
+      .from("sales")
+      .select(
+        `
+        id,
+        external_local_id,
+        total_amount,
+        total,
+        payment_method,
+        payment_status,
+        created_at,
+        sale_items (
+          product_id,
+          product_name,
+          quantity,
+          unit_price,
+          subtotal
+        )
+      `
+      )
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, sales: data || [] });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Impossible de charger les ventes." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
