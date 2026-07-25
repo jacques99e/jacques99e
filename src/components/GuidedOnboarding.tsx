@@ -14,6 +14,7 @@ import {
   isGuidedOnboardingDone,
   markGuidedOnboardingDone,
 } from "@/lib/guided-onboarding";
+import { isDay0MarkedDone } from "@/lib/day0-mission";
 import { useI18n } from "@/contexts/I18nContext";
 
 export function GuidedOnboarding() {
@@ -23,14 +24,20 @@ export function GuidedOnboarding() {
   const steps = getGuidedStepsForModules(modules);
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
+  const hasCommerce = modules.includes("commerce") || modules.length === 0;
 
   useEffect(() => {
     if (loading || !storeId) return;
+    // Mission J0 prioritaire pour le commerce (non skippable).
+    if (hasCommerce && !isDay0MarkedDone()) {
+      setOpen(false);
+      return;
+    }
     if (!isGuidedOnboardingDone() && steps.length > 0) {
       setOpen(true);
       setIndex(0);
     }
-  }, [loading, storeId, steps.length]);
+  }, [loading, storeId, steps.length, hasCommerce]);
 
   if (!open || steps.length === 0) return null;
 

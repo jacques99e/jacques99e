@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { ModuleRouteGuard } from "@/components/ModuleRouteGuard";
 import { DailyAlertsBanner } from "@/components/DailyAlertsBanner";
+import { Day0Mission } from "@/components/Day0Mission";
 import { GuidedOnboarding } from "@/components/GuidedOnboarding";
 import { PushAlertsRunner } from "@/components/PushAlertsRunner";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
@@ -77,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <PushAlertsRunner />
       <StoreSwitcher />
       <DailyAlertsBanner />
+      <Day0Mission />
       <GuidedOnboarding />
       <ModuleRouteGuard>{children}</ModuleRouteGuard>
       <BottomNav />

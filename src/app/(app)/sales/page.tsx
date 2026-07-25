@@ -175,6 +175,13 @@ function SalesPageInner() {
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const total = subtotal;
 
+  useEffect(() => {
+    if (paymentMethod === "momo" && total > 0 && total < 200) {
+      setPaymentMethod("cash");
+      setPayError("MoMo minimum 200 FCFA — Espèces sélectionné pour ce panier.");
+    }
+  }, [total, paymentMethod]);
+
   const store = localStore.get();
   const promos = activePromotions(store?.id);
 
@@ -287,6 +294,13 @@ function SalesPageInner() {
     }));
 
     if (paymentMethod === "momo") {
+      if (total < 200) {
+        setPaymentMethod("cash");
+        setPayError(
+          "MoMo nécessite au moins 200 FCFA. Passez en Espèces pour ce panier (ou augmentez le montant)."
+        );
+        return;
+      }
       if (!currentStore?.id) {
         setPayError("Créez une boutique avant d'encaisser en Mobile Money.");
         return;
@@ -507,7 +521,17 @@ function SalesPageInner() {
             <button
               key={value}
               type="button"
-              onClick={() => setPaymentMethod(value)}
+              onClick={() => {
+                if (value === "momo" && total > 0 && total < 200) {
+                  setPaymentMethod("cash");
+                  setPayError(
+                    "MoMo minimum 200 FCFA — Espèces sélectionné pour ce panier."
+                  );
+                  return;
+                }
+                setPayError(null);
+                setPaymentMethod(value);
+              }}
               className={`rounded-xl px-2 py-2.5 text-xs font-bold transition ${
                 paymentMethod === value
                   ? "bg-wazo-green text-white shadow-sm"
@@ -521,6 +545,11 @@ function SalesPageInner() {
         {paymentMethod === "momo" ? (
           <p className="text-center text-[11px] text-gray-500">
             MoMo ouvre PayDunya (Orange Money / MTN / Moov). Minimum 200 FCFA. La vente est validée après paiement.
+          </p>
+        ) : null}
+        {total > 0 && total < 200 && paymentMethod === "cash" ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] text-amber-900">
+            Panier &lt; 200 FCFA — utilisez Espèces (MoMo indisponible en dessous du minimum PayDunya).
           </p>
         ) : null}
 

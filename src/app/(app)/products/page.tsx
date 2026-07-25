@@ -23,6 +23,7 @@ import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ProductLandingButton } from "@/components/ProductLandingButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
+import { markDay0ShareDone } from "@/lib/day0-mission";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
@@ -39,6 +40,8 @@ export default function ProductsPage() {
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock">("name");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [isFirstProduct, setIsFirstProduct] = useState(false);
   const [persistError, setPersistError] = useState("");
   const [syncMessage, setSyncMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -51,7 +54,25 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setShowSuccess(searchParams.get("success") === "1");
+    setShowShareSheet(searchParams.get("share") === "1");
+    setIsFirstProduct(searchParams.get("first") === "1");
   }, [searchParams]);
+
+  const openCatalogWhatsApp = () => {
+    const store = localStore.get();
+    const boutiqueUrl =
+      store?.slug && typeof window !== "undefined"
+        ? `${window.location.origin}/boutique/${store.slug}`
+        : undefined;
+    const text = buildWhatsAppCatalog({
+      storeName: store?.name || "Ma boutique",
+      products: products.map(toLocalProduct),
+      boutiqueUrl,
+    });
+    markDay0ShareDone();
+    window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    setShowShareSheet(false);
+  };
 
   useEffect(() => {
     if (!storeId) return;
@@ -194,8 +215,41 @@ export default function ProductsPage() {
         {showSuccess && (
           <p className="rounded-xl bg-green-50 p-3 text-sm text-green-700 shadow-sm">
             Produit enregistré avec succès.
+            {isFirstProduct ? " Prochaine étape : partagez-le sur WhatsApp." : null}
           </p>
         )}
+        {showShareSheet && products.length > 0 ? (
+          <section className="rounded-2xl border border-[#25D366]/40 bg-[#25D366]/10 p-4 shadow-sm">
+            <h2 className="text-sm font-bold text-[#128C7E]">
+              {isFirstProduct ? "🎉 1er produit — partagez maintenant" : "Partager sur WhatsApp"}
+            </h2>
+            <p className="mt-1 text-xs text-gray-600">
+              Envoyez votre catalogue à un client ou publiez-le en Status WhatsApp.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                type="button"
+                className="w-full bg-[#25D366] text-white hover:bg-[#1da851]"
+                onClick={openCatalogWhatsApp}
+              >
+                Partager le catalogue WhatsApp
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/sales">Ensuite : 1ère vente à la caisse</Link>
+              </Button>
+              <button
+                type="button"
+                className="text-center text-xs text-gray-500 hover:underline"
+                onClick={() => {
+                  setShowShareSheet(false);
+                  router.replace("/products");
+                }}
+              >
+                Plus tard
+              </button>
+            </div>
+          </section>
+        ) : null}
         {persistError ? (
           <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 shadow-sm">
             {persistError}
@@ -266,19 +320,7 @@ export default function ProductsPage() {
             variant="outline"
             size="sm"
             className="border-[#25D366] text-[#128C7E]"
-            onClick={() => {
-              const store = localStore.get();
-              const boutiqueUrl =
-                store?.slug && typeof window !== "undefined"
-                  ? `${window.location.origin}/boutique/${store.slug}`
-                  : undefined;
-              const text = buildWhatsAppCatalog({
-                storeName: store?.name || "Ma boutique",
-                products: filtered.map(toLocalProduct),
-                boutiqueUrl,
-              });
-              window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
-            }}
+            onClick={openCatalogWhatsApp}
             disabled={filtered.length === 0}
           >
             WhatsApp

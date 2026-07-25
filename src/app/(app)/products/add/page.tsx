@@ -71,6 +71,8 @@ export default function AddProductPage() {
         return;
       }
 
+      const isFirstProduct = existing.length === 0;
+
       let image_url: string | null = null;
       if (imageFile) {
         if (navigator.onLine && user?.id) {
@@ -88,7 +90,10 @@ export default function AddProductPage() {
         is_active: true,
       });
 
-      router.push("/products?success=1");
+      // Après le 1er produit : sheet de partage WhatsApp immédiat.
+      router.push(
+        isFirstProduct ? "/products?success=1&share=1&first=1" : "/products?success=1"
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
     } finally {
