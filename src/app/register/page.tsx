@@ -15,6 +15,11 @@ import { savePendingModule } from "@/lib/modules/preference";
 import { getLandingRegisterUrl } from "@/lib/public-urls";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { setBusinessVertical } from "@/lib/onboarding";
+import {
+  isValidWhatsAppPhone,
+  normalizeWhatsAppPhone,
+  whatsappFromUser,
+} from "@/lib/whatsapp-phone";
 import type { Language, ModuleId } from "@/types";
 
 function RegisterForm() {
@@ -23,6 +28,7 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [shopName, setShopName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [language, setLanguage] = useState<Language>("fr");
   const [selectedModules, setSelectedModules] = useState<ModuleId[]>(() => localModules.get());
   const [loading, setLoading] = useState(false);
@@ -34,6 +40,15 @@ function RegisterForm() {
     savePendingModule(fromUrl);
     setSelectedModules(normalizeModuleIds([fromUrl]));
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!user) return;
+    const existing = whatsappFromUser(user);
+    if (existing) setWhatsapp(existing);
+    const metaName = String(user.user_metadata?.full_name || "").trim();
+    if (metaName && !shopName) setShopName(metaName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefills once from auth user
+  }, [user]);
 
   const toggleModule = (id: ModuleId) => {
     setSelectedModules((prev) => {
@@ -48,13 +63,19 @@ function RegisterForm() {
       window.location.href = getLandingRegisterUrl();
       return;
     }
+    if (!isValidWhatsAppPhone(whatsapp)) {
+      setError("Indiquez un numéro WhatsApp valide avec indicatif (ex: +228 90 00 00 00).");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
+      const wa = normalizeWhatsAppPhone(whatsapp);
       const modules = normalizeModuleIds(selectedModules);
       localModules.save(modules);
       setBusinessVertical(modules[0]);
-      const profileResult = await ensureUserProfile(supabase, user.id, user.phone);
+      const profileResult = await ensureUserProfile(supabase, user.id, wa);
       if (!profileResult.ok) {
         setError(profileResult.error);
         return;
@@ -64,11 +85,16 @@ function RegisterForm() {
         .from("profiles")
         .update({
           full_name: shopName,
+          phone: wa,
           language,
           active_modules: modules,
         })
         .eq("id", user.id);
       if (updateError) throw updateError;
+
+      await supabase.auth.updateUser({
+        data: { whatsapp: wa, phone: wa, full_name: shopName },
+      });
 
       setLang(language);
       router.push("/setup");
@@ -86,12 +112,6 @@ function RegisterForm() {
       <div className="mx-auto max-w-sm space-y-6">
         <h1 className="text-xl font-bold text-wazo-green">{t("auth.register")}</h1>
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl bg-white p-6 shadow">
-          {user?.phone && (
-            <div>
-              <Label>{t("auth.phone")}</Label>
-              <Input value={user.phone} readOnly className="mt-1 bg-gray-50" />
-            </div>
-          )}
           <div>
             <Label>{t("auth.shopName")}</Label>
             <Input
@@ -100,6 +120,22 @@ function RegisterForm() {
               required
               className="mt-1"
             />
+          </div>
+          <div>
+            <Label>WhatsApp (obligatoire)</Label>
+            <Input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder={t("auth.phonePlaceholder")}
+              required
+              className="mt-1"
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Pour l&apos;accompagnement et les commandes sur votre vitrine.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>{t("modules.title")}</Label>

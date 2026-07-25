@@ -23,6 +23,11 @@ import { ensureUserProfile } from "@/lib/ensure-profile";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { getLandingLoginUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
+import {
+  isValidWhatsAppPhone,
+  normalizeWhatsAppPhone,
+  whatsappFromUser,
+} from "@/lib/whatsapp-phone";
 import type { ModuleId, Store } from "@/types";
 
 export default function SetupPage() {
@@ -31,6 +36,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +80,9 @@ export default function SetupPage() {
         return;
       }
 
+      const existingWa = whatsappFromUser(user);
+      if (existingWa) setWhatsapp(existingWa);
+
       try {
         const { data, error: fetchError } = await supabase
           .from("stores")
@@ -97,14 +106,15 @@ export default function SetupPage() {
         const localName = localStorage.getItem("store_name");
         const localSlug = localStorage.getItem("store_slug");
         if (localName && localSlug) {
+          const wa = whatsappFromUser(user) || null;
           const fallbackStore: Store = {
             id: "local-store-fallback",
             owner_id: user.id,
             name: localName,
             slug: localSlug,
             description: null,
-            phone: user.phone || null,
-            whatsapp: user.phone || null,
+            phone: wa,
+            whatsapp: wa,
             logo_url: null,
             is_public: true,
           };
@@ -128,9 +138,13 @@ export default function SetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!isValidWhatsAppPhone(whatsapp)) {
+      setError("Indiquez un numéro WhatsApp valide avec indicatif (ex: +228 90 00 00 00).");
+      return;
+    }
     const finalSlug = slug || slugify(name);
     const ownerId = user?.id || "test-user-123";
-    const phone = user?.phone || "+221771234567";
+    const phone = normalizeWhatsAppPhone(whatsapp);
     const modules = normalizeModuleIds(selectedModules);
     setSubmitting(true);
     setError("");
@@ -162,12 +176,20 @@ export default function SetupPage() {
       }
 
       if (user) {
-        const profileResult = await ensureUserProfile(supabase, user.id, user.phone);
+        const profileResult = await ensureUserProfile(supabase, user.id, phone);
         if (!profileResult.ok) {
           setError(profileResult.error);
           setSubmitting(false);
           return;
         }
+
+        await supabase
+          .from("profiles")
+          .update({ phone })
+          .eq("id", user.id);
+        await supabase.auth.updateUser({
+          data: { whatsapp: phone, phone },
+        });
 
         const accessRes = await apiFetch("/api/stores", { cache: "no-store" });
         const accessData = (await accessRes.json()) as {
@@ -195,8 +217,8 @@ export default function SetupPage() {
               owner_id: user.id,
               name,
               slug: candidateSlug,
-              phone: user.phone,
-              whatsapp: user.phone,
+              phone,
+              whatsapp: phone,
               is_public: true,
             })
             .select()
@@ -233,7 +255,7 @@ export default function SetupPage() {
 
         await supabase
           .from("profiles")
-          .upsert({ id: user.id, phone: user.phone ?? null, active_modules: modules }, { onConflict: "id" });
+          .upsert({ id: user.id, phone, active_modules: modules }, { onConflict: "id" });
 
         await supabase.from("store_modules").delete().eq("store_id", savedStore.id);
         if (modules.length) {
@@ -294,6 +316,22 @@ export default function SetupPage() {
               placeholder="Ex: Boutique Awa"
               className="mt-2 h-14 text-lg"
             />
+          </div>
+          <div>
+            <Label className="text-base">WhatsApp (obligatoire)</Label>
+            <Input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              required
+              placeholder="+228 90 00 00 00"
+              className="mt-2 h-14 text-lg"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Pour les commandes clients et notre accompagnement.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>{t("modules.title")}</Label>
