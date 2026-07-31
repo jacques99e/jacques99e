@@ -84,6 +84,22 @@ export default function SetupPage() {
       if (existingWa) setWhatsapp(existingWa);
 
       try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("active_modules, full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!cancelled && profile?.active_modules) {
+          const mods = normalizeModuleIds(profile.active_modules as string[]);
+          localModules.save(mods);
+          setSelectedModules(mods);
+          setBusinessVertical(mods[0]);
+        }
+        if (!cancelled && !name && profile?.full_name) {
+          setName(profile.full_name);
+          setSlug(slugify(profile.full_name));
+        }
+
         const { data, error: fetchError } = await supabase
           .from("stores")
           .select("*")
@@ -207,62 +223,44 @@ export default function SetupPage() {
           return;
         }
 
-        let candidateSlug = finalSlug;
-        let savedStore: Store | null = null;
-
-        for (let attempt = 0; attempt < 6; attempt++) {
-          const { data, error: insertError } = await supabase
-            .from("stores")
-            .insert({
-              owner_id: user.id,
-              name,
-              slug: candidateSlug,
-              phone,
-              whatsapp: phone,
-              is_public: true,
-            })
-            .select()
-            .single();
-
-          if (!insertError) {
-            savedStore = data as Store;
-            break;
-          }
-
-          if (insertError.code === "23505") {
-            const suffix = Math.random().toString(36).slice(2, 6);
-            candidateSlug = `${finalSlug}-${suffix}`;
-            continue;
-          }
-
+        // Création via API (service role) : persiste store_modules + stores.modules + profiles.
+        const createRes = await apiFetch("/api/stores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            slug: finalSlug,
+            phone,
+            modules,
+          }),
+        });
+        const createData = (await createRes.json()) as {
+          success?: boolean;
+          store?: Store;
+          modules?: string[];
+          error?: string;
+        };
+        if (!createRes.ok || !createData.success || !createData.store) {
           setError(
-            mapErrorToUserMessage(insertError, "Impossible d'enregistrer votre boutique pour le moment.")
+            createData.error ||
+              "Impossible d'enregistrer votre boutique pour le moment."
           );
           setSubmitting(false);
           return;
         }
 
-        if (!savedStore) {
-          setError(
-            "Impossible de generer une URL publique unique. Essaie un autre nom d'activite.",
-          );
-          setSubmitting(false);
-          return;
-        }
-
+        const savedStore = createData.store;
         localStore.save(savedStore);
         localStorage.setItem("store_slug", savedStore.slug);
+        localModules.save(normalizeModuleIds(createData.modules || modules));
 
         await supabase
           .from("profiles")
           .upsert({ id: user.id, phone, active_modules: modules }, { onConflict: "id" });
-
-        await supabase.from("store_modules").delete().eq("store_id", savedStore.id);
-        if (modules.length) {
-          await supabase.from("store_modules").insert(
-            modules.map((module_id) => ({ store_id: savedStore.id, module_id, enabled: true }))
-          );
-        }
+        await supabase
+          .from("stores")
+          .update({ whatsapp: phone, phone })
+          .eq("id", savedStore.id);
       }
 
       const pendingPlan = readPendingPlan();

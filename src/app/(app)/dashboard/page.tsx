@@ -14,6 +14,7 @@ import { EngagementHub } from "@/components/EngagementHub";
 import { ModuleQuickActions } from "@/components/ModuleQuickActions";
 import { TodayPulse } from "@/components/TodayPulse";
 import { DailyActionsCard } from "@/components/DailyActionsCard";
+import { NextStepCard } from "@/components/NextStepCard";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,8 @@ export default function DashboardPage() {
   const [avgBasket, setAvgBasket] = useState(0);
   const [latestSales, setLatestSales] = useState<LocalSale[]>([]);
   const [popularProducts, setPopularProducts] = useState<Array<{ name: string; sold: number }>>([]);
+  const [productsCount, setProductsCount] = useState(0);
+  const [salesCount, setSalesCount] = useState(0);
   const greeting = storeName || t("dashboard.myStore");
   const [businessVertical, setBusinessVerticalState] = useState<BusinessVertical>(() =>
     getBusinessVertical()
@@ -166,6 +169,8 @@ export default function DashboardPage() {
     const products = productsRaw ? (JSON.parse(productsRaw) as LocalProduct[]) : [];
     const storeId = localStore.get()?.id;
     const sales = readLocalSales(storeId || undefined) as LocalSale[];
+    setProductsCount(products.length);
+    setSalesCount(sales.length);
     const clientsRaw = localStorage.getItem(
       storeId ? `wazo_clients_${storeId}` : "wazo_clients"
     );
@@ -259,27 +264,47 @@ export default function DashboardPage() {
   };
 
   const doneCount = onboarding.done;
+  const isActivated = productsCount >= 1 && salesCount >= 1;
 
   return (
     <>
       <AppHeader title={greeting} subtitle={t("dashboard.subtitle")} />
       <main className="app-page animate-fade-in pb-6">
-        <DashboardHero
-          storeName={greeting}
-          activeModules={activeModules}
-          primaryModule={primaryModule}
-          todayTotal={todayTotal}
-          todaySalesCount={todaySalesCount}
-        />
-        <WelcomeNewUserBanner storeName={storeName} salesCount={todaySalesCount} />
+        {hasCommerce ? (
+          <NextStepCard
+            productsCount={productsCount}
+            salesCount={salesCount}
+            storeSlug={cachedStore?.slug}
+          />
+        ) : null}
+
+        {isActivated ? (
+          <DashboardHero
+            storeName={greeting}
+            activeModules={activeModules}
+            primaryModule={primaryModule}
+            todayTotal={todayTotal}
+            todaySalesCount={todaySalesCount}
+          />
+        ) : hasCommerce ? null : (
+          <DashboardHero
+            storeName={greeting}
+            activeModules={activeModules}
+            primaryModule={primaryModule}
+            todayTotal={todayTotal}
+            todaySalesCount={todaySalesCount}
+          />
+        )}
+
+        <WelcomeNewUserBanner storeName={storeName} salesCount={salesCount} />
         {offlineInfo ? (
           <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">{offlineInfo}</p>
         ) : null}
-        {hasCommerce ? (
+        {hasCommerce && isActivated ? (
           <DailyActionsCard storeName={storeName || greeting} limit={1} />
-        ) : (
+        ) : !hasCommerce ? (
           <ModuleQuickActions activeModules={activeModules} />
-        )}
+        ) : null}
         {(hasCommerce && alerts.total > 0) ? (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-red-800">
@@ -436,7 +461,7 @@ export default function DashboardPage() {
                 </span>
               </label>
             ))}
-          </div>
+            </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {hasCommerce ? (
               <Link href="/clients" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
@@ -495,14 +520,14 @@ export default function DashboardPage() {
               />
 
               <div className="app-card p-4 sm:col-span-2">
-                <div className="mb-2 flex items-center gap-2 text-gray-600">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
+            <div className="mb-2 flex items-center gap-2 text-gray-600">
+              <AlertCircle className="h-4 w-4 text-red-500" />
                   <span className="text-sm font-semibold">{t("dashboard.commerce.outOfStock")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold text-[#075E54]">{outOfStockCount}</p>
-                  {outOfStockCount > 0 && <span className="h-2.5 w-2.5 rounded-full bg-red-500" />}
-                </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold text-[#075E54]">{outOfStockCount}</p>
+              {outOfStockCount > 0 && <span className="h-2.5 w-2.5 rounded-full bg-red-500" />}
+            </div>
                 <p className="mt-1 text-xs text-gray-500">
                   {t("dashboard.commerce.lowStockDetail", {
                     count: lowStockCount,
@@ -527,62 +552,62 @@ export default function DashboardPage() {
                 >
                   {t("dashboard.commerce.restock")}
                 </Link>
-              </div>
-            </section>
+          </div>
+        </section>
 
-            <section className="rounded-2xl bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-2 text-gray-700">
-                <BarChart3 className="h-4 w-4 text-[#075E54]" />
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-gray-700">
+            <BarChart3 className="h-4 w-4 text-[#075E54]" />
                 <h2 className="text-sm font-semibold">{t("dashboard.commerce.latestSales")}</h2>
-              </div>
-              {latestSales.length === 0 ? (
+          </div>
+          {latestSales.length === 0 ? (
                 <p className="text-sm text-gray-500">{t("dashboard.commerce.noSales")}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {latestSales.map((sale) => {
-                    const saleDate = sale.date || sale.created_at || "";
-                    const saleItemsCount = (sale.items || []).reduce(
-                      (sum, item) => sum + Number(item.quantity || 0),
-                      0
-                    );
-                    const amount = Number(sale.total ?? sale.total_amount ?? 0);
-                    return (
-                      <li key={sale.id} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
-                        <div>
-                          <p className="text-xs text-gray-500">
-                            {saleDate
+          ) : (
+            <ul className="space-y-2">
+              {latestSales.map((sale) => {
+                const saleDate = sale.date || sale.created_at || "";
+                const saleItemsCount = (sale.items || []).reduce(
+                  (sum, item) => sum + Number(item.quantity || 0),
+                  0
+                );
+                const amount = Number(sale.total ?? sale.total_amount ?? 0);
+                return (
+                  <li key={sale.id} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                    <div>
+                      <p className="text-xs text-gray-500">
+                        {saleDate
                               ? new Date(saleDate).toLocaleString(dateLocale)
                               : t("dashboard.commerce.unknownDate")}
                           </p>
                           <p className="text-sm font-medium">
                             {t("dashboard.commerce.items", { count: saleItemsCount })}
                           </p>
-                        </div>
-                        <p className="text-sm font-bold text-[#075E54]">{formatCurrency(amount)}</p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+                    </div>
+                    <p className="text-sm font-bold text-[#075E54]">{formatCurrency(amount)}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
 
-            <section className="rounded-2xl bg-white p-4 shadow-sm">
+        <section className="rounded-2xl bg-white p-4 shadow-sm">
               <h2 className="mb-3 text-sm font-semibold text-gray-700">{t("dashboard.commerce.popular")}</h2>
-              {popularProducts.length === 0 ? (
+          {popularProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">{t("dashboard.commerce.noPopular")}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {popularProducts.map((product) => (
-                    <li key={product.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
-                      <span className="text-sm font-medium">{product.name}</span>
+          ) : (
+            <ul className="space-y-2">
+              {popularProducts.map((product) => (
+                <li key={product.name} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                  <span className="text-sm font-medium">{product.name}</span>
                       <span className="text-xs font-semibold text-[#075E54]">
                         {t("dashboard.commerce.sold", { count: product.sold })}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
           </>
         ) : null}
 
@@ -640,7 +665,7 @@ export default function DashboardPage() {
                   className="rounded-xl border border-[#075E54]/20 bg-[#075E54]/5 px-3 py-2 text-sm font-medium text-[#075E54] transition hover:bg-[#075E54]/10"
                 >
                   {moduleLabel(moduleId)}: {t("dashboard.create")}
-                </Link>
+            </Link>
               );
             })}
           </div>

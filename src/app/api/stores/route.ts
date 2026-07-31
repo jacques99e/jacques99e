@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { normalizeModuleIds } from "@/lib/modules/config";
 import { getOwnerStoreAccess } from "@/lib/plan-access";
 import { slugify } from "@/lib/utils";
 
@@ -94,14 +95,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const modules = Array.isArray(body.modules) && body.modules.length ? body.modules : ["commerce"];
-    await auth.serviceSupabase.from("store_modules").insert(
+    const modules = normalizeModuleIds(
+      Array.isArray(body.modules) && body.modules.length ? body.modules : ["commerce"]
+    );
+
+    const { error: modulesError } = await auth.serviceSupabase.from("store_modules").insert(
       modules.map((module_id) => ({
         store_id: savedStore!.id,
         module_id,
         enabled: true,
       }))
     );
+    if (modulesError) {
+      return NextResponse.json(
+        { success: false, error: modulesError.message || "Impossible d'activer les modules." },
+        { status: 500 }
+      );
+    }
+
+    await auth.serviceSupabase
+      .from("stores")
+      .update({ modules })
+      .eq("id", savedStore.id);
+
+    await auth.serviceSupabase
+      .from("profiles")
+      .update({ active_modules: modules })
+      .eq("id", auth.userId);
 
     const now = new Date().toISOString();
     await auth.serviceSupabase.from("billing_subscriptions").upsert(
@@ -116,7 +136,7 @@ export async function POST(request: NextRequest) {
       { onConflict: "store_id" }
     );
 
-    return NextResponse.json({ success: true, store: savedStore });
+    return NextResponse.json({ success: true, store: savedStore, modules });
   } catch {
     return NextResponse.json(
       { success: false, error: "Impossible de créer la boutique." },
