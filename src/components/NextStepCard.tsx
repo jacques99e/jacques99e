@@ -1,16 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Package, Share2, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles } from "lucide-react";
 import { isDay0ShareDone } from "@/lib/day0-mission";
 
 type NextStep =
   | { id: "product"; title: string; hint: string; href: string; cta: string; Icon: typeof Package }
   | { id: "share"; title: string; hint: string; href: string; cta: string; Icon: typeof Share2 }
   | { id: "sale"; title: string; hint: string; href: string; cta: string; Icon: typeof ShoppingBag }
+  | { id: "pro"; title: string; hint: string; href: string; cta: string; Icon: typeof Crown }
   | { id: "grow"; title: string; hint: string; href: string; cta: string; Icon: typeof Sparkles };
 
-function resolveNextStep(productsCount: number, salesCount: number, storeSlug?: string): NextStep {
+function resolveNextStep(
+  productsCount: number,
+  salesCount: number,
+  storeSlug?: string,
+  proUpsellHref?: string | null
+): NextStep {
   if (productsCount < 1) {
     return {
       id: "product",
@@ -41,6 +47,16 @@ function resolveNextStep(productsCount: number, salesCount: number, storeSlug?: 
       Icon: ShoppingBag,
     };
   }
+  if (proUpsellHref) {
+    return {
+      id: "pro",
+      title: "Étape 4 — Passez à Wazo PRO",
+      hint: "Produits illimités, analytics et 3 boutiques. 9,99 €/mois via MoMo (~6 550 FCFA).",
+      href: proUpsellHref,
+      cta: "Activer PRO — MoMo",
+      Icon: Crown,
+    };
+  }
   const boutique = storeSlug ? `/boutique/${storeSlug}` : "/products?share=1";
   return {
     id: "grow",
@@ -56,6 +72,7 @@ interface NextStepCardProps {
   productsCount: number;
   salesCount: number;
   storeSlug?: string;
+  proUpsellHref?: string | null;
   className?: string;
 }
 
@@ -63,11 +80,12 @@ export function NextStepCard({
   productsCount,
   salesCount,
   storeSlug,
+  proUpsellHref = null,
   className = "",
 }: NextStepCardProps) {
-  const step = resolveNextStep(productsCount, salesCount, storeSlug);
+  const step = resolveNextStep(productsCount, salesCount, storeSlug, proUpsellHref);
   const Icon = step.Icon;
-  const activated = step.id === "grow";
+  const activated = step.id === "grow" || step.id === "pro";
   const progress = Math.min(3, (productsCount >= 1 ? 1 : 0) + (isDay0ShareDone() || salesCount >= 1 ? 1 : 0) + (salesCount >= 1 ? 1 : 0));
 
   return (
@@ -87,7 +105,7 @@ export function NextStepCard({
         </div>
       ) : (
         <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-wazo-green">
-          Aujourd&apos;hui
+          {step.id === "pro" ? "Monétisation" : "Aujourd'hui"}
         </p>
       )}
 
@@ -118,7 +136,11 @@ export function NextStepCard({
           <Link
             href={step.href}
             className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-white shadow-md transition active:scale-[0.98] ${
-              activated ? "bg-wazo-green hover:brightness-105" : "bg-[#FF6F00] hover:brightness-105"
+              step.id === "pro"
+                ? "bg-[#075E54] hover:brightness-105"
+                : activated
+                  ? "bg-wazo-green hover:brightness-105"
+                  : "bg-[#FF6F00] hover:brightness-105"
             }`}
           >
             {step.cta}

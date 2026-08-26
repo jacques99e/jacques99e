@@ -19,7 +19,7 @@ import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { getTrialDaysLeft, isBillingUsable, normalizeBillingStatus, planAllowsAnalytics, type BillingSubscription } from "@/lib/billing";
-import { billingDashboardHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
+import { billingDashboardHref, billingPayHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
 import { formatCurrency } from "@/lib/utils";
@@ -265,6 +265,15 @@ export default function DashboardPage() {
 
   const doneCount = onboarding.done;
   const isActivated = productsCount >= 1 && salesCount >= 1;
+  const proUpsellHref =
+    isActivated &&
+    billing &&
+    !(
+      normalizeBillingStatus(billing) === "active" &&
+      (billing.plan === "pro" || billing.plan === "business")
+    )
+      ? billingPayHref("pro")
+      : null;
 
   return (
     <>
@@ -275,6 +284,7 @@ export default function DashboardPage() {
             productsCount={productsCount}
             salesCount={salesCount}
             storeSlug={cachedStore?.slug}
+            proUpsellHref={proUpsellHref}
           />
         ) : null}
 

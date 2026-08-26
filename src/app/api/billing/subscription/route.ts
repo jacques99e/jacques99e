@@ -269,6 +269,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Plan invalide." }, { status: 400 });
     }
 
+    if (plan !== "starter") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Pour activer PRO ou BUSINESS, utilisez le paiement Mobile Money depuis la page Abonnement.",
+        },
+        { status: 400 }
+      );
+    }
+
     const resolved = await resolveStoreId(auth.serviceSupabase, auth.userId, body.store_id ?? null);
     if (!resolved.ok) {
       return NextResponse.json({ success: false, error: resolved.error }, { status: resolved.status });
