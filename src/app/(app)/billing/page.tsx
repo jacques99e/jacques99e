@@ -57,11 +57,17 @@ export default function BillingPage() {
   const currentStatus = normalizeBillingStatus(subscription);
   const limits = PLAN_LIMITS[currentPlan];
 
-  const loadSubscription = async (txId?: string | null): Promise<BillingSubscription | null> => {
+  const loadSubscription = async (
+    txId?: string | null,
+    invoiceToken?: string | null
+  ): Promise<BillingSubscription | null> => {
     setLoading(true);
     setError("");
     try {
-      const qs = txId ? `?tx=${encodeURIComponent(txId)}` : "";
+      const params = new URLSearchParams();
+      if (txId) params.set("tx", txId);
+      if (invoiceToken) params.set("token", invoiceToken);
+      const qs = params.toString() ? `?${params.toString()}` : "";
       const response = await apiFetch(`/api/billing/subscription${qs}`, { cache: "no-store" });
       const data = (await response.json()) as BillingApiResponse & { error?: string };
       if (!response.ok || !data.success || !data.subscription) {
@@ -213,15 +219,16 @@ export default function BillingPage() {
 
   useEffect(() => {
     const tx = searchParams.get("tx");
+    const token = searchParams.get("token");
     const status = searchParams.get("status");
-    if (!tx) return;
+    if (!tx && !token) return;
     if (status === "cancelled") {
       setNotice("Paiement annulé. Vous pouvez réessayer.");
       return;
     }
     setNotice("Retour de paiement détecté. Vérification de votre abonnement...");
     const timer = setTimeout(() => {
-      void loadSubscription(tx);
+      void loadSubscription(tx, token);
     }, 2000);
     return () => clearTimeout(timer);
   }, [searchParams]);

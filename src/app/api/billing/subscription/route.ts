@@ -10,6 +10,7 @@ import {
   type BillingSubscription,
 } from "@/lib/billing";
 import {
+  confirmPaydunyaInvoice,
   getPaymentEnvironmentLabel,
   getPaymentMode,
   hasPaydunyaCredentials,
@@ -160,36 +161,69 @@ async function reconcileSucceededPayment(
   return data as BillingSubscription;
 }
 
-async function reconcileByTransactionInTestMode(
+async function reconcileByTransaction(
   serviceSupabase: SupabaseClient,
   subscription: BillingSubscription,
-  txId: string | null
+  txId: string | null,
+  invoiceToken: string | null
 ): Promise<BillingSubscription> {
-  if (!txId || getPaymentMode() !== "test") return subscription;
-  if (subscription.status === "active") return subscription;
+  if (!txId || subscription.status === "active") return subscription;
 
   const { data: payment } = await serviceSupabase
     .from("billing_payments")
-    .select("id,plan,provider,status")
+    .select("id,plan,provider,status,payload")
     .eq("store_id", subscription.store_id)
     .eq("provider_tx_id", txId)
     .maybeSingle();
 
   if (!payment) return subscription;
 
-  const now = new Date().toISOString();
-  const periodEnd = addDays(now.slice(0, 10), 30);
-  const plan = (payment.plan as BillingPlanId | undefined) ?? subscription.plan;
-  const provider = (payment.provider as string | undefined) ?? subscription.provider ?? null;
   const paymentStatus = String(payment.status ?? "").toLowerCase();
+  if (paymentStatus === "succeeded") {
+    return activateSubscriptionFromPayment(serviceSupabase, subscription, payment);
+  }
+  if (paymentStatus !== "pending") return subscription;
 
-  const shouldPromote = paymentStatus === "succeeded" || paymentStatus === "pending";
-  if (!shouldPromote) return subscription;
+  const mode = getPaymentMode();
+  let shouldActivate = false;
 
+  if (mode === "test") {
+    shouldActivate = true;
+  } else if (hasPaydunyaCredentials()) {
+    const payload = (payment.payload ?? {}) as Record<string, unknown>;
+    const token =
+      invoiceToken?.trim() ||
+      (typeof payload.token === "string" ? payload.token : "") ||
+      "";
+    if (token) {
+      const confirmed = await confirmPaydunyaInvoice(token, mode);
+      shouldActivate = confirmed.ok;
+    }
+  }
+
+  if (!shouldActivate) return subscription;
+
+  const now = new Date().toISOString();
   await serviceSupabase
     .from("billing_payments")
     .update({ status: "succeeded", updated_at: now })
     .eq("id", payment.id);
+
+  return activateSubscriptionFromPayment(serviceSupabase, subscription, {
+    ...payment,
+    status: "succeeded",
+  });
+}
+
+async function activateSubscriptionFromPayment(
+  serviceSupabase: SupabaseClient,
+  subscription: BillingSubscription,
+  payment: { plan?: unknown; provider?: unknown; status?: unknown }
+): Promise<BillingSubscription> {
+  const now = new Date().toISOString();
+  const periodEnd = addDays(now.slice(0, 10), 30);
+  const plan = (payment.plan as BillingPlanId | undefined) ?? subscription.plan;
+  const provider = (payment.provider as string | undefined) ?? subscription.provider ?? null;
 
   const { data, error } = await serviceSupabase
     .from("billing_subscriptions")
@@ -216,7 +250,6 @@ async function reconcileByTransactionInTestMode(
   }
   return data as BillingSubscription;
 }
-
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
@@ -226,13 +259,19 @@ export async function GET(request: NextRequest) {
 
     const requestedStoreId = request.nextUrl.searchParams.get("store_id");
     const txId = request.nextUrl.searchParams.get("tx");
+    const invoiceToken = request.nextUrl.searchParams.get("token");
     const resolved = await resolveStoreId(auth.serviceSupabase, auth.userId, requestedStoreId);
     if (!resolved.ok) {
       return NextResponse.json({ success: false, error: resolved.error }, { status: resolved.status });
     }
 
     const subscription = await getOrCreateSubscription(auth.serviceSupabase, resolved.storeId);
-    const txReconciled = await reconcileByTransactionInTestMode(auth.serviceSupabase, subscription, txId);
+    const txReconciled = await reconcileByTransaction(
+      auth.serviceSupabase,
+      subscription,
+      txId,
+      invoiceToken
+    );
     const reconciled = await reconcileSucceededPayment(auth.serviceSupabase, txReconciled);
     const normalized = await normalizeAndPersistStatus(auth.serviceSupabase, reconciled);
     const trialDaysLeft = getTrialDaysLeft(normalized);

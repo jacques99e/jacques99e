@@ -51,3 +51,53 @@ export function getPaymentEnvironmentLabel(mode: PaymentMode): string {
   if (mode === "test") return "PayDunya sandbox (cles de test, pas d'argent reel)";
   return "PayDunya production (paiements reels)";
 }
+
+export function getPaydunyaConfirmUrl(mode: PaymentMode, invoiceToken: string): string {
+  const base =
+    mode === "live"
+      ? "https://app.paydunya.com/api/v1"
+      : "https://app.paydunya.com/sandbox-api/v1";
+  return `${base}/checkout-invoice/confirm/${encodeURIComponent(invoiceToken)}`;
+}
+
+export type PaydunyaConfirmResult = {
+  ok: boolean;
+  status: string;
+  payload: Record<string, unknown>;
+  error?: string;
+};
+
+export async function confirmPaydunyaInvoice(
+  invoiceToken: string,
+  mode: PaymentMode = getPaymentMode()
+): Promise<PaydunyaConfirmResult> {
+  const master = process.env.PAYMENT_API_KEY?.trim() ?? "";
+  const priv = process.env.PAYMENT_SECRET_KEY?.trim() ?? "";
+  const token = process.env.PAYMENT_TOKEN?.trim() ?? "";
+  if (!master || !priv || !token) {
+    return { ok: false, status: "error", payload: {}, error: "Cles PayDunya manquantes." };
+  }
+
+  const url = getPaydunyaConfirmUrl(mode, invoiceToken);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "PAYDUNYA-MASTER-KEY": master,
+        "PAYDUNYA-PRIVATE-KEY": priv,
+        "PAYDUNYA-TOKEN": token,
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const status = String(
+      payload.status ?? (payload as { invoice?: { status?: string } }).invoice?.status ?? ""
+    ).toLowerCase();
+    const completed = status === "completed" || status === "paid";
+    return { ok: completed, status: status || "unknown", payload };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Confirm PayDunya impossible.";
+    return { ok: false, status: "error", payload: {}, error: message };
+  }
+}
