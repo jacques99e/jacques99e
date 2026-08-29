@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles, Users } from "lucide-react";
 import { isDay0ShareDone } from "@/lib/day0-mission";
 
 type NextStep =
   | { id: "product"; title: string; hint: string; href: string; cta: string; Icon: typeof Package }
   | { id: "share"; title: string; hint: string; href: string; cta: string; Icon: typeof Share2 }
   | { id: "sale"; title: string; hint: string; href: string; cta: string; Icon: typeof ShoppingBag }
+  | { id: "clients"; title: string; hint: string; href: string; cta: string; Icon: typeof Users }
   | { id: "pro"; title: string; hint: string; href: string; cta: string; Icon: typeof Crown }
   | { id: "grow"; title: string; hint: string; href: string; cta: string; Icon: typeof Sparkles };
 
@@ -45,6 +46,17 @@ function resolveNextStep(
       href: "/sales",
       cta: "Ouvrir la caisse",
       Icon: ShoppingBag,
+    };
+  }
+  if (salesCount < 3) {
+    const shareHref = storeSlug ? `/boutique/${storeSlug}` : "/products?share=1";
+    return {
+      id: "clients",
+      title: "Étape 4 — Amenez vos clients",
+      hint: "L'app ne vend pas toute seule. Partagez le lien boutique en Status WhatsApp et dans vos groupes — 3 vrais clients.",
+      href: shareHref,
+      cta: "Partager ma boutique",
+      Icon: Users,
     };
   }
   if (proUpsellHref) {
@@ -85,7 +97,7 @@ export function NextStepCard({
 }: NextStepCardProps) {
   const step = resolveNextStep(productsCount, salesCount, storeSlug, proUpsellHref);
   const Icon = step.Icon;
-  const activated = step.id === "grow" || step.id === "pro";
+  const activated = step.id === "grow" || step.id === "pro" || step.id === "clients";
   const progress = Math.min(3, (productsCount >= 1 ? 1 : 0) + (isDay0ShareDone() || salesCount >= 1 ? 1 : 0) + (salesCount >= 1 ? 1 : 0));
 
   return (
@@ -105,7 +117,7 @@ export function NextStepCard({
         </div>
       ) : (
         <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-wazo-green">
-          {step.id === "pro" ? "Monétisation" : "Aujourd'hui"}
+          {step.id === "pro" ? "Monétisation" : step.id === "clients" ? "Clients" : "Aujourd'hui"}
         </p>
       )}
 
