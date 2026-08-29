@@ -77,7 +77,7 @@ export function useModule(storeId?: string) {
         });
         const data = (await res.json()) as { success?: boolean; modules?: string[] };
         if (res.ok && data.success && data.modules?.length) {
-          applyLocal(data.modules);
+          applyLocal(normalizeModuleIds(data.modules));
           setLoading(false);
           return;
         }
