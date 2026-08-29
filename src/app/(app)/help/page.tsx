@@ -7,6 +7,7 @@ import { useModule } from "@/hooks/useModule";
 import { localStore } from "@/lib/db";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { helpFaqForModules, helpLinksForModules, helpWelcomeLine } from "@/lib/help-content";
+import { WHATSAPP_SUPPORT_DISPLAY, whatsappSupportUrl } from "@/lib/whatsapp-support";
 
 export default function HelpPage() {
   const store = localStore.get();
@@ -57,8 +58,8 @@ export default function HelpPage() {
         </section>
 
         <Button asChild className="w-full" variant="outline">
-          <a href="https://wa.me/" target="_blank" rel="noreferrer">
-            Contacter le support WhatsApp
+          <a href={whatsappSupportUrl()} target="_blank" rel="noreferrer">
+            WhatsApp Jacques — {WHATSAPP_SUPPORT_DISPLAY}
           </a>
         </Button>
       </main>

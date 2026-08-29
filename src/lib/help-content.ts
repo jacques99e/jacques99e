@@ -22,6 +22,7 @@ export const HELP_LINKS: HelpLink[] = [
   { href: "/sales/credit", label: "Carnet crédit clients", modules: ["commerce"] },
   { href: "/sales/promotions", label: "Promotions flash", modules: ["commerce"] },
   { href: "/clients", label: "Mini CRM clients", modules: ["commerce"] },
+  { href: "/clients/bring", label: "Amener des clients", modules: ["commerce"] },
   { href: "/health", label: "Module santé", modules: ["health"] },
   { href: "/health/pharmacie", label: "Mini pharmacie", modules: ["health"] },
   { href: "/health/followups", label: "Rappels de suivi patients", modules: ["health"] },
@@ -92,6 +93,18 @@ export const HELP_FAQ: HelpFaqItem[] = [
   {
     q: "Comment gérer les droits d'accès ?",
     a: "Les rôles sont appliqués automatiquement. Le propriétaire garde les actions sensibles et les diagnostics.",
+  },
+  {
+    q: "Comment passer au PRO et payer avec MoMo ?",
+    a: "Ouvrez Abonnement, choisissez PRO, puis Payer. Le paiement Mobile Money (PayDunya) est environ 6 550 FCFA. Après validation, le plan s'active automatiquement.",
+  },
+  {
+    q: "Comment amener des clients ? L'app ne m'apporte pas de ventes.",
+    a: "Wazo enregistre vos ventes et affiche votre boutique. Les clients viennent de vous : publiez le lien boutique en Status WhatsApp, envoyez-le à 10 contacts, et enregistrez chaque achat à la Caisse.",
+  },
+  {
+    q: "Comment contacter le support ?",
+    a: "WhatsApp Jacques au +228 93 92 40 40.",
   },
 ];
 

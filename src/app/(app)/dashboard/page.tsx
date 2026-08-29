@@ -474,9 +474,14 @@ export default function DashboardPage() {
             </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {hasCommerce ? (
-              <Link href="/clients" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
-                {t("onboarding.openCrm")}
-              </Link>
+              <>
+                <Link href="/clients" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
+                  {t("onboarding.openCrm")}
+                </Link>
+                <Link href="/clients/bring" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
+                  Amener des clients
+                </Link>
+              </>
             ) : null}
             <Link href="/help" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
               {t("onboarding.helpCenter")}

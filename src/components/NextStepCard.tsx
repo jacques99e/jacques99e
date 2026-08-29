@@ -49,13 +49,12 @@ function resolveNextStep(
     };
   }
   if (salesCount < 3) {
-    const shareHref = storeSlug ? `/boutique/${storeSlug}` : "/products?share=1";
     return {
       id: "clients",
       title: "Étape 4 — Amenez vos clients",
-      hint: "L'app ne vend pas toute seule. Partagez le lien boutique en Status WhatsApp et dans vos groupes — 3 vrais clients.",
-      href: shareHref,
-      cta: "Partager ma boutique",
+      hint: "L'app ne vend pas toute seule. Status WhatsApp, 10 contacts, QR au comptoir — 3 vrais clients.",
+      href: "/clients/bring",
+      cta: "Amener des clients",
       Icon: Users,
     };
   }
