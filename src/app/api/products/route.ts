@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { slugify } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       row.landing_published = body.landing_published;
     }
     if (body.slug?.trim()) {
-      row.slug = body.slug.trim();
+      row.slug = slugify(body.slug);
     }
 
     const service = await createServiceSupabase();

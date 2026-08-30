@@ -4,6 +4,7 @@ import { APP_URL } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
 import { rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
+import { isSafeStoreSlug } from "@/lib/utils";
 import { StorefrontClient } from "./StorefrontClient";
 import { StorefrontNotFound } from "./StorefrontNotFound";
 
@@ -15,11 +16,15 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  if (!isSafeStoreSlug(slug)) {
+    return { title: "Boutique — Wazo Digital", robots: { index: false, follow: false } };
+  }
   const supabase = await createServiceSupabase();
   const { data: store } = await supabase
     .from("stores")
     .select("name, description")
     .eq("slug", slug)
+    .eq("is_public", true)
     .single();
 
   return {
@@ -39,11 +44,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function StorefrontPage({ params }: PageProps) {
   const { slug } = await params;
+  if (!isSafeStoreSlug(slug)) {
+    return <StorefrontNotFound />;
+  }
   const supabase = await createServiceSupabase();
 
   const { data: store } = await supabase
     .from("stores")
-    .select("*")
+    .select("id, owner_id, name, slug, description, phone, whatsapp, logo_url, cover_url, is_public")
     .eq("slug", slug)
     .eq("is_public", true)
     .single();
@@ -60,7 +68,7 @@ export default async function StorefrontPage({ params }: PageProps) {
 
   const { data: products } = await supabase
     .from("products")
-    .select("*")
+    .select("id, store_id, name, description, price, stock, stock_quantity, barcode, photo_url, image_url, is_active, created_at")
     .eq("store_id", store.id)
     .order("name");
 
@@ -73,9 +81,16 @@ export default async function StorefrontPage({ params }: PageProps) {
   return (
     <StorefrontClient
       store={{
-        ...store,
+        id: store.id,
+        owner_id: "",
+        name: store.name,
+        slug: store.slug,
+        description: store.description,
+        phone: store.phone,
+        whatsapp: store.whatsapp,
         logo_url: toPublicProductImageUrl(store.logo_url),
         cover_url: toPublicProductImageUrl(store.cover_url),
+        is_public: true,
         products: (products || []).map((p) =>
           rowToProduct(p as Record<string, unknown>)
         ),

@@ -19,7 +19,14 @@ export function slugify(text: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 64);
+}
+
+/** Slug boutique sûr (localStorage / URL) — refuse chemins, protocoles et espaces. */
+export function isSafeStoreSlug(value: string | null | undefined): value is string {
+  if (!value) return false;
+  return /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(value);
 }
 
 export function todayISO(): string {

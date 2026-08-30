@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles, Users } from "lucide-react";
 import { isDay0ShareDone } from "@/lib/day0-mission";
+import { isSafeStoreSlug } from "@/lib/utils";
 
 type NextStep =
   | { id: "product"; title: string; hint: string; href: string; cta: string; Icon: typeof Package }
@@ -68,13 +69,13 @@ function resolveNextStep(
       Icon: Crown,
     };
   }
-  const boutique = storeSlug ? `/boutique/${storeSlug}` : "/products?share=1";
+  const boutique = isSafeStoreSlug(storeSlug) ? `/boutique/${storeSlug}` : "/products?share=1";
   return {
     id: "grow",
     title: "Parcours activé — continuez",
     hint: "Ajoutez des produits, vendez, et partagez votre boutique.",
     href: boutique,
-    cta: storeSlug ? "Voir ma boutique" : "Partager",
+    cta: isSafeStoreSlug(storeSlug) ? "Voir ma boutique" : "Partager",
     Icon: Sparkles,
   };
 }

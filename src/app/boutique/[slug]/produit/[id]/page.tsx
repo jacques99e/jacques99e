@@ -5,6 +5,8 @@ import { APP_URL } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
 import { rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
+import { isCloudUuid } from "@/lib/cloud-uuid";
+import { isSafeStoreSlug } from "@/lib/utils";
 import { ProductDetailClient } from "./ProductDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,9 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug, id } = await params;
+  if (!isSafeStoreSlug(slug) || !isCloudUuid(id)) {
+    return { title: "Produit — Wazo Digital", robots: { index: false, follow: false } };
+  }
   const supabase = await createServiceSupabase();
 
   const { data: store } = await supabase
@@ -61,11 +66,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
+  if (!isSafeStoreSlug(slug) || !isCloudUuid(id)) {
+    notFound();
+  }
   const supabase = await createServiceSupabase();
 
   const { data: store } = await supabase
     .from("stores")
-    .select("*")
+    .select("id, owner_id, name, slug, phone, whatsapp, logo_url")
     .eq("slug", slug)
     .eq("is_public", true)
     .single();
@@ -76,7 +84,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const { data: productRow } = await supabase
     .from("products")
-    .select("*")
+    .select("id, store_id, name, description, price, stock, stock_quantity, barcode, photo_url, image_url, is_active, created_at, landing_content")
     .eq("id", id)
     .eq("store_id", store.id)
     .single();

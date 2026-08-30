@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Check, Copy, MessageCircle, QrCode, Share2 } from "lucide-react";
@@ -41,9 +40,16 @@ const ACTIONS: Array<{
 ];
 
 export default function BringClientsPage() {
-  const store = localStore.get();
+  const [store, setStore] = useState(() => localStore.get());
   const storeName = store?.name || "Ma boutique";
   const url = boutiquePublicUrl(store?.slug);
+
+  useEffect(() => {
+    const refresh = () => setStore(localStore.get());
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, []);
   const shareText = url ? boutiqueShareText(storeName, url) : "";
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -189,13 +195,12 @@ export default function BringClientsPage() {
                 QR à montrer au client
               </p>
               {qrDataUrl ? (
-                <Image
+                <img
                   src={qrDataUrl}
                   alt="QR boutique"
                   width={176}
                   height={176}
-                  unoptimized
-                  className="mx-auto rounded-xl border border-gray-100"
+                  className="mx-auto h-44 w-44 rounded-xl border border-gray-100"
                 />
               ) : null}
               <p className="text-xs text-gray-500">

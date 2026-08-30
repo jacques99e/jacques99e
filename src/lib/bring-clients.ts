@@ -1,4 +1,5 @@
 import { PROD_APP_URL } from "@/lib/site-urls";
+import { isSafeStoreSlug } from "@/lib/utils";
 
 export type BringClientActionId = "status" | "contacts" | "qr";
 
@@ -15,14 +16,15 @@ function storageKey(storeId?: string): string {
 }
 
 export function boutiquePublicUrl(slug?: string | null): string | null {
-  const clean = slug?.trim();
-  if (!clean) return null;
+  const clean = slug?.trim().toLowerCase();
+  if (!isSafeStoreSlug(clean)) return null;
   return `${PROD_APP_URL}/boutique/${clean}`;
 }
 
 export function boutiqueShareText(storeName: string, url: string): string {
+  const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
   return [
-    `Découvrez ${storeName} !`,
+    `Découvrez ${safeName} !`,
     "Commandez ici (lien boutique) :",
     url,
     "",

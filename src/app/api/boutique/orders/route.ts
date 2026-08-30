@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { isCloudUuid } from "@/lib/cloud-uuid";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { notifyStoreSubscribers } from "@/lib/push-server";
 
@@ -8,18 +9,41 @@ import { notifyStoreSubscribers } from "@/lib/push-server";
  * Tente d'enregistrer dans product_orders si la migration 017 est appliquée,
  * sinon renvoie un message WhatsApp prêt à envoyer.
  */
+const orderBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function allowPublicOrder(request: Request, max = 12, windowMs = 60 * 60 * 1000): boolean {
+  const forwarded = request.headers.get("x-forwarded-for") || "";
+  const key = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
+  const now = Date.now();
+  const bucket = orderBuckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    orderBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function clip(value: string, max: number): string {
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
+}
+
 export async function POST(request: Request) {
+  if (!allowPublicOrder(request)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de commandes. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
+
   let body: {
     storeId?: string;
     productId?: string;
-    productName?: string;
-    unitPrice?: number;
     customerName?: string;
     customerPhone?: string;
     address?: string;
     quantity?: number;
-    storeName?: string;
-    sellerPhone?: string;
   };
 
   try {
@@ -28,13 +52,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "JSON invalide" }, { status: 400 });
   }
 
-  const customerName = body.customerName?.trim();
-  const customerPhone = body.customerPhone?.trim();
-  const address = body.address?.trim();
-  const quantity = Math.max(1, Math.round(Number(body.quantity) || 1));
-  const unitPrice = Math.max(0, Number(body.unitPrice) || 0);
-  const productName = body.productName?.trim() || "Produit";
-  const storeName = body.storeName?.trim() || "Boutique";
+  const storeId = body.storeId?.trim() || "";
+  const productId = body.productId?.trim() || "";
+  const customerName = clip(body.customerName || "", 80);
+  const customerPhone = clip(body.customerPhone || "", 24);
+  const address = clip(body.address || "", 240);
+  const quantity = Math.min(20, Math.max(1, Math.round(Number(body.quantity) || 1)));
 
   if (!customerName || !customerPhone || !address) {
     return NextResponse.json(
@@ -42,7 +65,38 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  if (!isCloudUuid(storeId) || !isCloudUuid(productId)) {
+    return NextResponse.json(
+      { success: false, error: "Boutique ou produit invalide" },
+      { status: 400 }
+    );
+  }
 
+  const supabase = await createServiceSupabase();
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id, name, phone, whatsapp, is_public")
+    .eq("id", storeId)
+    .eq("is_public", true)
+    .maybeSingle();
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, store_id, name, price")
+    .eq("id", productId)
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (!store || !product) {
+    return NextResponse.json(
+      { success: false, error: "Boutique ou produit introuvable" },
+      { status: 404 }
+    );
+  }
+
+  const unitPrice = Math.max(0, Number(product.price) || 0);
+  const productName = String(product.name || "Produit").slice(0, 120);
+  const storeName = String(store.name || "Boutique").slice(0, 80);
+  const sellerPhone = String(store.whatsapp || store.phone || "").replace(/\D/g, "").slice(0, 16);
   const total = unitPrice * quantity;
   const whatsappMessage = [
     `Nouvelle commande COD — ${storeName}`,
@@ -59,39 +113,36 @@ export async function POST(request: Request) {
   let persisted = false;
   let pushSent = 0;
 
-  if (body.storeId && body.productId) {
-    try {
-      const supabase = await createServiceSupabase();
-      const { data, error } = await supabase
-        .from("product_orders")
-        .insert({
-          store_id: body.storeId,
-          product_id: body.productId,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          address,
-          quantity,
-          unit_price: unitPrice,
-          total_amount: total,
-          payment_method: "cash_on_delivery",
-          status: "pending",
-          locale: "fr",
-        })
-        .select("id")
-        .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("product_orders")
+      .insert({
+        store_id: storeId,
+        product_id: productId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        address,
+        quantity,
+        unit_price: unitPrice,
+        total_amount: total,
+        payment_method: "cash_on_delivery",
+        status: "pending",
+        locale: "fr",
+      })
+      .select("id")
+      .maybeSingle();
 
-      if (!error && data?.id) {
-        orderId = data.id as string;
-        persisted = true;
-        pushSent = await notifyStoreSubscribers(supabase, body.storeId, {
-          title: "Nouvelle commande COD",
-          body: `${productName} ×${quantity} — ${customerName}`,
-          url: "/products/orders",
-        });
-      }
-    } catch {
-      /* table may not exist yet */
+    if (!error && data?.id) {
+      orderId = data.id as string;
+      persisted = true;
+      pushSent = await notifyStoreSubscribers(supabase, storeId, {
+        title: "Nouvelle commande COD",
+        body: `${productName} ×${quantity} — ${customerName}`,
+        url: "/products/orders",
+      });
     }
+  } catch {
+    /* table may not exist yet */
   }
 
   return NextResponse.json({
@@ -99,7 +150,7 @@ export async function POST(request: Request) {
     persisted,
     orderId,
     whatsappMessage,
-    sellerPhone: body.sellerPhone || null,
+    sellerPhone: sellerPhone || null,
     total,
     pushSent,
   });
