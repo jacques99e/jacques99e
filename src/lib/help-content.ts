@@ -100,7 +100,7 @@ export const HELP_FAQ: HelpFaqItem[] = [
   },
   {
     q: "Comment amener des clients ? L'app ne m'apporte pas de ventes.",
-    a: "Wazo enregistre vos ventes et affiche votre boutique. Les clients viennent de vous : publiez le lien boutique en Status WhatsApp, envoyez-le à 10 contacts, et enregistrez chaque achat à la Caisse.",
+    a: "Ouvrez Amener des clients. En essai : 5 étapes (lien, Status WhatsApp, 10 contacts, QR, caisse). Les abonnés PRO et BUSINESS voient seulement les outils, sans rappel.",
   },
   {
     q: "Comment contacter le support ?",

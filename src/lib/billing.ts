@@ -81,6 +81,14 @@ export function normalizeBillingStatus(subscription: BillingSubscription): Billi
   return subscription.status;
 }
 
+export function isPaidSubscriber(subscription: BillingSubscription | null | undefined): boolean {
+  if (!subscription) return false;
+  return (
+    normalizeBillingStatus(subscription) === "active" &&
+    (subscription.plan === "pro" || subscription.plan === "business")
+  );
+}
+
 export function getTrialDaysLeft(subscription: BillingSubscription): number {
   if (normalizeBillingStatus(subscription) !== "trial") return 0;
   const trialEnd = addDays(subscription.trial_start, subscription.trial_days);

@@ -18,7 +18,7 @@ import { NextStepCard } from "@/components/NextStepCard";
 import { ModuleDashboardStats } from "@/components/ModuleDashboardStats";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
-import { getTrialDaysLeft, isBillingUsable, normalizeBillingStatus, planAllowsAnalytics, type BillingSubscription } from "@/lib/billing";
+import { getTrialDaysLeft, isBillingUsable, isPaidSubscriber, normalizeBillingStatus, planAllowsAnalytics, type BillingSubscription } from "@/lib/billing";
 import { billingDashboardHref, billingPayHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
@@ -478,9 +478,11 @@ export default function DashboardPage() {
                 <Link href="/clients" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
                   {t("onboarding.openCrm")}
                 </Link>
+                {!isPaidSubscriber(billing) ? (
                 <Link href="/clients/bring" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">
                   Amener des clients
                 </Link>
+                ) : null}
               </>
             ) : null}
             <Link href="/help" className="rounded-lg bg-gray-50 px-3 py-2 text-xs hover:bg-gray-100">

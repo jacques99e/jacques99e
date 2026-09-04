@@ -24,7 +24,7 @@ import {
   todayISO,
 } from "@/lib/followup-sequences";
 import { FollowUpSequencePanel } from "@/components/FollowUpSequencePanel";
-import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
+import { PLAN_LIMITS, isPaidSubscriber, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 
 type ClientRecord = LocalClientRecord;
@@ -221,15 +221,17 @@ export default function ClientsPage() {
     <>
       <AppHeader title="Mini CRM Clients" subtitle="Commerce" />
       <main className="app-page space-y-4 pb-6">
+        {!isPaidSubscriber(billing) ? (
         <section className="app-card border-[#075E54]/20 bg-[#075E54]/5 p-4">
           <p className="text-sm font-semibold text-[#075E54]">Pas encore de clients ?</p>
           <p className="mt-1 text-xs text-gray-600">
-            Le CRM suit ceux qui achètent. Pour en amener : Status WhatsApp, 10 contacts, QR.
+            Parcours en 5 étapes : lien, Status, 10 contacts, QR, caisse.
           </p>
           <Button asChild className="mt-3 w-full">
             <Link href="/clients/bring">Amener des clients</Link>
           </Button>
         </section>
+        ) : null}
         {billing && normalizeBillingStatus(billing) === "expired" ? (
           <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700">
             Essai expire. Activez un abonnement pour continuer les operations CRM.

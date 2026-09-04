@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles, Users } from "lucide-react";
 import { isDay0ShareDone } from "@/lib/day0-mission";
+import { isBringClientsComplete } from "@/lib/bring-clients";
 import { isSafeStoreSlug } from "@/lib/utils";
+import { localStore } from "@/lib/db";
 
 type NextStep =
   | { id: "product"; title: string; hint: string; href: string; cta: string; Icon: typeof Package }
@@ -49,11 +51,11 @@ function resolveNextStep(
       Icon: ShoppingBag,
     };
   }
-  if (salesCount < 3) {
+  if (salesCount < 3 && proUpsellHref && !isBringClientsComplete(localStore.get()?.id)) {
     return {
       id: "clients",
       title: "Étape 4 — Amenez vos clients",
-      hint: "L'app ne vend pas toute seule. Status WhatsApp, 10 contacts, QR au comptoir — 3 vrais clients.",
+      hint: "5 étapes : lien, Status WhatsApp, 10 contacts, QR, caisse.",
       href: "/clients/bring",
       cta: "Amener des clients",
       Icon: Users,

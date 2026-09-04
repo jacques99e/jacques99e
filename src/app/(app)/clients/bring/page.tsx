@@ -1,48 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Check, Copy, MessageCircle, QrCode, Share2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Copy, MessageCircle, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
+import { isPaidSubscriber, type BillingSubscription } from "@/lib/billing";
 import {
+  BRING_STEP_IDS,
   boutiquePublicUrl,
   boutiqueShareText,
+  markBringStepDone,
   readBringClientProgress,
   writeBringClientProgress,
-  type BringClientActionId,
   type BringClientProgress,
+  type BringClientStepId,
 } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 
-const ACTIONS: Array<{
-  id: BringClientActionId;
-  title: string;
-  hint: string;
-}> = [
-  {
-    id: "status",
-    title: "1. Status WhatsApp (24 h)",
-    hint: "Publiez le lien boutique en Status. Vos contacts le voient sans que vous écriviez un par un.",
+const STEP_COPY: Record<
+  BringClientStepId,
+  { title: string; hint: string; doneLabel: string }
+> = {
+  link: {
+    title: "Préparez votre lien boutique",
+    hint: "Copiez ou partagez le lien. C’est l’adresse que vos clients ouvriront.",
+    doneLabel: "Lien prêt — continuer",
   },
-  {
-    id: "contacts",
-    title: "2. 10 personnes qui vous connaissent",
-    hint: "Envoyez le message prérempli à famille, voisins, collègues — pas à des inconnus.",
+  status: {
+    title: "Publiez en Status WhatsApp",
+    hint: "24 heures. Vos contacts voient la boutique sans que vous écriviez un par un.",
+    doneLabel: "Status publié",
   },
-  {
-    id: "qr",
-    title: "3. QR au comptoir",
-    hint: "Montrez le QR à un client présent. Il ouvre la boutique sans taper le lien.",
+  contacts: {
+    title: "Envoyez à 10 personnes",
+    hint: "Famille, voisins, collègues — des gens qui vous connaissent déjà.",
+    doneLabel: "Messages envoyés",
   },
-];
+  qr: {
+    title: "QR au comptoir",
+    hint: "Montrez-le à un client présent. Il ouvre la boutique sans taper le lien.",
+    doneLabel: "QR prêt",
+  },
+  caisse: {
+    title: "Enregistrez chaque achat",
+    hint: "Dès qu’un client paie, ouvrez la Caisse. Sinon Wazo ne voit pas la vente.",
+    doneLabel: "Caisse ouverte",
+  },
+};
 
 export default function BringClientsPage() {
   const [store, setStore] = useState(() => localStore.get());
+  const [paid, setPaid] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [progress, setProgress] = useState<BringClientProgress>({
+    completed: [],
+    stepIndex: 0,
+  });
+
   const storeName = store?.name || "Ma boutique";
   const url = boutiquePublicUrl(store?.slug);
+  const shareText = url ? boutiqueShareText(storeName, url) : "";
+  const stepId = BRING_STEP_IDS[progress.stepIndex] ?? "link";
+  const copy = STEP_COPY[stepId];
+  const doneCount = BRING_STEP_IDS.filter((id) => progress.completed.includes(id)).length;
+  const allDone = doneCount === BRING_STEP_IDS.length;
 
   useEffect(() => {
     const refresh = () => setStore(localStore.get());
@@ -50,18 +76,31 @@ export default function BringClientsPage() {
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, []);
-  const shareText = url ? boutiqueShareText(storeName, url) : "";
-  const [copied, setCopied] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState("");
-  const [done, setDone] = useState<BringClientProgress>({
-    status: false,
-    contacts: false,
-    qr: false,
-  });
 
   useEffect(() => {
-    setDone(readBringClientProgress(store?.id));
+    setProgress(readBringClientProgress(store?.id));
   }, [store?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/api/billing/subscription", { cache: "no-store" });
+        const data = (await res.json()) as {
+          success?: boolean;
+          subscription?: BillingSubscription;
+        };
+        if (!cancelled && res.ok && data.success) {
+          setPaid(isPaidSubscriber(data.subscription));
+        }
+      } catch {
+        /* hors ligne : on n’affiche pas le nag */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!url) {
@@ -71,10 +110,20 @@ export default function BringClientsPage() {
     void QRCode.toDataURL(url, { width: 220, margin: 2 }).then(setQrDataUrl);
   }, [url]);
 
-  function toggle(id: BringClientActionId) {
-    const next = { ...done, [id]: !done[id] };
-    setDone(next);
+  function persist(next: BringClientProgress) {
+    setProgress(next);
     writeBringClientProgress(store?.id, next);
+  }
+
+  function goTo(index: number) {
+    persist({
+      ...progress,
+      stepIndex: Math.min(BRING_STEP_IDS.length - 1, Math.max(0, index)),
+    });
+  }
+
+  function completeCurrent() {
+    persist(markBringStepDone(progress, stepId));
   }
 
   async function copyLink() {
@@ -95,124 +144,200 @@ export default function BringClientsPage() {
         await navigator.share({ title: storeName, text: shareText, url });
         return;
       } catch {
-        /* user cancelled or unsupported */
+        /* cancelled */
       }
     }
     window.open(buildWhatsAppShareUrl(shareText), "_blank", "noopener,noreferrer");
   }
 
-  const completed = [done.status, done.contacts, done.qr].filter(Boolean).length;
+  const waHref = useMemo(
+    () => (shareText ? buildWhatsAppShareUrl(shareText) : "#"),
+    [shareText]
+  );
+
+  const linkActions = url ? (
+    <div className="space-y-3">
+      <p className="break-all rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-800">{url}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" variant="outline" onClick={() => void copyLink()}>
+          <Copy className="h-4 w-4" />
+          {copied ? "Copié" : "Copier"}
+        </Button>
+        <Button type="button" onClick={() => void nativeShare()}>
+          <Share2 className="h-4 w-4" />
+          Partager
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
+  const whatsAppButton = (label: string) => (
+    <a
+      href={waHref}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-semibold text-white"
+    >
+      <MessageCircle className="h-4 w-4" />
+      {label}
+    </a>
+  );
+
+  const qrBlock = (
+    <div className="space-y-2 text-center">
+      {qrDataUrl ? (
+        <img
+          src={qrDataUrl}
+          alt="QR boutique"
+          width={176}
+          height={176}
+          className="mx-auto h-44 w-44 rounded-xl border border-gray-100"
+        />
+      ) : null}
+      <p className="text-xs text-gray-500">Enregistrez la capture dans votre galerie.</p>
+    </div>
+  );
+
+  const missingSlug = (
+    <section className="app-card p-4 text-sm text-amber-800">
+      Votre boutique n&apos;a pas encore de lien public. Terminez la configuration, puis revenez ici.
+      <Button asChild className="mt-3 w-full" variant="outline">
+        <Link href="/setup">Ouvrir la configuration</Link>
+      </Button>
+    </section>
+  );
 
   return (
     <>
       <AppHeader title="Amener des clients" subtitle="Commerce" />
       <main className="app-page space-y-4 pb-6">
-        <section className="app-card border-[#FF6F00]/25 bg-gradient-to-br from-white to-[#FFF5EB] p-4">
-          <p className="text-sm font-semibold text-gray-900">
-            Wazo enregistre les ventes. C&apos;est vous qui amenez les clients.
-          </p>
-          <p className="mt-1 text-xs text-gray-600">
-            3 actions aujourd&apos;hui. Cochez au fur et à mesure — {completed}/3.
-          </p>
-          <div className="mt-3 flex gap-1.5">
-            {[1, 2, 3].map((n) => (
-              <span
-                key={n}
-                className={`h-1.5 flex-1 rounded-full ${
-                  n <= completed ? "bg-[#FF6F00]" : "bg-gray-200"
-                }`}
-              />
-            ))}
-          </div>
-        </section>
-
-        {!url ? (
-          <section className="app-card p-4 text-sm text-amber-800">
-            Votre boutique n&apos;a pas encore de lien public. Terminez la configuration, puis
-            revenez ici.
-            <Button asChild className="mt-3 w-full" variant="outline">
-              <Link href="/setup">Ouvrir la configuration</Link>
-            </Button>
-          </section>
+        {paid ? (
+          <>
+            <section className="app-card p-4">
+              <p className="text-sm font-semibold text-gray-900">Outils de partage</p>
+              <p className="mt-1 text-xs text-gray-600">
+                Rien n&apos;est obligatoire. Prenez seulement ce dont vous avez besoin.
+              </p>
+            </section>
+            {!url ? (
+              missingSlug
+            ) : (
+              <div className="space-y-3">
+                <section className="app-card space-y-3 p-4">
+                  <h2 className="text-sm font-bold text-gray-900">Lien boutique</h2>
+                  {linkActions}
+                </section>
+                <section className="app-card space-y-3 p-4">
+                  <h2 className="text-sm font-bold text-gray-900">WhatsApp</h2>
+                  {whatsAppButton("Ouvrir WhatsApp")}
+                </section>
+                <section className="app-card space-y-3 p-4">
+                  <h2 className="text-sm font-bold text-gray-900">QR au comptoir</h2>
+                  {qrBlock}
+                </section>
+              </div>
+            )}
+          </>
         ) : (
           <>
-            <section className="app-card space-y-3 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Lien boutique
+            <section className="app-card border-[#FF6F00]/25 bg-gradient-to-br from-white to-[#FFF5EB] p-4">
+              <p className="text-sm font-semibold text-gray-900">
+                Wazo enregistre les ventes. C&apos;est vous qui amenez les clients.
               </p>
-              <p className="break-all rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-800">
-                {url}
+              <p className="mt-1 text-xs text-gray-600">
+                {allDone
+                  ? "Parcours terminé. Revenez quand vous voulez."
+                  : `Étape ${progress.stepIndex + 1} sur ${BRING_STEP_IDS.length} — ${doneCount} faite(s).`}
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="outline" onClick={() => void copyLink()}>
-                  <Copy className="h-4 w-4" />
-                  {copied ? "Copié" : "Copier"}
-                </Button>
-                <Button type="button" onClick={() => void nativeShare()}>
-                  <Share2 className="h-4 w-4" />
-                  Partager
-                </Button>
-              </div>
-              <a
-                href={buildWhatsAppShareUrl(shareText)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-semibold text-white"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp — Status ou contact
-              </a>
             </section>
 
-            <section className="app-card space-y-3 p-4">
-              {ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => toggle(action.id)}
-                  className="flex w-full items-start gap-3 rounded-xl border border-gray-100 p-3 text-left"
-                >
-                  <span
-                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                      done[action.id]
-                        ? "bg-wazo-green text-white"
-                        : "border border-gray-300 bg-white"
+            <div className="flex gap-1.5">
+              {BRING_STEP_IDS.map((id, index) => {
+                const done = progress.completed.includes(id);
+                const current = index === progress.stepIndex;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => goTo(index)}
+                    className={`h-1.5 flex-1 rounded-full ${
+                      current ? "bg-[#FF6F00]" : done ? "bg-wazo-green" : "bg-gray-200"
                     }`}
-                  >
-                    {done[action.id] ? <Check className="h-3.5 w-3.5" /> : null}
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold">{action.title}</span>
-                    <span className="mt-0.5 block text-xs text-gray-600">{action.hint}</span>
-                  </span>
-                </button>
-              ))}
-            </section>
+                    aria-label={`Étape ${index + 1}`}
+                  />
+                );
+              })}
+            </div>
 
-            <section className="app-card space-y-3 p-4 text-center">
-              <p className="flex items-center justify-center gap-2 text-sm font-semibold">
-                <QrCode className="h-4 w-4 text-wazo-green" />
-                QR à montrer au client
-              </p>
-              {qrDataUrl ? (
-                <img
-                  src={qrDataUrl}
-                  alt="QR boutique"
-                  width={176}
-                  height={176}
-                  className="mx-auto h-44 w-44 rounded-xl border border-gray-100"
-                />
-              ) : null}
-              <p className="text-xs text-gray-500">
-                Affichez-le au comptoir ou enregistrez la capture dans votre galerie.
-              </p>
-            </section>
+            {!url ? (
+              missingSlug
+            ) : (
+              <section className="app-card space-y-4 p-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                    Étape {progress.stepIndex + 1} / {BRING_STEP_IDS.length}
+                  </p>
+                  <h2 className="mt-1 text-base font-extrabold text-gray-900">{copy.title}</h2>
+                  <p className="mt-1 text-sm text-gray-600">{copy.hint}</p>
+                </div>
+
+                {stepId === "link" ? linkActions : null}
+                {stepId === "status" ? whatsAppButton("Ouvrir WhatsApp — Status") : null}
+                {stepId === "contacts" ? whatsAppButton("Ouvrir WhatsApp — contacts") : null}
+                {stepId === "qr" ? qrBlock : null}
+                {stepId === "caisse" ? (
+                  <Button asChild className="w-full">
+                    <Link href="/sales">Ouvrir la caisse</Link>
+                  </Button>
+                ) : null}
+
+                {progress.completed.includes(stepId) ? (
+                  <p className="flex items-center gap-2 text-xs font-medium text-wazo-green">
+                    <Check className="h-3.5 w-3.5" />
+                    Étape déjà faite
+                  </p>
+                ) : null}
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={progress.stepIndex === 0}
+                    onClick={() => goTo(progress.stepIndex - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Retour
+                  </Button>
+                  {progress.stepIndex < BRING_STEP_IDS.length - 1 ? (
+                    <Button type="button" className="flex-1" onClick={completeCurrent}>
+                      {copy.doneLabel}
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button type="button" className="flex-1" onClick={completeCurrent}>
+                      {allDone ? "Terminé" : copy.doneLabel}
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {allDone ? (
+              <section className="app-card border-wazo-green/20 p-4">
+                <p className="text-sm font-semibold text-wazo-green">Bravo — le parcours est complet.</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  Continuez à partager le lien, et enregistrez chaque vente à la caisse.
+                </p>
+              </section>
+            ) : null}
           </>
         )}
 
         <div className="grid grid-cols-2 gap-2">
           <Button asChild variant="outline">
-            <Link href="/sales">Ouvrir la caisse</Link>
+            <Link href="/sales">Caisse</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/clients">Mini CRM</Link>
