@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCron } from "@/lib/cron-auth";
 import { sendWeeklyReportEmail } from "@/lib/email";
 import { buildWeeklyReportEmailContent } from "@/lib/report-email-content";
 import { getStoreBillingPlan } from "@/lib/plan-access";
@@ -7,13 +8,6 @@ import { planAllowsWeeklyEmail } from "@/lib/billing";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-function authorizeCron(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  const auth = request.headers.get("authorization");
-  return auth === `Bearer ${secret}`;
-}
 
 export async function GET(request: Request) {
   if (!authorizeCron(request)) {

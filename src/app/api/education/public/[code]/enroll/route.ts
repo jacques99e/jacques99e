@@ -63,7 +63,16 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ success: true, enrollment });
+    return NextResponse.json({
+      success: true,
+      enrollment: {
+        id: enrollment.id,
+        student_name: enrollment.student_name,
+        progress_percent: enrollment.progress_percent,
+        progress_meta: enrollment.progress_meta,
+        completed_at: enrollment.completed_at,
+      },
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur serveur";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

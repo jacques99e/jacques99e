@@ -24,10 +24,8 @@ export default function PublicSuiviPage() {
   const [error, setError] = useState("");
   const [delivery, setDelivery] = useState<{
     tracking_code: string;
-    recipient_name: string;
     status: string;
     status_label?: string;
-    address: string;
     updated_at: string | null;
   } | null>(null);
 
@@ -79,7 +77,6 @@ export default function PublicSuiviPage() {
         <header className="rounded-2xl bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-[#075E54]">Suivi livraison</p>
           <h1 className="font-mono text-lg font-bold">{delivery.tracking_code}</h1>
-          <p className="mt-1 text-sm text-gray-600">Destinataire : {delivery.recipient_name}</p>
         </header>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm">

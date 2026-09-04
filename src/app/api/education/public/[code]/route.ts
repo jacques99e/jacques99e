@@ -16,7 +16,7 @@ export async function GET(
     const supabase = await createServiceSupabase();
     const { data: course, error } = await supabase
       .from("courses")
-      .select("id, title, description, invite_code, is_public, store_id")
+      .select("id, title, description, invite_code, is_public")
       .eq("invite_code", inviteCode)
       .maybeSingle();
 

@@ -58,10 +58,6 @@ export async function ensureEnrollmentCompleted(
   clientContext?: CompletionClientContext
 ): Promise<{ ok: boolean; percent: number }> {
   const storedPercent = enrollment.progress_percent ?? 0;
-  if (storedPercent >= 100) {
-    return { ok: true, percent: 100 };
-  }
-
   const meta = clientMeta ?? normalizeMeta(enrollment.progress_meta);
   if (!meta) {
     return { ok: false, percent: storedPercent };

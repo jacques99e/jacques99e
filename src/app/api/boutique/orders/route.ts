@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { isCloudUuid } from "@/lib/cloud-uuid";
+import { allowIp } from "@/lib/rate-limit";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { notifyStoreSubscribers } from "@/lib/push-server";
 
@@ -9,28 +10,12 @@ import { notifyStoreSubscribers } from "@/lib/push-server";
  * Tente d'enregistrer dans product_orders si la migration 017 est appliquée,
  * sinon renvoie un message WhatsApp prêt à envoyer.
  */
-const orderBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function allowPublicOrder(request: Request, max = 12, windowMs = 60 * 60 * 1000): boolean {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  const key = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
-  const now = Date.now();
-  const bucket = orderBuckets.get(key);
-  if (!bucket || now > bucket.resetAt) {
-    orderBuckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (bucket.count >= max) return false;
-  bucket.count += 1;
-  return true;
-}
-
 function clip(value: string, max: number): string {
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
 }
 
 export async function POST(request: Request) {
-  if (!allowPublicOrder(request)) {
+  if (!allowIp(request, "boutique-orders", 12, 60 * 60 * 1000)) {
     return NextResponse.json(
       { success: false, error: "Trop de commandes. Réessayez plus tard." },
       { status: 429 }

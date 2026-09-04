@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 function trackingCode() {
-  return `WZ${Date.now().toString(36).toUpperCase()}`;
+  return `WZ${randomBytes(12).toString("hex").toUpperCase()}`;
 }
 
 export async function GET(request: NextRequest) {

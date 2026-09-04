@@ -16,6 +16,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
+  const { data: patient } = await auth.serviceSupabase
+    .from("health_patients")
+    .select("id")
+    .eq("id", patient_id)
+    .eq("store_id", store_id)
+    .maybeSingle();
+  if (!patient) {
+    return NextResponse.json({ error: "Patient introuvable pour cette boutique." }, { status: 404 });
+  }
+
   const { data, error } = await auth.serviceSupabase
     .from("health_prescriptions")
     .insert({ store_id, patient_id, medications, doctor_name })

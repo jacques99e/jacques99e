@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/billing";
+import { confirmPaydunyaInvoice, getPaymentMode } from "@/lib/paydunya";
+import { secretsEqual } from "@/lib/secret-compare";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 
@@ -25,13 +27,29 @@ function assertCallbackSecret(request: NextRequest): NextResponse | null {
 
   const headerSecret = request.headers.get("x-callback-secret");
   const querySecret = request.nextUrl.searchParams.get("secret");
-  const validHeader = Boolean(headerSecret && headerSecret === callbackSecret);
-  const validQuery = Boolean(querySecret && querySecret === callbackSecret);
+  const validHeader = secretsEqual(headerSecret, callbackSecret);
+  const validQuery = secretsEqual(querySecret, callbackSecret);
   if (!validHeader && !validQuery) {
     return NextResponse.json(
       { success: false, error: "Signature callback invalide." },
       { status: 401 }
     );
+  }
+  return null;
+}
+
+function extractInvoiceToken(payload: Record<string, unknown>): string | null {
+  const direct = payload.token ?? payload.invoice_token;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  const invoice = payload.invoice;
+  if (invoice && typeof invoice === "object") {
+    const nested = (invoice as { token?: unknown }).token;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
+  }
+  const data = payload.data;
+  if (data && typeof data === "object") {
+    const nested = (data as { token?: unknown }).token;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
   }
   return null;
 }
@@ -81,6 +99,15 @@ function isSuccessfulPayment(payload: Record<string, unknown>): boolean {
   return false;
 }
 
+async function paymentConfirmed(payload: Record<string, unknown>): Promise<boolean> {
+  const invoiceToken = extractInvoiceToken(payload);
+  if (invoiceToken) {
+    const confirm = await confirmPaydunyaInvoice(invoiceToken, getPaymentMode());
+    return confirm.ok;
+  }
+  return isSuccessfulPayment(payload);
+}
+
 async function handleSaleCallback(
   serviceSupabase: Awaited<ReturnType<typeof createServiceSupabase>>,
   txId: string,
@@ -95,8 +122,9 @@ async function handleSaleCallback(
 
   if (error || !payment) return null;
 
+  const confirmed = await paymentConfirmed(payload);
   const success =
-    isSuccessfulPayment(payload) ||
+    confirmed ||
     (emptyPayloadAssumeSuccess && Object.keys(payload).length === 0);
 
   const now = new Date().toISOString();
@@ -196,7 +224,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Paiement inconnu." }, { status: 404 });
     }
 
-    const success = isSuccessfulPayment(payload);
+    const success = await paymentConfirmed(payload);
     const now = new Date().toISOString();
     await serviceSupabase
       .from("billing_payments")
@@ -238,11 +266,8 @@ export async function GET(request: NextRequest) {
   const authError = assertCallbackSecret(request);
   if (authError) return authError;
 
-  // PayDunya may ping GET — if tx present, acknowledge
-  const tx = request.nextUrl.searchParams.get("tx");
   return NextResponse.json({
     success: true,
     message: "Callback paiement actif.",
-    tx: tx || null,
   });
 }

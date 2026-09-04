@@ -6,8 +6,26 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(self)" },
   {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  {
     key: "Content-Security-Policy",
-    value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.paydunya.com https://paydunya.com",
+      "frame-src 'self' https://app.paydunya.com",
+      "form-action 'self' https://app.paydunya.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "frame-ancestors 'self'",
+      "upgrade-insecure-requests",
+    ].join("; "),
   },
 ];
 

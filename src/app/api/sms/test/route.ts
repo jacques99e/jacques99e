@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { allowRequest } from "@/lib/rate-limit";
 import { looksLikePhone, sendSms } from "@/lib/sms";
 
 export async function POST(request: Request) {
@@ -7,16 +8,20 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
+  if (!allowRequest(`sms-test:${auth.userId}`, 3, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de tests SMS. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
 
-  const body = (await request.json().catch(() => ({}))) as { phone?: string; message?: string };
+  const body = (await request.json().catch(() => ({}))) as { phone?: string };
   const phone = body.phone?.trim();
   if (!phone || !looksLikePhone(phone)) {
     return NextResponse.json({ success: false, error: "Numéro invalide" }, { status: 400 });
   }
 
-  const message =
-    body.message?.trim() ||
-    "Test Wazo Digital — votre configuration SMS fonctionne correctement.";
+  const message = "Test Wazo Digital — votre configuration SMS fonctionne correctement.";
 
   const result = await sendSms(phone, message);
   if (!result.ok) {

@@ -23,7 +23,7 @@ export async function GET(
     const supabase = await createServiceSupabase();
     const { data, error } = await supabase
       .from("deliveries")
-      .select("tracking_code, recipient_name, status, address, updated_at, created_at")
+      .select("tracking_code, status, updated_at, created_at")
       .eq("tracking_code", trackingCode)
       .maybeSingle();
 
@@ -34,7 +34,10 @@ export async function GET(
     return NextResponse.json({
       success: true,
       delivery: {
-        ...data,
+        tracking_code: data.tracking_code,
+        status: data.status,
+        updated_at: data.updated_at,
+        created_at: data.created_at,
         status_label: STATUS_LABELS[data.status as string] || data.status,
       },
     });
