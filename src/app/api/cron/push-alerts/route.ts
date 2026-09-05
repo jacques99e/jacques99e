@@ -51,12 +51,12 @@ export async function GET(request: Request) {
 
     const { data: products } = await supabase
       .from("products")
-      .select("stock_quantity")
+      .select("stock")
       .eq("store_id", storeId);
 
-    const outOfStock = (products || []).filter((p) => Number(p.stock_quantity) <= 0).length;
+    const outOfStock = (products || []).filter((p) => Number(p.stock) <= 0).length;
     const lowStock = (products || []).filter(
-      (p) => Number(p.stock_quantity) > 0 && Number(p.stock_quantity) <= 5
+      (p) => Number(p.stock) > 0 && Number(p.stock) <= 5
     ).length;
 
     if (outOfStock + lowStock > 0) {

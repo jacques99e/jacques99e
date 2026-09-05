@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { APP_URL } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
-import { rowToProduct } from "@/lib/product-db-map";
+import { PRODUCT_DB_COLUMNS, rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 import { isSafeStoreSlug } from "@/lib/utils";
 import { StorefrontClient } from "./StorefrontClient";
@@ -68,7 +68,7 @@ export default async function StorefrontPage({ params }: PageProps) {
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, store_id, name, description, price, stock, stock_quantity, barcode, photo_url, image_url, is_active, created_at")
+    .select(PRODUCT_DB_COLUMNS)
     .eq("store_id", store.id)
     .order("name");
 

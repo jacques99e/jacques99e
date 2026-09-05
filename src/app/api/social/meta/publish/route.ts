@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
     const { data: product } = await service
       .from("products")
-      .select("id, name, price, description, image_url")
+      .select("id, name, price, description, photo_url")
       .eq("id", body.productId)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     link = store.slug
       ? `${appUrl}/boutique/${store.slug}/produit/${product.id}`
       : link;
-    if (product.image_url) imageUrl = product.image_url;
+    if (product.photo_url) imageUrl = product.photo_url;
   } else {
     message = [
       `Découvrez ${store.name} sur Wazo Digital`,

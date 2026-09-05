@@ -314,7 +314,7 @@ export async function PATCH(request: Request) {
     const qty = Math.max(1, Number(existing.quantity) || 1);
     const { data: product } = await service
       .from("products")
-      .select("id, stock, stock_quantity")
+      .select("id, stock")
       .eq("id", productId)
       .eq("store_id", storeId)
       .maybeSingle();

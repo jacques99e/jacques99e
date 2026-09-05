@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { APP_URL } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
-import { rowToProduct } from "@/lib/product-db-map";
+import { PRODUCT_DB_COLUMNS, rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 import { isCloudUuid } from "@/lib/cloud-uuid";
 import { isSafeStoreSlug } from "@/lib/utils";
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { data: product } = await supabase
     .from("products")
-    .select("name, description, image_url, photo_url")
+    .select("name, description, photo_url")
     .eq("id", id)
     .eq("store_id", store.id)
     .single();
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const imageUrl = toPublicProductImageUrl(
-    (product.image_url as string | null) ?? (product.photo_url as string | null)
+    (product.photo_url as string | null)
   );
 
   return {
@@ -84,7 +84,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const { data: productRow } = await supabase
     .from("products")
-    .select("id, store_id, name, description, price, stock, stock_quantity, barcode, photo_url, image_url, is_active, created_at, landing_content")
+    .select(PRODUCT_DB_COLUMNS)
     .eq("id", id)
     .eq("store_id", store.id)
     .single();

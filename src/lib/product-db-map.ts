@@ -1,6 +1,10 @@
 import type { Product } from "@/types";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 
+/** Colonnes réelles Supabase `products` (pas is_active / stock_quantity / image_url). */
+export const PRODUCT_DB_COLUMNS =
+  "id, store_id, name, description, price, stock, barcode, photo_url, created_at, category, landing_content";
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
