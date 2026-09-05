@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Package, Truck } from "lucide-react";
+import { CheckCircle2, Loader2, Truck } from "lucide-react";
 
 const STEPS = [
   { key: "pending", label: "En attente" },
@@ -97,11 +97,6 @@ export default function PublicSuiviPage() {
               );
             })}
           </ol>
-        </section>
-
-        <section className="rounded-2xl bg-white p-4 text-sm shadow-sm">
-          <p className="flex items-center gap-2 font-medium"><Package className="h-4 w-4" /> Adresse</p>
-          <p className="mt-1 text-gray-600">{delivery.address}</p>
         </section>
 
         <p className="text-center text-xs text-gray-500">
