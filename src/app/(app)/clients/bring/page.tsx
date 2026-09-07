@@ -49,7 +49,7 @@ const STEP_COPY: Record<
   },
   caisse: {
     title: "Enregistrez chaque achat",
-    hint: "Dès qu’un client paie, ouvrez la Caisse. Sinon Wazo ne voit pas la vente.",
+    hint: "Si le client paie avec le lien MoMo, la vente arrive toute seule. Sinon, enregistrez-la à la Caisse.",
     doneLabel: "Caisse ouverte",
   },
 };
