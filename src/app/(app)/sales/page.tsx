@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { VoiceSaleButton } from "@/components/VoiceSaleButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { syncStoreToCloud } from "@/lib/cloud-sync";
+import { refreshSalesFromCloud, syncStoreToCloud } from "@/lib/cloud-sync";
 import { appendLocalSale } from "@/lib/local-sales";
 import { activePromotions, applyDiscount, discountForProduct } from "@/lib/commerce-promotions";
 import { localStore } from "@/lib/db";
@@ -73,6 +73,7 @@ function SalesPageInner() {
     const store = localStore.get();
     if (!store?.id) return;
     void getProducts(store.id).then((rows) => setProducts(rows.map(productToLegacy)));
+    void refreshSalesFromCloud(store.id);
   }, []);
 
   useEffect(() => {

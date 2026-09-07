@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { downloadCsv, downloadSimplePdf } from "@/lib/export";
 import { useI18n } from "@/contexts/I18nContext";
+import { refreshSalesFromCloud } from "@/lib/cloud-sync";
 import { localStore } from "@/lib/db";
 import { getSales } from "@/lib/sales";
 import { formatCurrency } from "@/lib/utils";
@@ -20,7 +21,17 @@ export default function SalesHistoryPage() {
 
   useEffect(() => {
     const store = localStore.get();
-    if (store) getSales(store.id, date).then(setSales);
+    if (!store) return;
+    let cancelled = false;
+    const load = async () => {
+      await refreshSalesFromCloud(store.id);
+      if (cancelled) return;
+      setSales(await getSales(store.id, date));
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [date]);
 
   const filteredSales = useMemo(() => {

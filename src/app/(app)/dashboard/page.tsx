@@ -40,6 +40,7 @@ import {
   verticalLabelKey,
 } from "@/lib/onboarding";
 import { downloadWeeklyReportPdf } from "@/lib/weekly-report";
+import { refreshSalesFromCloud } from "@/lib/cloud-sync";
 import { localStore } from "@/lib/db";
 import { readLocalSales } from "@/lib/local-sales";
 
@@ -229,6 +230,31 @@ export default function DashboardPage() {
       .slice(0, 3)
       .map(([name, sold]) => ({ name, sold }));
     setPopularProducts(topProducts);
+
+    if (storeId && navigator.onLine) {
+      void refreshSalesFromCloud(storeId).then(() => {
+        if (cancelled) return;
+        const fresh = readLocalSales(storeId) as LocalSale[];
+        setSalesCount(fresh.length);
+        const todayFresh = fresh.filter((sale) => getSaleDate(sale).slice(0, 10) === today);
+        setTodaySalesCount(todayFresh.length);
+        setTodayTotal(todayFresh.reduce((sum, sale) => sum + getSaleTotal(sale), 0));
+        const weeklyFresh = fresh.filter((sale) => {
+          const raw = getSaleDate(sale);
+          if (!raw) return false;
+          const d = new Date(raw);
+          return !Number.isNaN(d.getTime()) && d >= weekStart && d <= todayDate;
+        });
+        const weeklyFreshTotal = weeklyFresh.reduce((sum, sale) => sum + getSaleTotal(sale), 0);
+        setWeekTotal(weeklyFreshTotal);
+        setWeekSalesCount(weeklyFresh.length);
+        setAvgBasket(weeklyFresh.length > 0 ? weeklyFreshTotal / weeklyFresh.length : 0);
+        const sortedFresh = [...fresh].sort(
+          (a, b) => new Date(getSaleDate(b)).getTime() - new Date(getSaleDate(a)).getTime()
+        );
+        setLatestSales(sortedFresh.slice(0, 5));
+      });
+    }
 
     notifyAlertsChanged();
 

@@ -244,6 +244,12 @@ export async function pullSalesFromCloud(
   }
 }
 
+/** Rapatrie les ventes cloud (lien MoMo boutique inclus) sur l’appareil. */
+export async function refreshSalesFromCloud(storeId: string): Promise<void> {
+  if (!storeId || (typeof navigator !== "undefined" && !navigator.onLine)) return;
+  await pullSalesFromCloud(storeId, []);
+}
+
 export async function syncStoreToCloud(storeId: string): Promise<CloudSyncResult> {
   const errors: string[] = [];
   let clientsPushed = 0;
