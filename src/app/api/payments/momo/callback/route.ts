@@ -3,6 +3,7 @@ import { addDays } from "@/lib/billing";
 import { confirmPaydunyaInvoice, getPaymentMode } from "@/lib/paydunya";
 import { secretsEqual } from "@/lib/secret-compare";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { notifyStoreSubscribers } from "@/lib/push-server";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 
 function isProductionLike(): boolean {
@@ -116,7 +117,7 @@ async function handleSaleCallback(
 ) {
   const { data: payment, error } = await serviceSupabase
     .from("sale_payments")
-    .select("id,store_id,status,sale_payload,sale_id,provider_tx_id")
+    .select("id,store_id,status,sale_payload,sale_id,provider_tx_id,payload,amount")
     .eq("provider_tx_id", txId)
     .maybeSingle();
 
@@ -152,9 +153,13 @@ async function handleSaleCallback(
     });
   }
 
+  const previousPayload =
+    payment.payload && typeof payment.payload === "object"
+      ? (payment.payload as Record<string, unknown>)
+      : {};
   await serviceSupabase
     .from("sale_payments")
-    .update({ payload, updated_at: now })
+    .update({ payload: { ...previousPayload, callback: payload }, updated_at: now })
     .eq("id", payment.id);
 
   const fulfilled = await fulfillPendingSalePayment(serviceSupabase, {
@@ -172,6 +177,17 @@ async function handleSaleCallback(
       { success: false, kind: "sale", error: fulfilled.error },
       { status: 500 }
     );
+  }
+
+  const source = (payment.payload as { source?: string } | null)?.source;
+  if (source === "boutique") {
+    const items = (payment.sale_payload as SaleCheckoutPayload)?.items || [];
+    const productName = items[0]?.name || "Produit";
+    await notifyStoreSubscribers(serviceSupabase, payment.store_id, {
+      title: "Paiement MoMo reçu",
+      body: `${productName} — ${Number(payment.amount) || 0} FCFA`,
+      url: "/sales",
+    });
   }
 
   return NextResponse.json({

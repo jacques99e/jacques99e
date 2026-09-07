@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageCircle, Package } from "lucide-react";
+import { ArrowLeft, MessageCircle, Package, Smartphone } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { formatCurrency, getWhatsAppLink } from "@/lib/utils";
@@ -197,18 +197,28 @@ export function ProductDetailClient({
               </p>
             ) : null}
 
+            {inStock && product.price >= 200 ? (
+              <Link
+                href={`/boutique/${store.slug}/payer?product=${product.id}`}
+                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6F00] px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-[#FF6F00]/20 transition hover:brightness-105"
+              >
+                <Smartphone className="h-5 w-5" />
+                {t("storefront.payMomo")}
+              </Link>
+            ) : null}
+
             {contactPhone ? (
               <a
                 href={getWhatsAppLink(contactPhone, orderMessage)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-[#25D366]/25 transition hover:brightness-105"
+                className={`${inStock && product.price >= 200 ? "mt-3" : "mt-8"} inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-[#25D366]/25 transition hover:brightness-105`}
               >
                 <MessageCircle className="h-5 w-5" />
                 {cta}
               </a>
             ) : (
-              <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className={`${inStock && product.price >= 200 ? "mt-3" : "mt-8"} rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900`}>
                 {t("storefront.whatsappMissing")}
               </p>
             )}

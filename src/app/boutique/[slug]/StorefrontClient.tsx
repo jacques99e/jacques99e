@@ -8,6 +8,7 @@ import {
   Package,
   Phone,
   ShoppingBag,
+  Smartphone,
   Store,
 } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
@@ -40,6 +41,9 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
       contactPhone,
       `Bonjour ${store.name}! Je souhaite avoir des informations sur votre catalogue.`
     );
+  const canPayMomo = store.products.some(
+    (p) => p.stock_quantity > 0 && p.price >= 200
+  );
 
   return (
     <div className="storefront-page min-h-screen pb-28">
@@ -92,16 +96,29 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
             </p>
           )}
 
-          {waCatalog ? (
-            <a
-              href={waCatalog}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#FF6F00] px-7 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
-            >
-              <MessageCircle className="h-5 w-5" />
-              {t("storefront.contactWhatsapp")}
-            </a>
+          {canPayMomo || waCatalog ? (
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {canPayMomo ? (
+                <Link
+                  href={`/boutique/${store.slug}/payer`}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#FF6F00] px-7 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
+                >
+                  <Smartphone className="h-5 w-5" />
+                  {t("storefront.payMomo")}
+                </Link>
+              ) : null}
+              {waCatalog ? (
+                <a
+                  href={waCatalog}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-7 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  {t("storefront.contactWhatsapp")}
+                </a>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </header>
@@ -189,7 +206,16 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
                     </div>
                   </Link>
 
-                  <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+                  <div className="flex flex-col gap-2 px-3 pb-3 sm:px-4 sm:pb-4">
+                    {inStock && product.price >= 200 ? (
+                      <Link
+                        href={`/boutique/${store.slug}/payer?product=${product.id}`}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#FF6F00] px-3 py-2.5 text-xs font-extrabold text-white transition hover:brightness-105 sm:text-sm"
+                      >
+                        <Smartphone className="h-3.5 w-3.5" />
+                        {t("storefront.payMomo")}
+                      </Link>
+                    ) : null}
                     <a
                       href={
                         contactPhone && inStock

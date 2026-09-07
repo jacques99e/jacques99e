@@ -32,6 +32,12 @@ export function allowPublicApi(pathname: string, method: string): { scope: strin
   if (pathname.startsWith("/api/boutique/orders") && m === "POST") {
     return { scope: "boutique-orders", max: 12, windowMs: 60 * 60 * 1000 };
   }
+  if (pathname.startsWith("/api/boutique/pay/status") && m === "GET") {
+    return { scope: "boutique-pay-status", max: 40, windowMs: 60 * 1000 };
+  }
+  if (pathname.startsWith("/api/boutique/pay") && m === "POST") {
+    return { scope: "boutique-pay", max: 8, windowMs: 60 * 60 * 1000 };
+  }
   if (pathname.includes("/api/education/public/") && pathname.endsWith("/enroll") && m === "POST") {
     return { scope: "edu-enroll", max: 20, windowMs: 60 * 60 * 1000 };
   }
