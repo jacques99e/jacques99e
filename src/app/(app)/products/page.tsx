@@ -25,6 +25,7 @@ import { ProductLandingButton } from "@/components/ProductLandingButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { markDay0ShareDone } from "@/lib/day0-mission";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
+import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
@@ -70,6 +71,15 @@ export default function ProductsPage() {
       boutiqueUrl,
     });
     markDay0ShareDone();
+    window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    setShowShareSheet(false);
+  };
+
+  const openPayLinkWhatsApp = () => {
+    const store = localStore.get();
+    const payUrl = boutiquePayUrl(store?.slug);
+    if (!payUrl) return;
+    const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
     window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
     setShowShareSheet(false);
   };
@@ -229,6 +239,13 @@ export default function ProductsPage() {
             <div className="mt-3 flex flex-col gap-2">
               <Button
                 type="button"
+                className="w-full bg-[#FF6F00] text-white hover:brightness-105"
+                onClick={openPayLinkWhatsApp}
+              >
+                Envoyer le lien paiement MoMo
+              </Button>
+              <Button
+                type="button"
                 className="w-full bg-[#25D366] text-white hover:bg-[#1da851]"
                 onClick={openCatalogWhatsApp}
               >
@@ -311,9 +328,19 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
             {syncing ? "Sync…" : "Sync cloud"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-[#FF6F00] text-[#FF6F00]"
+            onClick={openPayLinkWhatsApp}
+            disabled={!localStore.get()?.slug}
+          >
+            Lien MoMo
           </Button>
           <Button
             type="button"

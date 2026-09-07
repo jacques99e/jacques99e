@@ -28,6 +28,26 @@ export function boutiquePublicUrl(slug?: string | null): string | null {
   return `${PROD_APP_URL}/boutique/${clean}`;
 }
 
+export function boutiquePayUrl(slug?: string | null, productId?: string | null): string | null {
+  const base = boutiquePublicUrl(slug);
+  if (!base) return null;
+  if (productId?.trim()) return `${base}/payer?product=${encodeURIComponent(productId.trim())}`;
+  return `${base}/payer`;
+}
+
+export function boutiquePayShareText(storeName: string, url: string, productName?: string): string {
+  const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
+  const item = productName?.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80);
+  return [
+    item
+      ? `${safeName} — payez ${item} en MoMo :`
+      : `${safeName} — payez en MoMo :`,
+    url,
+    "",
+    "Vous payez tout seul sur votre téléphone. Je n’ai rien à ouvrir.",
+  ].join("\n");
+}
+
 export function boutiqueShareText(storeName: string, url: string): string {
   const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
   return [

@@ -10,6 +10,8 @@ import { apiFetch } from "@/lib/api-client";
 import { isPaidSubscriber, type BillingSubscription } from "@/lib/billing";
 import {
   BRING_STEP_IDS,
+  boutiquePayShareText,
+  boutiquePayUrl,
   boutiquePublicUrl,
   boutiqueShareText,
   markBringStepDone,
@@ -64,7 +66,9 @@ export default function BringClientsPage() {
 
   const storeName = store?.name || "Ma boutique";
   const url = boutiquePublicUrl(store?.slug);
+  const payUrl = boutiquePayUrl(store?.slug);
   const shareText = url ? boutiqueShareText(storeName, url) : "";
+  const payShareText = payUrl ? boutiquePayShareText(storeName, payUrl) : "";
   const stepId = BRING_STEP_IDS[progress.stepIndex] ?? "link";
   const copy = STEP_COPY[stepId];
   const doneCount = BRING_STEP_IDS.filter((id) => progress.completed.includes(id)).length;
@@ -168,6 +172,16 @@ export default function BringClientsPage() {
           Partager
         </Button>
       </div>
+      {payUrl ? (
+        <a
+          href={buildWhatsAppShareUrl(payShareText)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF6F00] text-sm font-semibold text-white"
+        >
+          Envoyer le lien paiement MoMo
+        </a>
+      ) : null}
     </div>
   ) : null;
 

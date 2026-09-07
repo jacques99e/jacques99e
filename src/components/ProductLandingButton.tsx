@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Sparkles, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
+import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import {
   getProductLanding,
   landingToDescription,
@@ -143,6 +145,20 @@ export function ProductLandingButton({
     );
   };
 
+  const sharePayLink = () => {
+    const store = localStore.get();
+    const payUrl = boutiquePayUrl(store?.slug, product.id);
+    if (!payUrl) {
+      setError("Publiez d’abord votre boutique (slug manquant).");
+      return;
+    }
+    window.open(
+      buildWhatsAppShareUrl(boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)),
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap gap-2">
@@ -164,6 +180,15 @@ export function ProductLandingButton({
         <Button type="button" size="sm" variant="outline" onClick={share}>
           <Share2 className="h-3.5 w-3.5" />
           Partager
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="border-[#FF6F00]/40 text-[#FF6F00]"
+          onClick={sharePayLink}
+        >
+          Lien MoMo
         </Button>
       </div>
       {message ? <p className="text-[11px] text-green-700">{message}</p> : null}
