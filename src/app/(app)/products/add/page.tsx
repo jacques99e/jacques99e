@@ -14,6 +14,8 @@ import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
+import { trackMetaFirstProduct } from "@/lib/meta-pixel";
+import { setTaskDone } from "@/lib/onboarding";
 import { getProducts, saveProduct, uploadProductImage } from "@/lib/products";
 
 export default function AddProductPage() {
@@ -90,7 +92,10 @@ export default function AddProductPage() {
         is_active: true,
       });
 
-      // Après le 1er produit : sheet de partage WhatsApp immédiat.
+      if (isFirstProduct) {
+        setTaskDone("product", true);
+        trackMetaFirstProduct(name.trim());
+      }
       router.push(
         isFirstProduct ? "/products?success=1&share=1&first=1" : "/products?success=1"
       );

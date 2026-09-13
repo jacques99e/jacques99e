@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { confirmPaydunyaInvoice, getPaymentMode } from "@/lib/paydunya";
+import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } from "@/lib/paydunya";
 import { allowIp } from "@/lib/rate-limit";
 import { notifyStoreSubscribers } from "@/lib/push-server";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
@@ -7,19 +7,7 @@ import { createServiceSupabase } from "@/lib/supabase/server";
 import { isSafeStoreSlug } from "@/lib/utils";
 
 function extractInvoiceToken(payload: Record<string, unknown>): string | null {
-  const direct = payload.token ?? payload.invoice_token;
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-  const paydunya = payload.paydunya;
-  if (paydunya && typeof paydunya === "object") {
-    const nested = (paydunya as { token?: unknown }).token;
-    if (typeof nested === "string" && nested.trim()) return nested.trim();
-  }
-  const invoice = payload.invoice;
-  if (invoice && typeof invoice === "object") {
-    const nested = (invoice as { token?: unknown }).token;
-    if (typeof nested === "string" && nested.trim()) return nested.trim();
-  }
-  return null;
+  return extractPaydunyaInvoiceToken(payload);
 }
 
 function publicView(

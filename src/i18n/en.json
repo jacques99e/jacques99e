@@ -304,6 +304,7 @@
   "onboarding.task.parcel": "Register a parcel",
   "onboarding.task.patient": "Create your first patient",
   "onboarding.task.portal": "Test public /suivi portal",
+  "onboarding.task.paylink": "Send the MoMo pay link to a customer",
   "onboarding.task.product": "Add your first product",
   "onboarding.task.remind": "Send a WhatsApp or SMS reminder",
   "onboarding.task.rendement": "Calculate yield kg/ha",

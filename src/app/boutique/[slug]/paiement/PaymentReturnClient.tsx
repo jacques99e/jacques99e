@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { resolveLandingUrl } from "@/lib/public-urls";
+import { trackMetaPurchase } from "@/lib/meta-pixel";
 import { formatCurrency } from "@/lib/utils";
 
 interface PaymentReturnClientProps {
@@ -55,6 +56,9 @@ export function PaymentReturnClient({
             if (data.product_name) setProductName(data.product_name);
             if (data.status !== "pending") {
               setState(data.status);
+              if (data.status === "succeeded") {
+                trackMetaPurchase(Number(data.amount) || 0, "boutique_momo");
+              }
               return;
             }
           }

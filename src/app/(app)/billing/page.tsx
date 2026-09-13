@@ -20,6 +20,7 @@ import {
 } from "@/lib/vitrine-plans";
 import { applyPendingPlan, applyPendingPlanPay } from "@/lib/modules/preference";
 import { apiFetch } from "@/lib/api-client";
+import { trackMetaMomoCheckout, trackMetaPurchase } from "@/lib/meta-pixel";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 
 interface BillingApiResponse {
@@ -163,6 +164,7 @@ export default function BillingPage() {
         return;
       }
       if (data.checkout_url) {
+        trackMetaMomoCheckout(amount);
         setNotice("Redirection vers le paiement Mobile Money...");
         window.location.href = data.checkout_url;
         return;
@@ -170,6 +172,7 @@ export default function BillingPage() {
       if (data.status === "pending") {
         setNotice("Paiement initialisé. Validation en cours.");
       } else {
+        trackMetaPurchase(amount, id);
         setNotice(`Paiement confirmé. Plan ${vitrinePlanByBillingId(id).title} activé.`);
       }
       await loadSubscription();

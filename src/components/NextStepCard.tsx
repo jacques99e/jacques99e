@@ -34,10 +34,10 @@ function resolveNextStep(
   if (!isDay0ShareDone() && salesCount < 1) {
     return {
       id: "share",
-      title: "Étape 2 — Partagez sur WhatsApp",
-      hint: "Envoyez votre catalogue ou publiez en Status.",
-      href: "/products?share=1&success=1",
-      cta: "Partager",
+      title: "Étape 2 — Envoyez le lien MoMo",
+      hint: "Le client paie tout seul. Vous n’ouvrez rien.",
+      href: "/products?share=1&first=1",
+      cta: "Envoyer le lien",
       Icon: Share2,
     };
   }

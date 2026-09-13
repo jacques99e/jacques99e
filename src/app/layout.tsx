@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/contexts/I18nContext";
+import { MetaPixel } from "@/components/MetaPixel";
 import { Providers } from "@/components/Providers";
 import { buildRootMetadata } from "@/lib/seo";
 
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="fr" className={plusJakarta.variable}>
       <body className={`${plusJakarta.className} min-h-screen`}>
         <I18nProvider>
+          <MetaPixel />
           <Providers>{children}</Providers>
         </I18nProvider>
       </body>

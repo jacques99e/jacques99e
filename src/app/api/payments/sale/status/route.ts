@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } from "@/lib/paydunya";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const db = await createServiceSupabase();
     const { data: payment, error } = await db
       .from("sale_payments")
-      .select("id,store_id,user_id,amount,status,sale_payload,sale_id,provider_tx_id")
+      .select("id,store_id,user_id,amount,status,sale_payload,sale_id,provider_tx_id,payload")
       .eq("provider_tx_id", tx)
       .maybeSingle();
 
@@ -38,6 +39,34 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
       if (store?.owner_id !== auth.userId) {
         return NextResponse.json({ success: false, error: "Accès refusé." }, { status: 403 });
+      }
+    }
+
+    if (payment.status === "pending") {
+      const stored =
+        payment.payload && typeof payment.payload === "object"
+          ? (payment.payload as Record<string, unknown>)
+          : {};
+      const token = extractPaydunyaInvoiceToken(stored);
+      if (token) {
+        const confirm = await confirmPaydunyaInvoice(token, getPaymentMode());
+        if (confirm.ok) {
+          const fulfilled = await fulfillPendingSalePayment(db, {
+            storeId: payment.store_id,
+            salePayload: payment.sale_payload as SaleCheckoutPayload,
+            providerTxId: payment.provider_tx_id,
+          });
+          if ("saleId" in fulfilled) {
+            return NextResponse.json({
+              success: true,
+              status: "succeeded",
+              transaction_id: tx,
+              sale_id: fulfilled.saleId,
+              amount: payment.amount,
+              sale_payload: payment.sale_payload,
+            });
+          }
+        }
       }
     }
 

@@ -7,6 +7,7 @@ import {
   getPaymentMode,
   getPaydunyaCheckoutCreateUrl,
   hasPaydunyaCredentials,
+  payloadWithInvoiceToken,
   validatePaydunyaKeys,
 } from "@/lib/paydunya";
 
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
       }
       await auth.serviceSupabase
         .from("billing_payments")
-        .update({ payload: data, updated_at: new Date().toISOString() })
+        .update({ payload: payloadWithInvoiceToken(data), updated_at: new Date().toISOString() })
         .eq("provider_tx_id", transactionId);
 
       const checkoutLink =

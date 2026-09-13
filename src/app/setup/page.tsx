@@ -21,7 +21,7 @@ import { setBusinessVertical } from "@/lib/onboarding";
 import { apiFetch } from "@/lib/api-client";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
-import { getLandingLoginUrl } from "@/lib/public-urls";
+import { getLandingLoginUrl, resolveLandingUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
 import {
   isValidWhatsAppPhone,
@@ -261,12 +261,32 @@ export default function SetupPage() {
           .from("stores")
           .update({ whatsapp: phone, phone })
           .eq("id", savedStore.id);
+
+        const meta = (user.user_metadata || {}) as Record<string, string>;
+        const utm = [meta.utm_source, meta.utm_medium, meta.utm_campaign]
+          .filter(Boolean)
+          .join(" / ");
+        void fetch(`${resolveLandingUrl()}/api/signup-alert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: user.user_metadata?.full_name || name,
+            email: user.email || "",
+            whatsapp: phone,
+            store: name,
+            slug: savedStore.slug,
+            stage: "store",
+            utm,
+          }),
+        }).catch(() => undefined);
       }
 
       const pendingPlan = readPendingPlan();
       const wantsPay = readPendingPlanPay();
       if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
         router.push(billingCheckoutPath(pendingPlan));
+      } else if (modules.includes("commerce")) {
+        router.push("/products/add");
       } else {
         router.push("/dashboard");
       }
@@ -296,7 +316,7 @@ export default function SetupPage() {
           </div>
           <h1 className="text-2xl font-bold text-wazo-green">Configurez votre activité</h1>
           <p className="mt-1 text-sm text-gray-600">
-            2 minutes — comme promis sur la vitrine. Caisse MoMo, modules et mode hors ligne inclus.
+            2 minutes : boutique, 1 produit, lien MoMo pour vos clients.
           </p>
         </div>
         {offlineInfo && (

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
-import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
+import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
 import {
   DAY0_STEPS,
   getDay0Progress,
@@ -23,7 +23,6 @@ import type { Product } from "@/types";
 
 function pathMatchesStep(pathname: string, stepId: Day0StepId): boolean {
   if (stepId === "product") return pathname.startsWith("/products/add");
-  if (stepId === "sale") return pathname.startsWith("/sales");
   if (stepId === "share") return pathname === "/products" || pathname.startsWith("/products?");
   return false;
 }
@@ -92,35 +91,14 @@ export function Day0Mission() {
 
   const shareWhatsApp = () => {
     const store = localStore.get();
-    const boutiqueUrl =
-      store?.slug && typeof window !== "undefined"
-        ? `${window.location.origin}/boutique/${store.slug}`
-        : undefined;
-    const text = buildWhatsAppCatalog({
-      storeName: store?.name || "Ma boutique",
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        stock: p.stock_quantity ?? 0,
-        stock_quantity: p.stock_quantity ?? 0,
-        category: "Autre",
-        createdAt: p.created_at,
-      })),
-      boutiqueUrl,
-    });
+    const payUrl = boutiquePayUrl(store?.slug);
+    if (!payUrl) return;
+    const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
     markDay0ShareDone();
     window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
-    // Si produit + vente déjà faits, la mission se clôt au prochain refresh.
-    const sales = storeId ? readLocalSales(storeId) : [];
-    if (products.length >= 1 && sales.length >= 1) {
-      markDay0Complete();
-      setOpen(false);
-    } else {
-      setFlags((f) => ({ ...f, shareDone: true }));
-      setStepId(sales.length < 1 ? "sale" : null);
-      if (sales.length >= 1) setOpen(false);
-    }
+    markDay0Complete();
+    setFlags((f) => ({ ...f, shareDone: true }));
+    setOpen(false);
   };
 
   // Sur /products avec sheet partage : ne pas recouvrir l'action.
@@ -130,7 +108,7 @@ export function Day0Mission() {
         <div className="mx-auto flex max-w-lg items-center gap-3 rounded-2xl border border-[#25D366]/40 bg-white px-3 py-2.5 shadow-lg">
           <Rocket className="h-4 w-4 shrink-0 text-[#128C7E]" />
           <p className="min-w-0 flex-1 text-xs font-medium text-gray-800">
-            Mission {stepIndex}/3 — cliquez « Partager le catalogue WhatsApp »
+            Mission {stepIndex}/2 — cliquez « Envoyer le lien paiement MoMo »
           </p>
         </div>
       </div>
@@ -144,7 +122,7 @@ export function Day0Mission() {
         <div className="mx-auto flex max-w-lg items-center gap-3 rounded-2xl border border-[#075E54]/25 bg-white px-3 py-2.5 shadow-lg">
           <Rocket className="h-4 w-4 shrink-0 text-[#075E54]" />
           <p className="min-w-0 flex-1 text-xs font-medium text-gray-800">
-            Mission {stepIndex}/3 — {step.title}
+            Mission {stepIndex}/2 — {step.title}
           </p>
         </div>
       </div>
@@ -162,7 +140,7 @@ export function Day0Mission() {
         <div className="mb-3 flex items-center gap-2 text-[#075E54]">
           <Rocket className="h-5 w-5" />
           <span className="text-xs font-semibold uppercase tracking-wide">
-            Mission du jour · {stepIndex}/3
+            Mission du jour · {stepIndex}/2
           </span>
         </div>
 
@@ -170,7 +148,6 @@ export function Day0Mission() {
           {DAY0_STEPS.map((s) => {
             const done =
               (s.id === "product" && flags.productDone) ||
-              (s.id === "sale" && flags.saleDone) ||
               (s.id === "share" && flags.shareDone);
             const current = s.id === stepId;
             return (
@@ -193,7 +170,6 @@ export function Day0Mission() {
           {DAY0_STEPS.map((s, i) => {
             const complete =
               (s.id === "product" && flags.productDone) ||
-              (s.id === "sale" && flags.saleDone) ||
               (s.id === "share" && flags.shareDone);
             const current = s.id === stepId;
             return (
@@ -225,11 +201,11 @@ export function Day0Mission() {
                 onClick={shareWhatsApp}
                 disabled={products.length === 0}
               >
-                Partager le catalogue WhatsApp
+                Envoyer le lien paiement MoMo
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/products?share=1">Voir mes produits</Link>
+                <Link href="/products?share=1&first=1">Voir mon lien</Link>
               </Button>
             </>
           ) : (
@@ -241,7 +217,7 @@ export function Day0Mission() {
             </Button>
           )}
           <p className="text-center text-[11px] text-gray-500">
-            Terminez ces 3 étapes pour démarrer vraiment — ~5 minutes.
+            1 produit, 1 lien. Le client paie tout seul.
           </p>
         </div>
       </div>

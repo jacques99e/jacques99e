@@ -26,6 +26,7 @@ import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { markDay0ShareDone } from "@/lib/day0-mission";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
+import { setTaskDone } from "@/lib/onboarding";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
@@ -80,6 +81,8 @@ export default function ProductsPage() {
     const payUrl = boutiquePayUrl(store?.slug);
     if (!payUrl) return;
     const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
+    markDay0ShareDone();
+    setTaskDone("paylink", true);
     window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
     setShowShareSheet(false);
   };
@@ -225,16 +228,18 @@ export default function ProductsPage() {
         {showSuccess && (
           <p className="rounded-xl bg-green-50 p-3 text-sm text-green-700 shadow-sm">
             Produit enregistré avec succès.
-            {isFirstProduct ? " Prochaine étape : partagez-le sur WhatsApp." : null}
+            {isFirstProduct
+              ? " Prochaine étape : envoyez le lien MoMo. Le client paie tout seul."
+              : null}
           </p>
         )}
         {showShareSheet && products.length > 0 ? (
           <section className="rounded-2xl border border-[#25D366]/40 bg-[#25D366]/10 p-4 shadow-sm">
             <h2 className="text-sm font-bold text-[#128C7E]">
-              {isFirstProduct ? "🎉 1er produit — partagez maintenant" : "Partager sur WhatsApp"}
+              {isFirstProduct ? "1er produit — envoyez le lien MoMo" : "Partager sur WhatsApp"}
             </h2>
             <p className="mt-1 text-xs text-gray-600">
-              Envoyez votre catalogue à un client ou publiez-le en Status WhatsApp.
+              Le client paie tout seul. Vous n’ouvrez rien.
             </p>
             <div className="mt-3 flex flex-col gap-2">
               <Button

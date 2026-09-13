@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Smartphone } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { resolveLandingUrl } from "@/lib/public-urls";
+import { trackMetaMomoCheckout } from "@/lib/meta-pixel";
 import { formatCurrency } from "@/lib/utils";
 import type { Product, Store as StoreType } from "@/types";
 
@@ -64,6 +65,7 @@ export function PayClient({ store, products, selectedProduct }: PayClientProps) 
         setError(data.error || t("storefront.payFailed"));
         return;
       }
+      trackMetaMomoCheckout(total);
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
         return;

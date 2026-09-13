@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/billing";
-import { confirmPaydunyaInvoice, getPaymentMode } from "@/lib/paydunya";
+import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } from "@/lib/paydunya";
 import { secretsEqual } from "@/lib/secret-compare";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { notifyStoreSubscribers } from "@/lib/push-server";
@@ -40,19 +40,7 @@ function assertCallbackSecret(request: NextRequest): NextResponse | null {
 }
 
 function extractInvoiceToken(payload: Record<string, unknown>): string | null {
-  const direct = payload.token ?? payload.invoice_token;
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-  const invoice = payload.invoice;
-  if (invoice && typeof invoice === "object") {
-    const nested = (invoice as { token?: unknown }).token;
-    if (typeof nested === "string" && nested.trim()) return nested.trim();
-  }
-  const data = payload.data;
-  if (data && typeof data === "object") {
-    const nested = (data as { token?: unknown }).token;
-    if (typeof nested === "string" && nested.trim()) return nested.trim();
-  }
-  return null;
+  return extractPaydunyaInvoiceToken(payload);
 }
 
 function extractTransactionId(payload: Record<string, unknown>, fallback: string | null): string | null {
@@ -100,13 +88,29 @@ function isSuccessfulPayment(payload: Record<string, unknown>): boolean {
   return false;
 }
 
-async function paymentConfirmed(payload: Record<string, unknown>): Promise<boolean> {
-  const invoiceToken = extractInvoiceToken(payload);
+async function paymentConfirmed(
+  payload: Record<string, unknown>,
+  storedPayload?: Record<string, unknown> | null
+): Promise<boolean> {
+  const invoiceToken =
+    extractInvoiceToken(payload) ||
+    extractInvoiceToken((storedPayload || {}) as Record<string, unknown>);
   if (invoiceToken) {
     const confirm = await confirmPaydunyaInvoice(invoiceToken, getPaymentMode());
     return confirm.ok;
   }
   return isSuccessfulPayment(payload);
+}
+
+function hasConfirmSignal(
+  payload: Record<string, unknown>,
+  storedPayload?: Record<string, unknown> | null
+): boolean {
+  return Boolean(
+    extractInvoiceToken(payload) ||
+      extractInvoiceToken((storedPayload || {}) as Record<string, unknown>) ||
+      isSuccessfulPayment(payload)
+  );
 }
 
 async function handleSaleCallback(
@@ -123,7 +127,11 @@ async function handleSaleCallback(
 
   if (error || !payment) return null;
 
-  const confirmed = await paymentConfirmed(payload);
+  const stored =
+    payment.payload && typeof payment.payload === "object"
+      ? (payment.payload as Record<string, unknown>)
+      : {};
+  const confirmed = await paymentConfirmed(payload, stored);
   const success =
     confirmed ||
     (emptyPayloadAssumeSuccess && Object.keys(payload).length === 0);
@@ -131,6 +139,14 @@ async function handleSaleCallback(
   const now = new Date().toISOString();
 
   if (!success) {
+    if (!hasConfirmSignal(payload, stored) && !emptyPayloadAssumeSuccess) {
+      return NextResponse.json({
+        success: true,
+        kind: "sale",
+        transaction_id: txId,
+        status: "pending",
+      });
+    }
     await serviceSupabase
       .from("sale_payments")
       .update({ status: "failed", payload, updated_at: now })
@@ -199,12 +215,11 @@ async function handleSaleCallback(
   });
 }
 
-export async function POST(request: NextRequest) {
+async function handleCallback(request: NextRequest, payload: Record<string, unknown>) {
   try {
     const authError = assertCallbackSecret(request);
     if (authError) return authError;
 
-    const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const fallbackTx = request.nextUrl.searchParams.get("tx");
     const kind = request.nextUrl.searchParams.get("kind");
     const txId = extractTransactionId(payload, fallbackTx);
@@ -232,7 +247,7 @@ export async function POST(request: NextRequest) {
 
     const { data: payment, error: paymentError } = await serviceSupabase
       .from("billing_payments")
-      .select("id,store_id,plan,provider")
+      .select("id,store_id,plan,provider,payload")
       .eq("provider_tx_id", txId)
       .maybeSingle();
 
@@ -240,7 +255,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Paiement inconnu." }, { status: 404 });
     }
 
-    const success = await paymentConfirmed(payload);
+    const stored =
+      payment.payload && typeof payment.payload === "object"
+        ? (payment.payload as Record<string, unknown>)
+        : {};
+    const success = await paymentConfirmed(payload, stored);
+    if (!success && !hasConfirmSignal(payload, stored)) {
+      return NextResponse.json({
+        success: true,
+        kind: "billing",
+        transaction_id: txId,
+        status: "pending",
+      });
+    }
     const now = new Date().toISOString();
     await serviceSupabase
       .from("billing_payments")
@@ -278,12 +305,26 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  const authError = assertCallbackSecret(request);
-  if (authError) return authError;
+export async function POST(request: NextRequest) {
+  const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  return handleCallback(request, payload);
+}
 
-  return NextResponse.json({
-    success: true,
-    message: "Callback paiement actif.",
-  });
+export async function GET(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const tx = params.get("tx");
+  if (!tx) {
+    const authError = assertCallbackSecret(request);
+    if (authError) return authError;
+    return NextResponse.json({
+      success: true,
+      message: "Callback paiement actif.",
+    });
+  }
+
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of params.entries()) {
+    payload[key] = value;
+  }
+  return handleCallback(request, payload);
 }

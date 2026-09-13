@@ -85,18 +85,17 @@ export function WelcomeNewUserBanner({ storeName, salesCount }: WelcomeNewUserBa
       <div className="flex items-center gap-2 text-[#075E54]">
         <PartyPopper className="h-5 w-5" />
         <h2 className="text-sm font-bold">
-          Bienvenue{storeName ? `, ${storeName}` : ""} — mission du jour ({progress.done}/3)
+          Bienvenue{storeName ? `, ${storeName}` : ""} — mission du jour ({progress.done}/2)
         </h2>
       </div>
       <p className="mt-2 text-xs text-gray-600">
-        Trois étapes pour activer votre boutique. Terminez-les pour vendre vraiment.
+        1 produit, 1 lien MoMo. Le client paie tout seul.
       </p>
 
       <ol className="mt-4 space-y-2">
         {DAY0_STEPS.map((step, i) => {
           const done =
             (step.id === "product" && progress.productDone) ||
-            (step.id === "sale" && progress.saleDone) ||
             (step.id === "share" && progress.shareDone);
           return (
             <li key={step.href}>

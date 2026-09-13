@@ -314,6 +314,7 @@
   "onboarding.task.parcel": "Enregistrer une parcelle",
   "onboarding.task.patient": "Créer un premier patient",
   "onboarding.task.portal": "Tester le portail public /suivi",
+  "onboarding.task.paylink": "Envoyer le lien paiement MoMo au client",
   "onboarding.task.product": "Ajouter un premier produit",
   "onboarding.task.remind": "Envoyer un rappel WhatsApp ou SMS",
   "onboarding.task.rendement": "Calculer le rendement kg/ha",

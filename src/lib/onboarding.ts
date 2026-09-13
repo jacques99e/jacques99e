@@ -29,9 +29,8 @@ export function taskLabelKey(taskId: string): string {
 export const ONBOARDING_BY_VERTICAL: Record<BusinessVertical, OnboardingTaskDef[]> = {
   commerce: [
     { id: "product", href: "/products/add" },
+    { id: "paylink", href: "/products?share=1&first=1" },
     { id: "sale", href: "/sales" },
-    { id: "catalog", href: "/products" },
-    { id: "vitrine", href: "/profile" },
     { id: "billing", href: BILLING_UPGRADE_HREF },
   ],
   health: [

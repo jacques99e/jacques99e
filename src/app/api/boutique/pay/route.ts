@@ -7,6 +7,7 @@ import {
   getPaymentMode,
   getPaydunyaCheckoutCreateUrl,
   hasPaydunyaCredentials,
+  payloadWithInvoiceToken,
   validatePaydunyaKeys,
 } from "@/lib/paydunya";
 import { allowIp } from "@/lib/rate-limit";
@@ -284,13 +285,13 @@ export async function POST(request: Request) {
   await db
     .from("sale_payments")
     .update({
-      payload: {
+      payload: payloadWithInvoiceToken({
         source: "boutique",
         slug,
         customer_name: customerName || null,
         customer_phone: customerPhone || null,
         paydunya: data,
-      },
+      }),
       updated_at: new Date().toISOString(),
     })
     .eq("provider_tx_id", transactionId);

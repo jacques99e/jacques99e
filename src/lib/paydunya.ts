@@ -67,6 +67,63 @@ export type PaydunyaConfirmResult = {
   error?: string;
 };
 
+function tokenFromUnknown(value: unknown): string | null {
+  if (typeof value === "string" && value.trim() && !value.startsWith("http")) {
+    return value.trim();
+  }
+  return null;
+}
+
+function tokenFromCheckoutUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.startsWith("http")) return null;
+  try {
+    const url = new URL(value);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const last = parts[parts.length - 1] || "";
+    return last.length >= 8 ? last : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Token facture PayDunya (création, callback, ou URL checkout). */
+export function extractPaydunyaInvoiceToken(payload: Record<string, unknown> | null | undefined): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const direct = tokenFromUnknown(payload.token ?? payload.invoice_token);
+  if (direct) return direct;
+
+  const invoice = payload.invoice;
+  if (invoice && typeof invoice === "object") {
+    const nested = tokenFromUnknown((invoice as { token?: unknown }).token);
+    if (nested) return nested;
+  }
+
+  const paydunya = payload.paydunya;
+  if (paydunya && typeof paydunya === "object") {
+    const nested = extractPaydunyaInvoiceToken(paydunya as Record<string, unknown>);
+    if (nested) return nested;
+  }
+
+  const data = payload.data;
+  if (data && typeof data === "object") {
+    const nested = extractPaydunyaInvoiceToken(data as Record<string, unknown>);
+    if (nested) return nested;
+  }
+
+  return (
+    tokenFromCheckoutUrl(payload.response_text) ||
+    tokenFromCheckoutUrl(payload.url) ||
+    tokenFromCheckoutUrl(payload.checkout_url)
+  );
+}
+
+export function payloadWithInvoiceToken(
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  const token = extractPaydunyaInvoiceToken(payload);
+  return token ? { ...payload, token } : payload;
+}
+
 export async function confirmPaydunyaInvoice(
   invoiceToken: string,
   mode: PaymentMode = getPaymentMode()

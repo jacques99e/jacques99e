@@ -13,6 +13,10 @@
     {
       "path": "/api/cron/submit-indexing",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-payments",
+      "schedule": "0 * * * *"
     }
   ]
 }
