@@ -303,14 +303,7 @@ export default function DashboardPage() {
   const doneCount = onboarding.done;
   const isActivated = productsCount >= 1 && salesCount >= 1;
   const proUpsellHref =
-    isActivated &&
-    billing &&
-    !(
-      normalizeBillingStatus(billing) === "active" &&
-      (billing.plan === "pro" || billing.plan === "business")
-    )
-      ? billingPayHref("pro")
-      : null;
+    isActivated && billing && billingNeedsAttention ? billingPayHref("pro") : null;
 
   return (
     <>
