@@ -1,6 +1,5 @@
 import {
   generateAssistantText,
-  getAssistantModel,
   humanizeAiError,
   isAssistantSimulated,
 } from "@/lib/assistant-ai";
@@ -72,9 +71,10 @@ export async function generateProductLanding(input: {
 
   try {
     const text = await generateAssistantText({
-      model: getAssistantModel(),
-      maxOutputTokens: 500,
+      model: "google/gemini-2.5-flash",
+      maxOutputTokens: 1200,
       temperature: 0.6,
+      fallbackModels: ["google/gemini-2.5-flash", "openai/gpt-5-mini"],
       prompt: `Tu rédiges une mini page de vente pour un commerçant en Afrique francophone.
 
 Produit: ${input.name}
@@ -99,7 +99,6 @@ Règles: français simple, pas de prix inventé autre que celui fourni, pas de m
       return {
         content: fallback,
         source: "fallback",
-        error: "Réponse IA vide",
       };
     }
 

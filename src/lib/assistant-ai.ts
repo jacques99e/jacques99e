@@ -64,32 +64,39 @@ type GenerateOptions = {
 
 /**
  * Appel texte / vision via AI Gateway (AI_GATEWAY_API_KEY ou OIDC Vercel).
+ * Enchaîne les modèles si la réponse est vide (gpt-5-mini peut tout dépenser en raisonnement).
  */
 export async function generateAssistantText(
   options: GenerateOptions
 ): Promise<string> {
   const modelId = options.model || getAssistantModel();
-  const fallbacks = options.fallbackModels || [
-    modelId,
-    "openai/gpt-5-mini",
-    "google/gemini-2.5-flash",
+  const fallbacks = [
+    ...new Set(
+      options.fallbackModels?.length
+        ? options.fallbackModels
+        : [modelId, "google/gemini-2.5-flash", "openai/gpt-5-mini"]
+    ),
   ];
+  if (!fallbacks.includes(modelId)) fallbacks.unshift(modelId);
 
-  const common = {
-    model: gateway(modelId),
-    maxOutputTokens: options.maxOutputTokens ?? 400,
-    temperature: options.temperature ?? 0.5,
-    providerOptions: {
-      gateway: {
-        models: [...new Set(fallbacks)],
-      },
-    },
-  };
-
-  const result =
-    "messages" in options && options.messages
-      ? await generateText({ ...common, messages: options.messages })
-      : await generateText({ ...common, prompt: options.prompt });
-
-  return (result.text || "").trim();
+  let lastError: unknown;
+  for (const id of fallbacks) {
+    try {
+      const common = {
+        model: gateway(id),
+        maxOutputTokens: options.maxOutputTokens ?? 800,
+        temperature: options.temperature ?? 0.5,
+      };
+      const result =
+        "messages" in options && options.messages
+          ? await generateText({ ...common, messages: options.messages })
+          : await generateText({ ...common, prompt: options.prompt });
+      const text = (result.text || "").trim();
+      if (text) return text;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (lastError) throw lastError;
+  return "";
 }

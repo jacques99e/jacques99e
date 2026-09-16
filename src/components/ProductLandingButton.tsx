@@ -116,11 +116,11 @@ export function ProductLandingButton({
       }
 
       onUpdated?.(description);
+      setError("");
       if (data.source === "ai") {
         setMessage("Page vente générée par l’IA — description mise à jour.");
       } else {
-        setMessage("Page vente créée (modèle local) — description mise à jour.");
-        if (data.warning) setError(data.warning);
+        setMessage("Page vente créée — description mise à jour.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
