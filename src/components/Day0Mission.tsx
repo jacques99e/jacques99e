@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
-import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
+import {
+  boutiquePayUrl,
+  boutiqueProductUrl,
+  productMoMoShareText,
+  productShareText,
+  readFirstProductShareDraft,
+} from "@/lib/bring-clients";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import {
   DAY0_STEPS,
@@ -90,18 +96,26 @@ export function Day0Mission() {
   const stepIndex = DAY0_STEPS.findIndex((s) => s.id === stepId) + 1;
   const onTargetPage = pathMatchesStep(pathname, stepId);
   const store = localStore.get();
-  const payShareUrl = boutiquePayUrl(store?.slug);
+  const draft = typeof window === "undefined" ? null : readFirstProductShareDraft();
+  const shareProduct = products.find((p) => p.id === draft?.productId) || products[0];
+  const payShareUrl = boutiquePayUrl(store?.slug, shareProduct?.id || draft?.productId);
+  const productShareUrl = boutiqueProductUrl(store?.slug, shareProduct?.id || draft?.productId);
   const payShareQuote = payShareUrl
-    ? boutiquePayShareText(store?.name || "Ma boutique", payShareUrl)
+    ? productMoMoShareText({
+        storeName: store?.name || "Ma boutique",
+        payUrl: payShareUrl,
+        productName: shareProduct?.name || draft?.name,
+        pitch: draft?.pitch,
+      })
     : "";
+  const shareHref = shareProduct?.id || draft?.productId
+    ? `/products?share=1&first=1&product=${encodeURIComponent(shareProduct?.id || draft?.productId || "")}`
+    : "/products?share=1&first=1";
 
   const shareWhatsApp = () => {
-    const store = localStore.get();
-    const payUrl = boutiquePayUrl(store?.slug);
-    if (!payUrl) return;
-    const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
+    if (!payShareUrl || !payShareQuote) return;
     markDay0ShareDone();
-    openWhatsAppShare(text);
+    openWhatsAppShare(payShareQuote);
     markDay0Complete();
     setFlags((f) => ({ ...f, shareDone: true }));
     setOpen(false);
@@ -205,12 +219,34 @@ export function Day0Mission() {
                 type="button"
                 className="w-full bg-[#25D366] text-white hover:bg-[#1da851]"
                 onClick={shareWhatsApp}
-                disabled={products.length === 0}
+                disabled={!payShareUrl}
               >
                 Envoyer le lien paiement MoMo
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              {payShareUrl ? (
+              {productShareUrl ? (
+                <ShareFacebookButton
+                  url={productShareUrl}
+                  quote={productShareText(
+                    store?.name || "Ma boutique",
+                    shareProduct?.name || draft?.name || "Produit",
+                    productShareUrl,
+                    shareProduct?.price
+                  )}
+                  storeId={store?.id}
+                  kind="product"
+                  productId={shareProduct?.id || draft?.productId}
+                  className="w-full"
+                  buttonClassName="w-full"
+                  label="Partager aussi sur Facebook"
+                  onShared={() => {
+                    markDay0ShareDone();
+                    markDay0Complete();
+                    setFlags((f) => ({ ...f, shareDone: true }));
+                    setOpen(false);
+                  }}
+                />
+              ) : payShareUrl ? (
                 <ShareFacebookButton
                   url={payShareUrl}
                   quote={payShareQuote}
@@ -228,7 +264,7 @@ export function Day0Mission() {
                 />
               ) : null}
               <Button asChild variant="outline" className="w-full">
-                <Link href="/products?share=1&first=1">Voir mon lien</Link>
+                <Link href={shareHref}>Voir mon lien</Link>
               </Button>
             </>
           ) : (

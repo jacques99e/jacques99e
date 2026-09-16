@@ -14,8 +14,7 @@ import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
-import { boutiquePublicUrl } from "@/lib/bring-clients";
-import { buildFacebookShareUrl } from "@/lib/facebook-share";
+import { saveFirstProductShareDraft } from "@/lib/bring-clients";
 import { trackMetaFirstProduct } from "@/lib/meta-pixel";
 import { setTaskDone } from "@/lib/onboarding";
 import { getProducts, saveProduct, uploadProductImage } from "@/lib/products";
@@ -84,7 +83,7 @@ export default function AddProductPage() {
         }
       }
 
-      await saveProduct(storeId, {
+      const saved = await saveProduct(storeId, {
         name: name.trim(),
         description: description.trim() || null,
         price: Number(price),
@@ -97,9 +96,16 @@ export default function AddProductPage() {
       if (isFirstProduct) {
         setTaskDone("product", true);
         trackMetaFirstProduct(name.trim());
+        saveFirstProductShareDraft({
+          productId: saved.id,
+          name: saved.name,
+          pitch: whatsappPitch.trim() || undefined,
+        });
       }
       router.push(
-        isFirstProduct ? "/products?success=1&share=1&first=1" : "/products?success=1"
+        isFirstProduct
+          ? `/products?success=1&share=1&first=1&product=${encodeURIComponent(saved.id)}`
+          : "/products?success=1"
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
@@ -189,44 +195,11 @@ export default function AddProductPage() {
 
           {whatsappPitch ? (
             <div className="rounded-xl border border-green-100 bg-green-50 p-3">
-              <p className="text-xs font-semibold text-green-900">Pitch WhatsApp suggéré</p>
+              <p className="text-xs font-semibold text-green-900">Pitch WhatsApp prêt</p>
               <p className="mt-1 whitespace-pre-wrap text-xs text-green-800">{whatsappPitch}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="bg-[#075E54] hover:bg-[#064e47]"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(whatsappPitch);
-                    window.open(
-                      `https://wa.me/?text=${encodeURIComponent(whatsappPitch)}`,
-                      "_blank",
-                      "noopener,noreferrer"
-                    );
-                  }}
-                >
-                  Partager sur WhatsApp
-                </Button>
-                {boutiquePublicUrl(localStore.get()?.slug) ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="border-[#1877F2]/40 text-[#1877F2]"
-                    onClick={() => {
-                      const url = boutiquePublicUrl(localStore.get()?.slug);
-                      if (!url) return;
-                      window.open(
-                        buildFacebookShareUrl(url, whatsappPitch),
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }}
-                  >
-                    Facebook
-                  </Button>
-                ) : null}
-              </div>
+              <p className="mt-2 text-[11px] text-green-900/80">
+                Il partira avec le lien MoMo du produit après enregistrement — pas avant.
+              </p>
             </div>
           ) : null}
 

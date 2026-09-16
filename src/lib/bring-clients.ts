@@ -55,6 +55,44 @@ export function boutiquePayShareText(storeName: string, url: string, productName
   ].join("\n");
 }
 
+const FIRST_SHARE_KEY = "wazo_first_product_share";
+
+export type FirstProductShareDraft = {
+  productId: string;
+  name: string;
+  pitch?: string;
+};
+
+export function saveFirstProductShareDraft(draft: FirstProductShareDraft): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(FIRST_SHARE_KEY, JSON.stringify(draft));
+}
+
+export function readFirstProductShareDraft(): FirstProductShareDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(FIRST_SHARE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as FirstProductShareDraft;
+    if (!parsed?.productId || !parsed?.name) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Message WhatsApp : pitch IA s’il existe, sinon le texte MoMo du produit. */
+export function productMoMoShareText(opts: {
+  storeName: string;
+  payUrl: string;
+  productName?: string;
+  pitch?: string | null;
+}): string {
+  const pitch = opts.pitch?.trim();
+  if (pitch) return appendShareUrl(pitch, opts.payUrl);
+  return boutiquePayShareText(opts.storeName, opts.payUrl, opts.productName);
+}
+
 export function boutiqueShareText(storeName: string, url: string): string {
   const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
   return [
