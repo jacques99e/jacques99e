@@ -5,6 +5,7 @@ import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } f
 import { notifyStoreSubscribers } from "@/lib/push-server";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { nudgeEndingTrials } from "@/lib/trial-nudge";
 
 export const maxDuration = 60;
 
@@ -116,11 +117,19 @@ export async function GET(request: Request) {
     }
   }
 
+  let trialNudges = 0;
+  try {
+    trialNudges = await nudgeEndingTrials(db);
+  } catch (e) {
+    console.error("[cron] trial-nudge", e instanceof Error ? e.message : e);
+  }
+
   return NextResponse.json({
     success: true,
     salesOk,
     salesExpired,
     billingOk,
     billingExpired,
+    trialNudges,
   });
 }

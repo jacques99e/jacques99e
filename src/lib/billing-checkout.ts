@@ -28,8 +28,9 @@ export function billingUpgradeHref(sub: BillingSubscription | null): string {
 }
 
 export function billingDashboardHref(sub: BillingSubscription | null): string {
-  if (!sub) return billingPayHref("pro");
+  if (!sub) return BILLING_MANAGE_HREF;
   const status = normalizeBillingStatus(sub);
   if (status === "active" && sub.plan !== "starter") return BILLING_MANAGE_HREF;
+  if (status === "trial") return BILLING_MANAGE_HREF;
   return billingPayHref("pro");
 }

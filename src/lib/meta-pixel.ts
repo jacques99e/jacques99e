@@ -28,6 +28,15 @@ export function trackMetaMomoCheckout(value?: number) {
   });
 }
 
+export function trackMetaStartTrial(plan = "pro") {
+  trackMetaEvent("StartTrial", {
+    content_name: plan,
+    content_category: "subscription",
+    currency: "EUR",
+    value: plan === "business" ? 24.99 : 9.99,
+  });
+}
+
 export function trackMetaPurchase(value: number, contentName = "pro") {
   trackMetaEvent("Purchase", {
     content_name: contentName,

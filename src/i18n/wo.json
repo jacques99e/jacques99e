@@ -158,6 +158,8 @@
   "dashboard.billing.manageActive": "Manage subscription",
   "dashboard.billing.payPro": "Pay for PRO — Mobile Money",
   "dashboard.billing.trial": "Free trial in progress ({days} day(s) left).",
+  "dashboard.billing.trialEnding": "Trial: {days} day(s) left. Switch to PRO to keep the app.",
+  "dashboard.billing.continueTrial": "Continue trial",
   "dashboard.chart7days": "7 fan yu weesu",
   "dashboard.commerce.items": "{count} item(s)",
   "dashboard.commerce.latestSales": "Latest sales",

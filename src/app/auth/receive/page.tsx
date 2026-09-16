@@ -7,7 +7,6 @@ import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { getLandingLoginUrl } from "@/lib/public-urls";
 import {
   applyPendingModule,
-  isPaidVitrinePlan,
   savePendingPlan,
   savePendingPlanPay,
 } from "@/lib/modules/preference";
@@ -55,7 +54,7 @@ export default function AuthReceivePage() {
           const params = new URLSearchParams(window.location.search);
           const pendingPlan = params.get("plan");
           if (pendingPlan) savePendingPlan(pendingPlan);
-          if (params.get("pay") === "1" || (pendingPlan && isPaidVitrinePlan(pendingPlan))) {
+          if (params.get("pay") === "1") {
             savePendingPlanPay(true);
           }
           goDashboard();

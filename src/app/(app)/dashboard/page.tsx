@@ -22,6 +22,7 @@ import { getTrialDaysLeft, isBillingUsable, isPaidSubscriber, normalizeBillingSt
 import { billingDashboardHref, billingPayHref, BILLING_MANAGE_HREF } from "@/lib/billing-checkout";
 import { vitrinePlanByBillingId } from "@/lib/vitrine-plans";
 import { apiFetch } from "@/lib/api-client";
+import { trackMetaStartTrial } from "@/lib/meta-pixel";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlerts } from "@/hooks/useAlerts";
@@ -113,8 +114,10 @@ export default function DashboardPage() {
 
   const onboarding = getOnboardingProgress(businessVertical);
   const billingStatus = billing ? normalizeBillingStatus(billing) : null;
+  const trialDaysLeft = billing ? getTrialDaysLeft(billing) : 0;
   const billingNeedsAttention =
-    billingStatus === "expired" || billingStatus === "trial";
+    billingStatus === "expired" || (billingStatus === "trial" && trialDaysLeft <= 3);
+  const showTrialInfo = billingStatus === "trial" && trialDaysLeft > 3;
 
   useEffect(() => {
     if (!activeModules.length) return;
@@ -267,6 +270,14 @@ export default function DashboardPage() {
         };
         if (response.ok && data.success && data.subscription) {
           setBilling(data.subscription);
+          const status = normalizeBillingStatus(data.subscription);
+          if (status === "trial" && typeof window !== "undefined") {
+            const key = "wazo_start_trial_pixel";
+            if (!sessionStorage.getItem(key)) {
+              sessionStorage.setItem(key, "1");
+              trackMetaStartTrial(data.subscription.plan === "business" ? "business" : "pro");
+            }
+          }
         }
       } catch {
         // Dashboard continues in local/offline mode.
@@ -378,6 +389,20 @@ export default function DashboardPage() {
             </div>
           </section>
         ) : null}
+        {showTrialInfo ? (
+          <section className="rounded-2xl bg-amber-50 p-3 text-xs text-amber-800 shadow-sm">
+            <p className="font-semibold">
+              {t("dashboard.billing.label")}: {vitrinePlanByBillingId(billing!.plan).title}
+            </p>
+            <p>{t("dashboard.billing.trial", { days: trialDaysLeft })}</p>
+            <Link
+              href="/products/add"
+              className="mt-2 inline-block rounded-lg bg-[#075E54] px-3 py-1.5 text-xs font-semibold text-white no-underline hover:opacity-90"
+            >
+              {t("dashboard.billing.continueTrial")}
+            </Link>
+          </section>
+        ) : null}
         {billing && billingNeedsAttention ? (
           <section
             className={`rounded-2xl p-3 text-xs shadow-sm ${
@@ -392,10 +417,10 @@ export default function DashboardPage() {
             <p>
               {billingStatus === "expired"
                 ? t("dashboard.billing.expired")
-                : t("dashboard.billing.trial", { days: getTrialDaysLeft(billing) })}
+                : t("dashboard.billing.trialEnding", { days: trialDaysLeft })}
             </p>
             <Link
-              href={billingDashboardHref(billing)}
+              href={billingPayHref("pro")}
               className="mt-2 inline-block rounded-lg bg-[#FF6F00] px-3 py-1.5 text-xs font-semibold text-white no-underline hover:opacity-90"
             >
               {t("dashboard.billing.payPro")}
