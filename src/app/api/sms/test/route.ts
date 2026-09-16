@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { allowRequest } from "@/lib/rate-limit";
 import { looksLikePhone, sendSms } from "@/lib/sms";
+import { normalizeWhatsAppPhone } from "@/lib/whatsapp-phone";
 
 export async function POST(request: Request) {
   const auth = await requireAuthContext();
@@ -19,6 +20,23 @@ export async function POST(request: Request) {
   const phone = body.phone?.trim();
   if (!phone || !looksLikePhone(phone)) {
     return NextResponse.json({ success: false, error: "Numéro invalide" }, { status: 400 });
+  }
+
+  const { data: profile } = await auth.serviceSupabase
+    .from("profiles")
+    .select("phone")
+    .eq("id", auth.userId)
+    .maybeSingle();
+  const { data: sessionData } = await auth.serviceSupabase.auth.getUser();
+  const allowed = normalizeWhatsAppPhone(
+    String(profile?.phone || sessionData.user?.phone || "")
+  );
+  const requested = normalizeWhatsAppPhone(phone);
+  if (!allowed || requested !== allowed) {
+    return NextResponse.json(
+      { success: false, error: "Le SMS de test ne peut être envoyé que sur votre numéro." },
+      { status: 403 }
+    );
   }
 
   const message = "Test Wazo Digital — votre configuration SMS fonctionne correctement.";

@@ -50,6 +50,10 @@ export async function PUT(request: Request) {
       { status: 400 }
     );
   }
+  const email = body.email.trim().slice(0, 180);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ success: false, error: "Email invalide." }, { status: 400 });
+  }
 
   const access = await checkStoreAccess(
     auth.serviceSupabase,
@@ -74,7 +78,7 @@ export async function PUT(request: Request) {
     .from("store_report_settings")
     .upsert({
       store_id: body.store_id,
-      email: body.email.trim(),
+      email,
       enabled: body.enabled !== false,
       weekday: 1,
       hour_utc: 8,

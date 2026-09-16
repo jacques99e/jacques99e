@@ -10,6 +10,7 @@ import {
   payloadWithInvoiceToken,
   validatePaydunyaKeys,
 } from "@/lib/paydunya";
+import { paymentFcfaForPlan } from "@/lib/vitrine-plans";
 
 /**
  * Simulates mobile money payment via PayDunya / CinetPay.
@@ -23,22 +24,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { amount, method, phone, store_id, plan } = body as {
-      amount: number;
+    const { method, phone, store_id, plan } = body as {
       method: string;
       phone?: string;
       store_id?: string;
       plan?: BillingPlanId;
     };
 
-    if (!amount || amount <= 0 || !Number.isFinite(amount)) {
-      return NextResponse.json({ success: false, error: "Montant invalide." }, { status: 400 });
-    }
     if (!method || typeof method !== "string") {
       return NextResponse.json({ success: false, error: "Methode de paiement invalide." }, { status: 400 });
     }
-    if (!plan || !["starter", "pro", "business"].includes(plan)) {
+    if (!plan || !["pro", "business"].includes(plan)) {
       return NextResponse.json({ success: false, error: "Plan d'abonnement invalide." }, { status: 400 });
+    }
+    const amount = paymentFcfaForPlan(plan);
+    if (amount <= 0) {
+      return NextResponse.json({ success: false, error: "Montant invalide." }, { status: 400 });
     }
 
     const { data: ownedStore } = await auth.serviceSupabase
@@ -120,8 +121,21 @@ export async function POST(request: NextRequest) {
       return periodEnd;
     };
 
-    // Simulation interne (sans appel PayDunya)
+    const isProd =
+      process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+
+    // Simulation interne (sans appel PayDunya) — jamais en production.
     if (mode === "simulate" || !apiKey) {
+      if (isProd) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Paiement Mobile Money non configuré. Impossible d'activer PRO sans paiement réel.",
+          },
+          { status: 503 }
+        );
+      }
       const periodEnd = await activateSubscription();
       return NextResponse.json({
         success: true,
@@ -173,8 +187,6 @@ export async function POST(request: NextRequest) {
         ""
       );
       const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET?.trim() ?? "";
-      const isProd =
-        process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
       if (isProd && !callbackSecret) {
         return NextResponse.json(
           {

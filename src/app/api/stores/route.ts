@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const requested = String(body.plan || "").toLowerCase();
-    const paidPlan = requested === "business" ? "business" : requested === "pro" ? "pro" : null;
+    const paidPlan = requested === "pro" ? "pro" : null;
     await auth.serviceSupabase.from("billing_subscriptions").upsert(
       {
         store_id: savedStore.id,

@@ -43,9 +43,16 @@ export async function notifyJacquesFirstBoutiqueSale(
     const fcfa = Number.isFinite(amount) ? Math.round(amount) : 0;
     const item = productName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Produit";
 
+    const secret =
+      process.env.SIGNUP_ALERT_SECRET?.trim() || process.env.CRON_SECRET?.trim() || "";
     await fetch(landingAlertUrl(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(secret
+          ? { Authorization: `Bearer ${secret}`, "x-wazo-alert-secret": secret }
+          : {}),
+      },
       body: JSON.stringify({
         name,
         email,

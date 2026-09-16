@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
 
-  const body = (await request.json()) as { store_id?: string; email?: string };
+  const body = (await request.json()) as { store_id?: string };
   if (!body.store_id) {
     return NextResponse.json({ success: false, error: "store_id requis" }, { status: 400 });
   }
@@ -40,8 +40,8 @@ export async function POST(request: Request) {
     .eq("store_id", body.store_id)
     .maybeSingle();
 
-  const to = body.email?.trim() || (settings?.email as string | undefined);
-  if (!to) {
+  const to = String(settings?.email || "").trim();
+  if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
     return NextResponse.json(
       { success: false, error: "Enregistrez d'abord une adresse e-mail." },
       { status: 400 }

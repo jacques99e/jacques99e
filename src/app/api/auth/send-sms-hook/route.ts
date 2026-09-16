@@ -28,10 +28,6 @@ function hookSecretCandidates(): string[] {
   return [...candidates].filter(Boolean);
 }
 
-function hookSecret(): string | null {
-  return hookSecretCandidates()[0] ?? null;
-}
-
 function verifyHookPayload(payload: string, headers: Record<string, string>): SendSmsHookPayload {
   const candidates = hookSecretCandidates();
   if (!candidates.length) {
@@ -51,51 +47,9 @@ function verifyHookPayload(payload: string, headers: Record<string, string>): Se
   throw lastError instanceof Error ? lastError : new Error("Signature hook invalide");
 }
 
-function smsConfigStatus() {
-  const simulate = process.env.SMS_SIMULATE === "true";
-  const provider = (process.env.SMS_PROVIDER || "africastalking").toLowerCase();
-  let providerConfigured = false;
-  if (simulate) {
-    providerConfigured = true;
-  } else if (provider === "africastalking" || provider === "at") {
-    providerConfigured = Boolean(process.env.AT_API_KEY && process.env.AT_USERNAME);
-  } else if (provider === "vonage" || provider === "nexmo") {
-    providerConfigured = Boolean(
-      (process.env.VONAGE_API_KEY || process.env.NEXMO_API_KEY) &&
-        (process.env.VONAGE_API_SECRET || process.env.NEXMO_API_SECRET) &&
-        (process.env.VONAGE_FROM || process.env.NEXMO_FROM)
-    );
-  } else {
-    providerConfigured = Boolean(
-      process.env.TWILIO_ACCOUNT_SID &&
-        process.env.TWILIO_AUTH_TOKEN &&
-        process.env.TWILIO_FROM_NUMBER
-    );
-  }
-  return { simulate, provider, providerConfigured };
-}
-
-/** Diagnostic public — ne révèle aucun secret. */
+/** Diagnostic — n’expose plus la config interne. */
 export async function GET() {
-  const authSmsEnabled = process.env.SMS_AUTH_HOOK_ENABLED === "true";
-  const secretConfigured = Boolean(hookSecret());
-  const sms = smsConfigStatus();
-  return NextResponse.json({
-    ok: authSmsEnabled && secretConfigured && (sms.simulate || sms.providerConfigured),
-    authSmsEnabled,
-    authSmsNote: authSmsEnabled
-      ? "Hook auth actif (déconseillé — préférer email/Google)"
-      : "Auth SMS désactivée — connexion via wazo-digital.com/login",
-    hookSecretConfigured: secretConfigured,
-    smsSimulate: sms.simulate,
-    smsProvider: sms.provider,
-    smsProviderConfigured: sms.providerConfigured,
-    atUsername: process.env.AT_USERNAME ? "configured" : "missing",
-    atApiKey: process.env.AT_API_KEY ? "configured" : "missing",
-    atMode:
-      process.env.AT_USERNAME?.trim().toLowerCase() === "sandbox" ? "sandbox" : "live",
-    hookUrl: "https://app.wazo-digital.com/api/auth/send-sms-hook",
-  });
+  return NextResponse.json({ ok: true }, { status: 200 });
 }
 
 export async function POST(request: Request) {
@@ -152,9 +106,7 @@ export async function POST(request: Request) {
       {
         error: {
           http_code: 500,
-          message: isVerifyError
-            ? "Secret hook invalide : copiez le secret Supabase (Auth → Hooks → Send SMS) dans Vercel SEND_SMS_HOOK_SECRET (Production), puis redéployez."
-            : message,
+          message: isVerifyError ? "Signature invalide." : "Echec traitement hook SMS",
         },
       },
       { status: 500 }

@@ -166,7 +166,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { data } = service.storage.from(bucket).getPublicUrl(path);
-    return NextResponse.json({ success: true, url: data.publicUrl });
+    const publicUrl = BUCKET_CONFIG[bucket].public ? data.publicUrl : null;
+    if (!publicUrl) {
+      const signed = await service.storage.from(bucket).createSignedUrl(path, 60 * 60);
+      return NextResponse.json({
+        success: true,
+        url: signed.data?.signedUrl || null,
+        path,
+      });
+    }
+
+    return NextResponse.json({ success: true, url: publicUrl });
   } catch {
     return NextResponse.json(
       { success: false, error: "Impossible d'envoyer le fichier." },
