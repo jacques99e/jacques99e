@@ -20,7 +20,7 @@ import {
 } from "@/lib/vitrine-plans";
 import { applyPendingPlan, applyPendingPlanPay } from "@/lib/modules/preference";
 import { apiFetch } from "@/lib/api-client";
-import { trackMetaMomoCheckout, trackMetaPurchase } from "@/lib/meta-pixel";
+import { trackMetaProCheckout, trackMetaPurchase } from "@/lib/meta-pixel";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 
 interface BillingApiResponse {
@@ -164,7 +164,7 @@ export default function BillingPage() {
         return;
       }
       if (data.checkout_url) {
-        trackMetaMomoCheckout(amount);
+        trackMetaProCheckout(id);
         setNotice("Redirection vers le paiement Mobile Money...");
         window.location.href = data.checkout_url;
         return;
@@ -173,6 +173,11 @@ export default function BillingPage() {
         setNotice("Paiement initialisé. Validation en cours.");
       } else {
         trackMetaPurchase(amount, id);
+        try {
+          window.localStorage.setItem(`wazo_purchase_pixel_${id}`, "1");
+        } catch {
+          /* ignore */
+        }
         setNotice(`Paiement confirmé. Plan ${vitrinePlanByBillingId(id).title} activé.`);
       }
       await loadSubscription();
@@ -231,7 +236,22 @@ export default function BillingPage() {
     }
     setNotice("Retour de paiement détecté. Vérification de votre abonnement...");
     const timer = setTimeout(() => {
-      void loadSubscription(tx, token);
+      void (async () => {
+        const sub = await loadSubscription(tx, token);
+        if (!sub) return;
+        if (normalizeBillingStatus(sub) !== "active") return;
+        const plan = sub.plan === "business" ? "business" : "pro";
+        const key = `wazo_purchase_pixel_${plan}`;
+        try {
+          if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+            trackMetaPurchase(0, plan);
+            window.localStorage.setItem(key, "1");
+          }
+        } catch {
+          trackMetaPurchase(0, plan);
+        }
+        setNotice(`Paiement confirmé. Plan ${vitrinePlanByBillingId(plan).title} activé.`);
+      })();
     }, 2000);
     return () => clearTimeout(timer);
   }, [searchParams]);

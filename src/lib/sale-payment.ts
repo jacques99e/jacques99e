@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { notifyJacquesFirstBoutiqueSale } from "@/lib/first-sale-alert";
 import { replaceSaleItems, saleItemProductId, upsertSaleByExternalId } from "@/lib/sale-cloud";
 
 export type SaleCheckoutItem = {
@@ -84,6 +85,13 @@ export async function fulfillPendingSalePayment(
       updated_at: now,
     })
     .eq("provider_tx_id", providerTxId);
+
+  void notifyJacquesFirstBoutiqueSale(
+    supabase,
+    storeId,
+    total,
+    salePayload.items[0]?.name || "Produit"
+  );
 
   return { saleId: result.id };
 }
