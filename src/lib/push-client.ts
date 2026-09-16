@@ -11,9 +11,36 @@ export function getVapidPublicKey(): string | null {
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register(SW_PATH, { updateViaCache: "none" });
+    const registration = await navigator.serviceWorker.register(SW_PATH, {
+      updateViaCache: "none",
+    });
+    void warmAppShell();
+    return registration;
   } catch {
     return null;
+  }
+}
+
+function shouldWarmAppShell(): boolean {
+  const path = window.location.pathname;
+  return !(
+    path.startsWith("/boutique") ||
+    path.startsWith("/formation") ||
+    path.startsWith("/suivi") ||
+    path.startsWith("/trace")
+  );
+}
+
+async function warmAppShell() {
+  if (!navigator.onLine || !shouldWarmAppShell()) return;
+  try {
+    await navigator.serviceWorker.ready;
+    const paths = ["/dashboard", "/sales", "/products", "/products/add", "/clients", "/login"];
+    await Promise.all(
+      paths.map((path) => fetch(path, { credentials: "same-origin" }).catch(() => undefined))
+    );
+  } catch {
+    // hors ligne / SW pas prêt
   }
 }
 

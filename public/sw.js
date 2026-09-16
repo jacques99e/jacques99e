@@ -1,5 +1,6 @@
-const CACHE = "wazo-app-v3";
+const CACHE = "wazo-app-v4";
 const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
+const SKIP_PREFIXES = ["/api/", "/boutique/", "/formation", "/suivi", "/trace"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -17,33 +18,82 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+function skipPath(pathname) {
+  return SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function shouldCache(request, response) {
+  if (!response || !response.ok) return false;
+  if (response.type === "opaque" || response.type === "opaqueredirect") return false;
+  try {
+    if (new URL(response.url).origin !== self.location.origin) return false;
+  } catch {
+    return false;
+  }
+  return !skipPath(new URL(request.url).pathname);
+}
+
+function putInCache(request, response) {
+  if (!shouldCache(request, response)) return;
+  const copy = response.clone();
+  caches.open(CACHE).then((cache) => cache.put(request, copy));
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (skipPath(url.pathname)) return;
+
+  const isStatic =
+    url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/");
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          putInCache(request, response);
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          const dashboard = await caches.match("/dashboard");
+          if (dashboard) return dashboard;
+          return caches.match("/offline.html");
+        })
+    );
     return;
   }
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  if (isStatic) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
           cached ||
           fetch(request).then((response) => {
-            if (response.ok) {
-              const copy = response.clone();
-              caches.open(CACHE).then((cache) => cache.put(request, copy));
-            }
+            putInCache(request, response);
             return response;
           })
       )
     );
+    return;
   }
+
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        putInCache(request, response);
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        return Response.error();
+      })
+  );
 });
 
 self.addEventListener("push", (event) => {

@@ -135,7 +135,7 @@ export async function saveProduct(
       }
       upsertLegacyProduct(saved);
       return saved;
-    } catch (error) {
+    } catch {
       await enqueueSync({
         entity_type: "product",
         entity_id: id,
@@ -143,9 +143,7 @@ export async function saveProduct(
         payload: record as unknown as Record<string, unknown>,
       });
       void syncAll(storeId);
-      throw error instanceof Error
-        ? error
-        : new Error("Impossible d'enregistrer le produit en ligne.");
+      return record;
     }
   }
 
