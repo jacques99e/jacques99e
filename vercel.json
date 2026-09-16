@@ -3,18 +3,6 @@
   "regions": ["cdg1"],
   "crons": [
     {
-      "path": "/api/cron/weekly-report",
-      "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/cron/push-alerts",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/submit-indexing",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/cron/reconcile-payments",
       "schedule": "15 5 * * *"
     }

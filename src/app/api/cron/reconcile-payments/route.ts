@@ -7,6 +7,7 @@ import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { nudgeEndingTrials } from "@/lib/trial-nudge";
 
+/** Hobby : seul cron quotidien (paiements MoMo + relances essai). */
 export const maxDuration = 60;
 
 const STALE_MS = 48 * 60 * 60 * 1000;
