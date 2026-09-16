@@ -191,7 +191,7 @@ export async function POST(request: Request) {
     await notifyStoreSubscribers(db, store.id, {
       title: "Paiement MoMo reçu",
       body: `${productName} ×${quantity} — ${amountXof} FCFA`,
-      url: "/sales",
+      url: "/dashboard",
     });
     return NextResponse.json({
       success: true,

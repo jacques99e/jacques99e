@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         await notifyStoreSubscribers(db, payment.store_id, {
           title: "Paiement MoMo reçu",
           body: `${productName || "Produit"} — ${amount} FCFA`,
-          url: "/sales",
+          url: "/dashboard",
         });
         return NextResponse.json(publicView("succeeded", amount, productName, tx));
       }

@@ -192,7 +192,7 @@ async function handleSaleCallback(
     await notifyStoreSubscribers(serviceSupabase, payment.store_id, {
       title: "Paiement MoMo reçu",
       body: `${productName} — ${Number(payment.amount) || 0} FCFA`,
-      url: "/sales",
+      url: "/dashboard",
     });
   }
 

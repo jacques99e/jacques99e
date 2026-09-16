@@ -53,7 +53,7 @@ export async function GET(request: Request) {
           await notifyStoreSubscribers(db, payment.store_id, {
             title: "Paiement MoMo reçu",
             body: `${items[0]?.name || "Produit"} — ${Number(payment.amount) || 0} FCFA`,
-            url: "/sales",
+            url: "/dashboard",
           });
           salesOk += 1;
           continue;

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { sendWeeklyReportEmail } from "@/lib/email";
 import { PROD_LANDING_URL } from "@/lib/site-urls";
 
 const SKIP_SLUGS = new Set(["hbk-boutyk-237"]);
@@ -85,6 +86,27 @@ export async function notifyJacquesFirstBoutiqueSale(
       utm: ctx.utm,
       note: `${item} — ${fcfa} FCFA`,
     });
+
+    if (ctx.email) {
+      const dashboard = "https://app.wazo-digital.com/dashboard";
+      const text = [
+        `Bonjour ${ctx.name || ""} !`.trim(),
+        "",
+        `Un client vient de payer ${item} — ${fcfa.toLocaleString("fr-FR")} FCFA via votre lien MoMo.`,
+        "Vous n’avez rien à ouvrir : l’argent est enregistré.",
+        "",
+        `Voir la vente : ${dashboard}`,
+        "",
+        "Jacques — Wazo Digital",
+      ].join("\n");
+      await sendWeeklyReportEmail({
+        to: ctx.email,
+        storeName: ctx.store.name || "Wazo",
+        subject: `${ctx.store.name || "Wazo"} — ${fcfa.toLocaleString("fr-FR")} FCFA reçus`,
+        html: `<p>${text.replace(/\n/g, "<br/>")}</p>`,
+        text,
+      });
+    }
   } catch (e) {
     console.error("[first-sale-alert]", e instanceof Error ? e.message : e);
   }
