@@ -2,6 +2,10 @@ import { getBusinessSettings } from "@/lib/business-settings";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { localStore } from "@/lib/db";
 import {
+  boutiquePayUrl,
+  productMoMoShareText,
+} from "@/lib/bring-clients";
+import {
   getDueSequenceItems,
   sequenceStepLabel,
 } from "@/lib/followup-sequences";
@@ -362,14 +366,32 @@ export function computeDailyActions(options?: {
   }
 
   if (products.length > 0 && sales.length === 0) {
+    const first = products[0];
+    const payUrl = boutiquePayUrl(slug, first?.id);
+    const payText = payUrl
+      ? productMoMoShareText({
+          storeName,
+          payUrl,
+          productName: first?.name,
+        })
+      : "";
     actions.push({
       id: "first-sale",
       type: "first_sale",
       priority: 2,
-      title: "Enregistrer votre 1ère vente",
-      reason: "Une vente active le suivi CA, stock et clients.",
-      ctaLabel: "Nouvelle vente",
-      href: "/sales",
+      title: "Renvoyez le lien MoMo",
+      reason: "Le client paie tout seul. Vous n’ouvrez pas la caisse.",
+      ctaLabel: "Envoyer le lien",
+      href: "/products?share=1&first=1",
+      whatsapp: payText
+        ? {
+            draftHint: "Lien paiement MoMo",
+            prefilledMessage: payText,
+          }
+        : undefined,
+      entity: first
+        ? { kind: "product", id: first.id, name: first.name }
+        : undefined,
     });
   }
 

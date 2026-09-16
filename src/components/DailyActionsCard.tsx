@@ -26,7 +26,7 @@ interface DailyActionsCardProps {
 async function fetchAiDraft(action: DailyAction, storeName: string): Promise<string | null> {
   if (!action.whatsapp) return null;
   // Catalogue déjà prérempli localement : pas besoin d'IA
-  if (action.type === "share_catalog" && action.whatsapp.prefilledMessage) {
+  if (action.whatsapp.prefilledMessage && (action.type === "share_catalog" || action.type === "first_sale")) {
     return action.whatsapp.prefilledMessage;
   }
 

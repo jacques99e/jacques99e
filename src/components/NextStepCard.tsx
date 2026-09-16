@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Crown, Package, Share2, ShoppingBag, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Crown, Package, Share2, Sparkles, Users } from "lucide-react";
 import { isDay0ShareDone } from "@/lib/day0-mission";
 import { isBringClientsComplete } from "@/lib/bring-clients";
 import { isSafeStoreSlug } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { localStore } from "@/lib/db";
 type NextStep =
   | { id: "product"; title: string; hint: string; href: string; cta: string; Icon: typeof Package }
   | { id: "share"; title: string; hint: string; href: string; cta: string; Icon: typeof Share2 }
-  | { id: "sale"; title: string; hint: string; href: string; cta: string; Icon: typeof ShoppingBag }
+  | { id: "sale"; title: string; hint: string; href: string; cta: string; Icon: typeof Share2 }
   | { id: "clients"; title: string; hint: string; href: string; cta: string; Icon: typeof Users }
   | { id: "pro"; title: string; hint: string; href: string; cta: string; Icon: typeof Crown }
   | { id: "grow"; title: string; hint: string; href: string; cta: string; Icon: typeof Sparkles };
@@ -44,11 +44,11 @@ function resolveNextStep(
   if (salesCount < 1) {
     return {
       id: "sale",
-      title: "Étape 3 — Enregistrez une vente",
-      hint: "Cash si moins de 200 FCFA, sinon MoMo. Puis partagez le reçu.",
-      href: "/sales",
-      cta: "Ouvrir la caisse",
-      Icon: ShoppingBag,
+      title: "Étape 3 — Renvoyez le lien à 3 clients",
+      hint: "Le client paie tout seul. Vous n’ouvrez pas la caisse.",
+      href: "/products?share=1&first=1",
+      cta: "Renvoyer le lien MoMo",
+      Icon: Share2,
     };
   }
   if (salesCount < 3 && proUpsellHref && !isBringClientsComplete(localStore.get()?.id)) {
