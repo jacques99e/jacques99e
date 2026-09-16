@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 import { localAuth } from "@/lib/db";
 import { isEmailNotConfirmedError } from "@/lib/email-confirm";
 import { getLandingRegisterUrl } from "@/lib/public-urls";
+import { captureCheckoutIntentFromLocation, postLoginHref } from "@/lib/modules/preference";
 
 function LoginForm() {
   const router = useRouter();
@@ -21,6 +22,7 @@ function LoginForm() {
   const [confirmHint, setConfirmHint] = useState(false);
 
   useEffect(() => {
+    captureCheckoutIntentFromLocation();
     let cancelled = false;
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -30,7 +32,7 @@ function LoginForm() {
           id: data.session.user.id,
           phone: data.session.user.phone,
         });
-        router.replace("/dashboard");
+        router.replace(postLoginHref());
         return;
       }
       setCheckingSession(false);
@@ -78,7 +80,7 @@ function LoginForm() {
         });
       }
 
-      router.replace("/dashboard");
+      router.replace(postLoginHref());
     } catch {
       setErrorMessage("Impossible de se connecter pour le moment.");
     } finally {

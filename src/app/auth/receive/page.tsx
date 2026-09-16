@@ -6,6 +6,7 @@ import { localAuth } from "@/lib/db";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 import {
   applyPendingModule,
+  postLoginHref,
   savePendingPlan,
   savePendingPlanPay,
 } from "@/lib/modules/preference";
@@ -30,9 +31,10 @@ export default function AuthReceivePage() {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    const goDashboard = () => {
-      window.history.replaceState(null, "", "/dashboard");
-      window.location.replace("/dashboard");
+    const goNext = () => {
+      const href = postLoginHref();
+      window.history.replaceState(null, "", href);
+      window.location.replace(href);
     };
 
     const persistHandoffIntent = async () => {
@@ -73,14 +75,14 @@ export default function AuthReceivePage() {
             phone: data.session.user.phone,
           });
           await persistHandoffIntent();
-          goDashboard();
+          goNext();
           return;
         }
 
         const { data: retry } = await supabase.auth.getSession();
         if (retry.session?.user) {
           await persistHandoffIntent();
-          goDashboard();
+          goNext();
           return;
         }
 
@@ -96,7 +98,7 @@ export default function AuthReceivePage() {
       const { data: existing } = await supabase.auth.getSession();
       if (existing.session?.user) {
         await persistHandoffIntent();
-        goDashboard();
+        goNext();
         return;
       }
 

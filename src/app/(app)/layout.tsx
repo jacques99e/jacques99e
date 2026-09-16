@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
 import {
   billingCheckoutPath,
+  captureCheckoutIntentFromLocation,
   isPaidVitrinePlan,
   readPendingPlan,
   readPendingPlanPay,
@@ -31,6 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      captureCheckoutIntentFromLocation();
       router.replace("/login");
       return;
     }
@@ -52,8 +54,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const pendingPlan = readPendingPlan();
       const wantsPay = readPendingPlanPay();
       if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
-        router.replace(billingCheckoutPath(pendingPlan));
-        return;
+        const onBilling =
+          window.location.pathname === "/billing" ||
+          window.location.pathname.startsWith("/billing/");
+        if (!onBilling) {
+          router.replace(billingCheckoutPath(pendingPlan));
+          return;
+        }
       }
 
       setStoreReady(true);

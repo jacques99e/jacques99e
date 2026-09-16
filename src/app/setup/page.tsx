@@ -115,7 +115,13 @@ export default function SetupPage() {
           localStorage.setItem("store_name", data.name || "");
           localStorage.setItem("store_slug", data.slug || "");
           localStorage.setItem("store_setup_complete", "true");
-          router.replace("/dashboard");
+          const pendingPlan = readPendingPlan();
+          const wantsPay = readPendingPlanPay();
+          if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
+            router.replace(billingCheckoutPath(pendingPlan));
+          } else {
+            router.replace("/dashboard");
+          }
           return;
         }
       } catch {
@@ -137,7 +143,13 @@ export default function SetupPage() {
           };
           localStore.save(fallbackStore);
           setOfflineInfo("Mode hors ligne - données locales");
-          router.replace("/dashboard");
+          const pendingPlan = readPendingPlan();
+          const wantsPay = readPendingPlanPay();
+          if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
+            router.replace(billingCheckoutPath(pendingPlan));
+          } else {
+            router.replace("/dashboard");
+          }
           return;
         }
         setOfflineInfo("Mode hors ligne - données locales");
