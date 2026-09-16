@@ -25,7 +25,7 @@ function resolveNextStep(
     return {
       id: "product",
       title: "Étape 1 — Ajoutez votre 1er produit",
-      hint: "Nom, prix, stock. 2 minutes. La photo est optionnelle.",
+      hint: "Photo, nom, prix. 2 minutes. La photo se vend toute seule.",
       href: "/products/add",
       cta: "Ajouter un produit",
       Icon: Package,

@@ -63,13 +63,13 @@ export default function AddProductPage() {
         return;
       }
 
-      if (billing && normalizeBillingStatus(billing) === "expired") {
+      const existing = await getProducts(storeId);
+      if (billing && normalizeBillingStatus(billing) === "expired" && existing.length >= 1) {
         setError("Votre abonnement est expire. Activez un plan pour continuer.");
         return;
       }
 
       const maxProducts = billing ? PLAN_LIMITS[billing.plan].maxProducts : PLAN_LIMITS.starter.maxProducts;
-      const existing = await getProducts(storeId);
       if (existing.length >= maxProducts) {
         setError(`Limite atteinte (${maxProducts} produits). Passez a un plan superieur.`);
         return;

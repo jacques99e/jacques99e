@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { notifyJacquesFirstProduct } from "@/lib/first-sale-alert";
 import { isProductUuid, productToRow, rowToProduct } from "@/lib/product-db-map";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
@@ -145,9 +146,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const saved = rowToProduct(data as Record<string, unknown>);
+    if (!hasServerId) {
+      void notifyJacquesFirstProduct(
+        service,
+        storeId,
+        saved.name,
+        saved.id,
+        Boolean(saved.image_url)
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      product: rowToProduct(data as Record<string, unknown>),
+      product: saved,
     });
   } catch {
     return NextResponse.json(
