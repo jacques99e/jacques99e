@@ -26,7 +26,7 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const publicPaths = ["/", "/login", "/register", "/auth/receive"];
+  const publicPaths = ["/", "/login", "/register", "/auth/receive", "/auth/callback"];
 
   // Avoid blocking public/auth handoff routes on external auth network hiccups.
   if (publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {

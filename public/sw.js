@@ -1,15 +1,5 @@
-const CACHE = "wazo-app-v2";
-const SHELL = [
-  "/offline.html",
-  "/manifest.json",
-  "/icons/icon.svg",
-  "/dashboard",
-  "/sales",
-  "/products",
-  "/products/add",
-  "/clients",
-  "/login",
-];
+const CACHE = "wazo-app-v3";
+const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -35,23 +25,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          const dashboard = await caches.match("/dashboard");
-          if (dashboard) return dashboard;
-          return caches.match("/offline.html");
-        })
-    );
+    event.respondWith(fetch(request).catch(() => caches.match("/offline.html")));
     return;
   }
 
@@ -83,8 +57,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/icons/icon.svg",
-      badge: "/icons/icon.svg",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
       data: { url: data.url || "/dashboard" },
     })
   );

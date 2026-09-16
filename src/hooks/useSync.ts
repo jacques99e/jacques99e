@@ -16,8 +16,12 @@ export function useSync() {
       setPendingCount(0);
       return;
     }
-    const count = await db.syncQueue.count();
-    setPendingCount(count);
+    try {
+      const count = await db.syncQueue.count();
+      setPendingCount(count);
+    } catch {
+      setPendingCount(0);
+    }
   }, []);
 
   const runSync = useCallback(async () => {
@@ -32,8 +36,14 @@ export function useSync() {
       const result = await syncAll(store.id);
       if (result.synced > 0) {
         setLastSync(new Date());
-        localStorage.setItem("wazo_last_sync_ok", new Date().toISOString());
+        try {
+          localStorage.setItem("wazo_last_sync_ok", new Date().toISOString());
+        } catch {
+          // ignore
+        }
       }
+    } catch {
+      // IndexedDB / réseau
     } finally {
       setSyncing(false);
       await refreshPending();

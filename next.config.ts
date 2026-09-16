@@ -42,7 +42,16 @@ const nextConfig: NextConfig = {
     return [{ source: "/indexnow-key.txt", destination: "/api/indexing/key" }];
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      { source: "/(.*)", headers: securityHeaders },
+    ];
   },
 };
 

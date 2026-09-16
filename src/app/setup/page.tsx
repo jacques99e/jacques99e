@@ -22,7 +22,7 @@ import { apiFetch } from "@/lib/api-client";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { trackMetaStartTrial } from "@/lib/meta-pixel";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
-import { getLandingLoginUrl, resolveLandingUrl } from "@/lib/public-urls";
+import { resolveLandingUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
 import {
   isValidWhatsAppPhone,
@@ -72,7 +72,7 @@ export default function SetupPage() {
       if (cancelled) return;
 
       if (!session?.user) {
-        window.location.href = getLandingLoginUrl();
+        window.location.href = "/login";
         return;
       }
 

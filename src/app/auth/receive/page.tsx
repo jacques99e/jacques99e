@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { localAuth } from "@/lib/db";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
-import { getLandingLoginUrl } from "@/lib/public-urls";
 import {
   applyPendingModule,
   savePendingPlan,
@@ -122,7 +121,7 @@ export default function AuthReceivePage() {
               {error}
             </p>
             <a
-              href={getLandingLoginUrl()}
+              href="/login"
               className="rounded-full bg-[#FF6F00] px-5 py-2 text-xs font-semibold text-white"
             >
               Retour a la connexion

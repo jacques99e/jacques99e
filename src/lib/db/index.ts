@@ -66,83 +66,109 @@ export class WazoDatabase extends Dexie {
   }
 }
 
-export const db =
-  typeof window !== "undefined" ? new WazoDatabase() : (null as unknown as WazoDatabase);
+function createDb(): WazoDatabase | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return new WazoDatabase();
+  } catch {
+    return null;
+  }
+}
+
+export const db = createDb() as WazoDatabase;
+
+function readStorage(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // quota / mode privé
+  }
+}
+
+function removeStorage(key: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+function readJson<T>(key: string): T | null {
+  const raw = readStorage(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
 
 export const localAuth = {
   saveSession(token: string, user: { id: string; phone?: string }) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    writeStorage(AUTH_TOKEN_KEY, token);
+    writeStorage(AUTH_USER_KEY, JSON.stringify(user));
   },
   getToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return readStorage(AUTH_TOKEN_KEY);
   },
   getUser(): { id: string; phone?: string } | null {
-    if (typeof window === "undefined") return null;
-    const raw = localStorage.getItem(AUTH_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return readJson<{ id: string; phone?: string }>(AUTH_USER_KEY);
   },
   clear() {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
+    removeStorage(AUTH_TOKEN_KEY);
+    removeStorage(AUTH_USER_KEY);
   },
 };
 
 export const localStore = {
   save(store: Store) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    writeStorage(STORE_KEY, JSON.stringify(store));
   },
   get(): Store | null {
-    if (typeof window === "undefined") return null;
-    const raw = localStorage.getItem(STORE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return readJson<Store>(STORE_KEY);
   },
   clear() {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(STORE_KEY);
+    removeStorage(STORE_KEY);
   },
 };
 
 export const localLang = {
   get(): string {
-    if (typeof window === "undefined") return "fr";
-    return localStorage.getItem(LANG_KEY) || "fr";
+    return readStorage(LANG_KEY) || "fr";
   },
   set(lang: string) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LANG_KEY, lang);
+    writeStorage(LANG_KEY, lang);
   },
 };
 
 export const localModules = {
   get(): ModuleId[] {
-    if (typeof window === "undefined") return ["commerce"];
-    const raw = localStorage.getItem(MODULES_KEY);
-    if (!raw) return ["commerce"];
-    try {
-      return JSON.parse(raw) as ModuleId[];
-    } catch {
-      return ["commerce"];
-    }
+    return readJson<ModuleId[]>(MODULES_KEY) || ["commerce"];
   },
   save(modules: ModuleId[]) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(MODULES_KEY, JSON.stringify(modules));
+    writeStorage(MODULES_KEY, JSON.stringify(modules));
   },
 };
 
 export const localTheme = {
   getDark(): boolean {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(DARK_KEY) === "1";
+    return readStorage(DARK_KEY) === "1";
   },
   setDark(dark: boolean) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(DARK_KEY, dark ? "1" : "0");
-    document.documentElement.classList.toggle("dark", dark);
+    writeStorage(DARK_KEY, dark ? "1" : "0");
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", dark);
+    }
   },
 };

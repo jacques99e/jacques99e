@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, Package, Smartphone } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
-import { PublicPageShare } from "@/components/PublicPageShare";
-import { boutiqueProductUrl, productShareText } from "@/lib/bring-clients";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { formatCurrency, getWhatsAppLink } from "@/lib/utils";
 import type { ProductLandingContent } from "@/lib/product-landing";
@@ -36,7 +34,6 @@ export function ProductDetailClient({
   const [codOk, setCodOk] = useState("");
   const inStock = product.stock_quantity > 0;
   const catalogHref = `/boutique/${store.slug}`;
-  const shareUrl = boutiqueProductUrl(store.slug, product.id);
 
   const headline = landing?.headline || product.name;
   const subheadline = landing?.subheadline || product.description || "";
@@ -167,14 +164,6 @@ export function ProductDetailClient({
             <p className="mt-3 text-3xl font-extrabold tracking-tight text-[#FF6F00] md:text-4xl">
               {formatCurrency(product.price)}
             </p>
-
-            {shareUrl ? (
-              <PublicPageShare
-                className="mt-5"
-                url={shareUrl}
-                text={productShareText(store.name, product.name, shareUrl, product.price)}
-              />
-            ) : null}
 
             {inStock ? (
               <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-[#075E54]/80">
