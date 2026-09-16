@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     .maybeSingle();
   const { data: product } = await supabase
     .from("products")
-    .select("id, store_id, name, price")
+    .select("id, store_id, name, price, stock")
     .eq("id", productId)
     .eq("store_id", storeId)
     .maybeSingle();
@@ -75,6 +75,17 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: "Boutique ou produit introuvable" },
       { status: 404 }
+    );
+  }
+
+  const stock = Math.max(0, Number(product.stock) || 0);
+  if (stock < quantity) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: stock <= 0 ? "Produit en rupture de stock." : "Stock insuffisant.",
+      },
+      { status: 409 }
     );
   }
 

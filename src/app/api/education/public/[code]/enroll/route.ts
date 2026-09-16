@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOrCreateEnrollment } from "@/lib/education-enrollment";
+import { allowIp } from "@/lib/rate-limit";
 import { buildFormationInviteSms, looksLikePhone, sendSms } from "@/lib/sms";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
@@ -7,6 +8,12 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ code: string }> }
 ) {
+  if (!allowIp(request, "formation-enroll", 8, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de tentatives. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
   const { code } = await context.params;
   const inviteCode = decodeURIComponent(code).trim().toLowerCase();
   const body = (await request.json().catch(() => ({}))) as {

@@ -4,6 +4,7 @@ import {
   generateDraftMessage,
   type DraftMessageType,
 } from "@/lib/assistant-draft";
+import { allowUser } from "@/lib/rate-limit";
 
 const ALLOWED_TYPES = new Set<DraftMessageType>([
   "relance_client",
@@ -19,6 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: auth.error },
       { status: auth.status }
+    );
+  }
+
+  if (!allowUser(auth.userId, "assistant", 25, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de requêtes IA. Réessayez plus tard." },
+      { status: 429 }
     );
   }
 

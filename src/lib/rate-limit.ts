@@ -32,3 +32,12 @@ export function allowIp(
 ): boolean {
   return allowRequest(`${scope}:${clientIp(request)}`, max, windowMs);
 }
+
+export function allowUser(
+  userId: string,
+  scope: string,
+  max: number,
+  windowMs: number
+): boolean {
+  return allowRequest(`${scope}:${userId}`, max, windowMs);
+}

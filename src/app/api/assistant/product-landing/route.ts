@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { generateProductLanding } from "@/lib/assistant-product-landing";
+import { allowUser } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -11,6 +12,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: auth.error },
       { status: auth.status }
+    );
+  }
+
+  if (!allowUser(auth.userId, "assistant", 25, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de requêtes IA. Réessayez plus tard." },
+      { status: 429 }
     );
   }
 

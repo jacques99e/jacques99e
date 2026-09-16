@@ -102,22 +102,10 @@ async function paymentConfirmed(
   return isSuccessfulPayment(payload);
 }
 
-function hasConfirmSignal(
-  payload: Record<string, unknown>,
-  storedPayload?: Record<string, unknown> | null
-): boolean {
-  return Boolean(
-    extractInvoiceToken(payload) ||
-      extractInvoiceToken((storedPayload || {}) as Record<string, unknown>) ||
-      isSuccessfulPayment(payload)
-  );
-}
-
 async function handleSaleCallback(
   serviceSupabase: Awaited<ReturnType<typeof createServiceSupabase>>,
   txId: string,
-  payload: Record<string, unknown>,
-  emptyPayloadAssumeSuccess: boolean
+  payload: Record<string, unknown>
 ) {
   const { data: payment, error } = await serviceSupabase
     .from("sale_payments")
@@ -132,14 +120,16 @@ async function handleSaleCallback(
       ? (payment.payload as Record<string, unknown>)
       : {};
   const confirmed = await paymentConfirmed(payload, stored);
-  const success =
-    confirmed ||
-    (emptyPayloadAssumeSuccess && Object.keys(payload).length === 0);
-
   const now = new Date().toISOString();
 
-  if (!success) {
-    if (!hasConfirmSignal(payload, stored) && !emptyPayloadAssumeSuccess) {
+  if (!confirmed) {
+    const status = String(
+      payload.status ?? payload.payment_status ?? payload.cpm_result ?? ""
+    ).toLowerCase();
+    const explicitFail = ["failed", "cancelled", "canceled", "error", "rejected"].includes(
+      status
+    );
+    if (!explicitFail) {
       return NextResponse.json({
         success: true,
         kind: "sale",
@@ -228,20 +218,13 @@ async function handleCallback(request: NextRequest, payload: Record<string, unkn
     }
 
     const serviceSupabase = await createServiceSupabase();
-    const emptyPayload = Object.keys(payload).length === 0;
     const preferSale = kind === "sale" || txId.startsWith("SALE-");
 
     if (preferSale) {
-      const saleResult = await handleSaleCallback(
-        serviceSupabase,
-        txId,
-        payload,
-        emptyPayload
-      );
+      const saleResult = await handleSaleCallback(serviceSupabase, txId, payload);
       if (saleResult) return saleResult;
     } else {
-      // Try sale table first in case kind missing
-      const saleResult = await handleSaleCallback(serviceSupabase, txId, payload, false);
+      const saleResult = await handleSaleCallback(serviceSupabase, txId, payload);
       if (saleResult) return saleResult;
     }
 
@@ -260,13 +243,21 @@ async function handleCallback(request: NextRequest, payload: Record<string, unkn
         ? (payment.payload as Record<string, unknown>)
         : {};
     const success = await paymentConfirmed(payload, stored);
-    if (!success && !hasConfirmSignal(payload, stored)) {
-      return NextResponse.json({
-        success: true,
-        kind: "billing",
-        transaction_id: txId,
-        status: "pending",
-      });
+    if (!success) {
+      const status = String(
+        payload.status ?? payload.payment_status ?? payload.cpm_result ?? ""
+      ).toLowerCase();
+      const explicitFail = ["failed", "cancelled", "canceled", "error", "rejected"].includes(
+        status
+      );
+      if (!explicitFail) {
+        return NextResponse.json({
+          success: true,
+          kind: "billing",
+          transaction_id: txId,
+          status: "pending",
+        });
+      }
     }
     const now = new Date().toISOString();
     await serviceSupabase
@@ -314,12 +305,7 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const tx = params.get("tx");
   if (!tx) {
-    const authError = assertCallbackSecret(request);
-    if (authError) return authError;
-    return NextResponse.json({
-      success: true,
-      message: "Callback paiement actif.",
-    });
+    return NextResponse.json({ success: false, error: "Transaction introuvable." }, { status: 404 });
   }
 
   const payload: Record<string, unknown> = {};

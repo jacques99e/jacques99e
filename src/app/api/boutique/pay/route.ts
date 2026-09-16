@@ -170,7 +170,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const isProd =
+    process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+
   if (mode === "simulate" || !process.env.PAYMENT_API_KEY) {
+    if (isProd) {
+      return NextResponse.json(
+        { success: false, error: "Paiement Mobile Money non configuré." },
+        { status: 503 }
+      );
+    }
     const fulfilled = await fulfillPendingSalePayment(db, {
       storeId: store.id,
       salePayload,
@@ -214,8 +223,6 @@ export async function POST(request: Request) {
     ""
   );
   const callbackSecret = process.env.PAYMENT_CALLBACK_SECRET?.trim() ?? "";
-  const isProd =
-    process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
   if (isProd && !callbackSecret) {
     return NextResponse.json(
       { success: false, error: "Paiement Mobile Money non configuré." },
