@@ -22,8 +22,8 @@ import {
   type BringClientStepId,
 } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
-import { buildFacebookShareUrl } from "@/lib/facebook-share";
-import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
+import { openFacebookShare } from "@/lib/facebook-share";
+import { buildWhatsAppShareUrl, openWhatsAppShare } from "@/lib/whatsapp-share";
 
 const STEP_COPY: Record<
   BringClientStepId,
@@ -153,7 +153,7 @@ export default function BringClientsPage() {
         /* cancelled */
       }
     }
-    window.open(buildWhatsAppShareUrl(shareText), "_blank", "noopener,noreferrer");
+    openWhatsAppShare(shareText);
   }
 
   const waHref = useMemo(
@@ -210,15 +210,14 @@ export default function BringClientsPage() {
         {label}
       </a>
       {url ? (
-        <a
-          href={buildFacebookShareUrl(url, shareText)}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={() => openFacebookShare(url, shareText)}
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] text-sm font-semibold text-white"
         >
           <Facebook className="h-4 w-4" />
           Partager aussi sur Facebook
-        </a>
+        </button>
       ) : null}
     </div>
   );

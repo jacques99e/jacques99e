@@ -19,7 +19,7 @@ import {
 import { localStore } from "@/lib/db";
 import { readLocalSales } from "@/lib/local-sales";
 import { getProducts } from "@/lib/products";
-import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
+import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import type { Product } from "@/types";
 
 function pathMatchesStep(pathname: string, stepId: Day0StepId): boolean {
@@ -101,7 +101,7 @@ export function Day0Mission() {
     if (!payUrl) return;
     const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
     markDay0ShareDone();
-    window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    openWhatsAppShare(text);
     markDay0Complete();
     setFlags((f) => ({ ...f, shareDone: true }));
     setOpen(false);

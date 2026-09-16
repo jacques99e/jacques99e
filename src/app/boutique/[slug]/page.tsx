@@ -22,13 +22,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supabase = await createServiceSupabase();
   const { data: store } = await supabase
     .from("stores")
-    .select("name, description, logo_url, cover_url")
+    .select("id, name, description, logo_url, cover_url")
     .eq("slug", slug)
     .eq("is_public", true)
     .single();
 
-  const image =
+  let image =
     toPublicProductImageUrl(store?.cover_url) || toPublicProductImageUrl(store?.logo_url);
+  if (!image && store?.id) {
+    const { data: photoRow } = await supabase
+      .from("products")
+      .select("photo_url")
+      .eq("store_id", store.id)
+      .not("photo_url", "is", null)
+      .limit(1)
+      .maybeSingle();
+    image = toPublicProductImageUrl((photoRow?.photo_url as string | null) ?? null);
+  }
   const title = store ? `${store.name} — Wazo Digital` : "Boutique — Wazo Digital";
   const description = store?.description || "Catalogue en ligne sur Wazo Digital";
   const images = openGraphShareImages(image, store?.name || "Boutique");

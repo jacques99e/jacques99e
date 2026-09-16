@@ -5,9 +5,9 @@ import { Sparkles, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { apiFetch } from "@/lib/api-client";
-import { boutiquePayShareText, boutiquePayUrl, boutiqueProductUrl } from "@/lib/bring-clients";
+import { boutiquePayShareText, boutiquePayUrl, boutiqueProductUrl, appendShareUrl, productShareText } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
-import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
+import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import {
   getProductLanding,
   landingToDescription,
@@ -136,14 +136,10 @@ export function ProductLandingButton({
       setError("Publiez d’abord votre boutique (slug manquant).");
       return;
     }
-    const pitch =
-      existing?.content.whatsappPitch ||
-      `Découvrez ${product.name} : ${url}`;
-    window.open(
-      buildWhatsAppShareUrl(`${pitch}\n${url}`),
-      "_blank",
-      "noopener,noreferrer"
-    );
+    const text = existing?.content.whatsappPitch
+      ? appendShareUrl(existing.content.whatsappPitch, url)
+      : productShareText(store?.name || "Ma boutique", product.name, url, product.price);
+    openWhatsAppShare(text);
   };
 
   const sharePayLink = () => {
@@ -153,17 +149,16 @@ export function ProductLandingButton({
       setError("Publiez d’abord votre boutique (slug manquant).");
       return;
     }
-    window.open(
-      buildWhatsAppShareUrl(boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)),
-      "_blank",
-      "noopener,noreferrer"
+    openWhatsAppShare(
+      boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)
     );
   };
 
   const store = localStore.get();
   const productUrl = boutiqueProductUrl(store?.slug, product.id);
-  const productQuote =
-    existing?.content.whatsappPitch || `Découvrez ${product.name}`;
+  const productQuote = productUrl
+    ? productShareText(store?.name || "Ma boutique", product.name, productUrl, product.price)
+    : existing?.content.whatsappPitch || `Découvrez ${product.name}`;
 
   return (
     <div className="space-y-1">

@@ -47,7 +47,7 @@ export function noIndexMetadata(title: string): Metadata {
 /** Image OG toujours absolue : photo produit/boutique, sinon carte Wazo. */
 export function openGraphShareImages(imageUrl: string | null | undefined, alt: string) {
   const url = imageUrl?.trim() || `${SITE_URL}/social-card.png`;
-  return [{ url, alt }];
+  return [{ url, alt, width: 1200, height: 630 }];
 }
 
 export function publicPageMetadata(

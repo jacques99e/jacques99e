@@ -66,6 +66,28 @@ export function boutiqueShareText(storeName: string, url: string): string {
   ].join("\n");
 }
 
+export function productShareText(
+  storeName: string,
+  productName: string,
+  url: string,
+  price?: number
+): string {
+  const store = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
+  const name = productName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Produit";
+  const priceLine =
+    typeof price === "number" && Number.isFinite(price)
+      ? `${name} — ${Math.round(price).toLocaleString("fr-FR")} FCFA`
+      : name;
+  return [priceLine, `Chez ${store}`, "", "Commandez ici :", url].join("\n");
+}
+
+export function appendShareUrl(text: string, url: string): string {
+  const body = text.trim();
+  if (!url) return body;
+  if (body.includes(url)) return body;
+  return body ? `${body}\n${url}` : url;
+}
+
 function isStepId(value: unknown): value is BringClientStepId {
   return typeof value === "string" && BRING_STEP_IDS.includes(value as BringClientStepId);
 }

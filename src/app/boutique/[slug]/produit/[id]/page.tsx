@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { data: product } = await supabase
     .from("products")
-    .select("name, description, photo_url")
+    .select("name, description, photo_url, price")
     .eq("id", id)
     .eq("store_id", store.id)
     .single();
@@ -44,12 +44,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Produit — Wazo Digital", robots: { index: false, follow: false } };
   }
 
+  const price = Number(product.price);
+  const priceLabel =
+    Number.isFinite(price) && price > 0
+      ? ` — ${Math.round(price).toLocaleString("fr-FR")} FCFA`
+      : "";
   const imageUrl =
     toPublicProductImageUrl(product.photo_url as string | null) ||
     toPublicProductImageUrl(store.cover_url) ||
     toPublicProductImageUrl(store.logo_url);
-  const description = product.description || `Découvrez ${product.name} sur ${store.name}`;
+  const description =
+    product.description || `Commandez ${product.name} chez ${store.name}${priceLabel}`;
   const images = openGraphShareImages(imageUrl, product.name);
+  const ogTitle = `${product.name}${priceLabel}`;
 
   return {
     title: `${product.name} — ${store.name}`,
@@ -57,7 +64,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/boutique/${slug}/produit/${id}` },
     robots: { index: true, follow: true },
     openGraph: {
-      title: product.name,
+      title: ogTitle,
       description: product.description || `Produit de ${store.name}`,
       url: `${APP_URL}/boutique/${slug}/produit/${id}`,
       type: "website",
@@ -66,7 +73,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      title: product.name,
+      title: ogTitle,
       description,
       images: images.map((img) => img.url),
     },

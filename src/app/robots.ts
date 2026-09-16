@@ -28,11 +28,17 @@ const PRIVATE_PREFIXES = [
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: ["/boutique/", "/formation", "/suivi", "/trace"],
-      disallow: ["/", ...PRIVATE_PREFIXES],
-    },
+    rules: [
+      {
+        userAgent: ["facebookexternalhit", "Facebot", "WhatsApp", "Twitterbot"],
+        allow: "/",
+      },
+      {
+        userAgent: "*",
+        allow: ["/boutique/", "/formation", "/suivi", "/trace"],
+        disallow: PRIVATE_PREFIXES,
+      },
+    ],
     sitemap: `${APP_URL}/sitemap.xml`,
     host: APP_URL,
   };

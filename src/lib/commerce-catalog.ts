@@ -6,7 +6,10 @@ export function buildWhatsAppCatalog(params: {
   products: LocalProduct[];
   boutiqueUrl?: string;
 }): string {
-  const lines = [`*${params.storeName}* — Catalogue Wazo`, ""];
+  const lines = [`*${params.storeName}* — Catalogue`, ""];
+  if (params.boutiqueUrl) {
+    lines.push(`Commandez ici : ${params.boutiqueUrl}`, "");
+  }
   const items = params.products.slice(0, 15);
   for (const p of items) {
     const stock = p.stock ?? p.stock_quantity ?? 0;
@@ -15,9 +18,6 @@ export function buildWhatsAppCatalog(params: {
   }
   if (params.products.length > 15) {
     lines.push(`… et ${params.products.length - 15} autres produits`);
-  }
-  if (params.boutiqueUrl) {
-    lines.push("", `Commander : ${params.boutiqueUrl}`);
   }
   return lines.join("\n");
 }

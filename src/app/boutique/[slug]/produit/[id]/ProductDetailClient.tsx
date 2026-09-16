@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, MessageCircle, Package, Smartphone } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { PublicPageShare } from "@/components/PublicPageShare";
-import { boutiqueProductUrl } from "@/lib/bring-clients";
+import { boutiqueProductUrl, productShareText } from "@/lib/bring-clients";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { formatCurrency, getWhatsAppLink } from "@/lib/utils";
 import type { ProductLandingContent } from "@/lib/product-landing";
@@ -172,7 +172,7 @@ export function ProductDetailClient({
               <PublicPageShare
                 className="mt-5"
                 url={shareUrl}
-                text={`Découvrez ${product.name} chez ${store.name}`}
+                text={productShareText(store.name, product.name, shareUrl, product.price)}
               />
             ) : null}
 

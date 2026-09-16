@@ -25,13 +25,13 @@ import { ProductLandingButton } from "@/components/ProductLandingButton";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { markDay0ShareDone } from "@/lib/day0-mission";
-import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import { boutiquePayShareText, boutiquePayUrl, boutiquePublicUrl, boutiqueShareText } from "@/lib/bring-clients";
 import { setTaskDone } from "@/lib/onboarding";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
 import { reconcileProductsWithCloud } from "@/lib/product-reconcile";
+import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import type { Product } from "@/types";
 
 export default function ProductsPage() {
@@ -70,7 +70,7 @@ export default function ProductsPage() {
       boutiqueUrl,
     });
     markDay0ShareDone();
-    window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    openWhatsAppShare(text);
     setShowShareSheet(false);
   };
 
@@ -81,7 +81,7 @@ export default function ProductsPage() {
     const text = boutiquePayShareText(store?.name || "Ma boutique", payUrl);
     markDay0ShareDone();
     setTaskDone("paylink", true);
-    window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
+    openWhatsAppShare(text);
     setShowShareSheet(false);
   };
 
