@@ -98,8 +98,9 @@ export function StoreSocialPanel({ storeId }: { storeId: string }) {
     <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
       <h2 className="text-sm font-semibold">Réseaux sociaux</h2>
       <p className="text-xs text-gray-500">
-        Connectez votre Page Facebook (et Instagram Pro lié) pour publier votre boutique ou un
-        produit depuis l&apos;app.
+        Connectez votre Page Facebook (et Instagram Pro lié). Le bouton Facebook à côté de
+        WhatsApp ouvre le partage (photo + lien) et publie aussi sur votre Page si elle est
+        connectée.
       </p>
 
       {!status?.configured ? (

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
-import { APP_URL } from "@/lib/seo";
+import { APP_URL, openGraphShareImages } from "@/lib/seo";
 import { isCloudUuid } from "@/lib/cloud-uuid";
 import { rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
@@ -15,28 +15,61 @@ interface PageProps {
   searchParams: Promise<{ product?: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { product: productParam } = await searchParams;
   if (!isSafeStoreSlug(slug)) {
     return { title: "Payer — Wazo Digital", robots: { index: false, follow: false } };
   }
   const supabase = await createServiceSupabase();
   const { data: store } = await supabase
     .from("stores")
-    .select("name")
+    .select("id, name, logo_url, cover_url")
     .eq("slug", slug)
     .eq("is_public", true)
     .maybeSingle();
 
+  let title = store ? `Payer — ${store.name}` : "Payer — Wazo Digital";
+  const description = "Payez en Mobile Money, sans installer d’application.";
+  let image =
+    toPublicProductImageUrl(store?.cover_url) || toPublicProductImageUrl(store?.logo_url);
+  const requestedId = productParam?.trim() || "";
+
+  if (store && isCloudUuid(requestedId)) {
+    const { data: product } = await supabase
+      .from("products")
+      .select("name, photo_url")
+      .eq("id", requestedId)
+      .eq("store_id", store.id)
+      .maybeSingle();
+    if (product) {
+      title = `Payer ${product.name} — ${store.name}`;
+      image = toPublicProductImageUrl(product.photo_url) || image;
+    }
+  }
+
+  const images = openGraphShareImages(image, store?.name || "Payer");
+  const ogUrl = requestedId
+    ? `${APP_URL}/boutique/${slug}/payer?product=${encodeURIComponent(requestedId)}`
+    : `${APP_URL}/boutique/${slug}/payer`;
+
   return {
-    title: store ? `Payer — ${store.name}` : "Payer — Wazo Digital",
-    description: "Payez en Mobile Money, sans installer d’application.",
+    title,
+    description,
     alternates: store ? { canonical: `/boutique/${slug}/payer` } : undefined,
     robots: store ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: {
-      title: store ? `Payer — ${store.name}` : "Payer",
-      url: `${APP_URL}/boutique/${slug}/payer`,
+      title,
+      description,
+      url: ogUrl,
       type: "website",
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: images.map((img) => img.url),
     },
   };
 }

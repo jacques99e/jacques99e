@@ -134,6 +134,28 @@ export async function publishPageFeed(options: {
   return { id: data.id };
 }
 
+/** Photo Page publique + légende (le lien boutique va dans la légende). */
+export async function publishPagePhoto(options: {
+  pageId: string;
+  pageAccessToken: string;
+  imageUrl: string;
+  caption: string;
+}) {
+  const url = new URL(`${GRAPH}/${options.pageId}/photos`);
+  const body = new URLSearchParams({
+    url: options.imageUrl,
+    caption: options.caption,
+    published: "true",
+    access_token: options.pageAccessToken,
+  });
+  const res = await fetch(url, { method: "POST", body });
+  const data = (await res.json()) as { id?: string; post_id?: string; error?: { message?: string } };
+  if (!res.ok || !(data.id || data.post_id)) {
+    throw new Error(data.error?.message || "Photo Facebook impossible");
+  }
+  return { id: data.post_id || data.id || "" };
+}
+
 export async function publishInstagramPhoto(options: {
   igUserId: string;
   pageAccessToken: string;

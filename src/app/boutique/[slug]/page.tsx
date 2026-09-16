@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createServiceSupabase } from "@/lib/supabase/server";
-import { APP_URL } from "@/lib/seo";
+import { APP_URL, openGraphShareImages } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
 import { PRODUCT_DB_COLUMNS, rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
@@ -22,14 +22,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supabase = await createServiceSupabase();
   const { data: store } = await supabase
     .from("stores")
-    .select("name, description")
+    .select("name, description, logo_url, cover_url")
     .eq("slug", slug)
     .eq("is_public", true)
     .single();
 
+  const image =
+    toPublicProductImageUrl(store?.cover_url) || toPublicProductImageUrl(store?.logo_url);
+  const title = store ? `${store.name} — Wazo Digital` : "Boutique — Wazo Digital";
+  const description = store?.description || "Catalogue en ligne sur Wazo Digital";
+  const images = openGraphShareImages(image, store?.name || "Boutique");
+
   return {
-    title: store ? `${store.name} — Wazo Digital` : "Boutique — Wazo Digital",
-    description: store?.description || "Catalogue en ligne sur Wazo Digital",
+    title,
+    description,
     alternates: store ? { canonical: `/boutique/${slug}` } : undefined,
     robots: store ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: {
@@ -38,6 +44,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${APP_URL}/boutique/${slug}`,
       type: "website",
       siteName: "Wazo Digital",
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: store?.name || "Boutique",
+      description: store?.description || "Catalogue en ligne",
+      images: images.map((img) => img.url),
     },
   };
 }

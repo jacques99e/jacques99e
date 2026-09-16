@@ -22,10 +22,11 @@ import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
 import { ModuleMenuLink } from "@/components/ModuleMenuLink";
 import { ModulePublicPortals } from "@/components/ModulePublicPortals";
 import { ProductLandingButton } from "@/components/ProductLandingButton";
+import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { markDay0ShareDone } from "@/lib/day0-mission";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
-import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
+import { boutiquePayShareText, boutiquePayUrl, boutiquePublicUrl, boutiqueShareText } from "@/lib/bring-clients";
 import { setTaskDone } from "@/lib/onboarding";
 import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
@@ -62,10 +63,7 @@ export default function ProductsPage() {
 
   const openCatalogWhatsApp = () => {
     const store = localStore.get();
-    const boutiqueUrl =
-      store?.slug && typeof window !== "undefined"
-        ? `${window.location.origin}/boutique/${store.slug}`
-        : undefined;
+    const boutiqueUrl = boutiquePublicUrl(store?.slug) ?? undefined;
     const text = buildWhatsAppCatalog({
       storeName: store?.name || "Ma boutique",
       products: products.map(toLocalProduct),
@@ -86,6 +84,11 @@ export default function ProductsPage() {
     window.open(buildWhatsAppShareUrl(text), "_blank", "noopener,noreferrer");
     setShowShareSheet(false);
   };
+
+  const storeSlug = localStore.get()?.slug;
+  const boutiqueUrl = boutiquePublicUrl(storeSlug);
+  const payUrl = boutiquePayUrl(storeSlug);
+  const storeName = localStore.get()?.name || "Ma boutique";
 
   useEffect(() => {
     if (!storeId) return;
@@ -236,10 +239,10 @@ export default function ProductsPage() {
         {showShareSheet && products.length > 0 ? (
           <section className="rounded-2xl border border-[#25D366]/40 bg-[#25D366]/10 p-4 shadow-sm">
             <h2 className="text-sm font-bold text-[#128C7E]">
-              {isFirstProduct ? "1er produit — envoyez le lien MoMo" : "Partager sur WhatsApp"}
+              {isFirstProduct ? "1er produit — partagez le lien" : "Partager WhatsApp et Facebook"}
             </h2>
             <p className="mt-1 text-xs text-gray-600">
-              Le client paie tout seul. Vous n’ouvrez rien.
+              WhatsApp envoie le message. Facebook affiche la photo et le lien.
             </p>
             <div className="mt-3 flex flex-col gap-2">
               <Button
@@ -249,6 +252,22 @@ export default function ProductsPage() {
               >
                 Envoyer le lien paiement MoMo
               </Button>
+              {payUrl ? (
+                <ShareFacebookButton
+                  url={payUrl}
+                  quote={boutiquePayShareText(storeName, payUrl)}
+                  storeId={storeId}
+                  kind="boutique"
+                  className="w-full"
+                  buttonClassName="w-full"
+                  onShared={() => {
+                    markDay0ShareDone();
+                    setTaskDone("paylink", true);
+                    setShowShareSheet(false);
+                  }}
+                  label="Facebook — lien paiement"
+                />
+              ) : null}
               <Button
                 type="button"
                 className="w-full bg-[#25D366] text-white hover:bg-[#1da851]"
@@ -256,6 +275,21 @@ export default function ProductsPage() {
               >
                 Partager le catalogue WhatsApp
               </Button>
+              {boutiqueUrl ? (
+                <ShareFacebookButton
+                  url={boutiqueUrl}
+                  quote={boutiqueShareText(storeName, boutiqueUrl)}
+                  storeId={storeId}
+                  kind="boutique"
+                  className="w-full"
+                  buttonClassName="w-full"
+                  onShared={() => {
+                    markDay0ShareDone();
+                    setShowShareSheet(false);
+                  }}
+                  label="Facebook — boutique"
+                />
+              ) : null}
               <Button asChild variant="outline" className="w-full">
                 <Link href="/sales">Ensuite : 1ère vente à la caisse</Link>
               </Button>
@@ -333,7 +367,7 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" size="sm" disabled={syncing} onClick={() => void runStoreSync()}>
             {syncing ? "Sync…" : "Sync cloud"}
           </Button>
@@ -343,7 +377,7 @@ export default function ProductsPage() {
             size="sm"
             className="border-[#FF6F00] text-[#FF6F00]"
             onClick={openPayLinkWhatsApp}
-            disabled={!localStore.get()?.slug}
+            disabled={!storeSlug}
           >
             Lien MoMo
           </Button>
@@ -357,6 +391,21 @@ export default function ProductsPage() {
           >
             WhatsApp
           </Button>
+          {boutiqueUrl ? (
+            <ShareFacebookButton
+              url={boutiqueUrl}
+              quote={boutiqueShareText(storeName, boutiqueUrl)}
+              storeId={storeId}
+              kind="boutique"
+              size="sm"
+              className="w-full"
+              buttonClassName="w-full"
+            />
+          ) : (
+            <Button type="button" variant="outline" size="sm" disabled>
+              Facebook
+            </Button>
+          )}
         </div>
 
         {filtered.length === 0 ? (

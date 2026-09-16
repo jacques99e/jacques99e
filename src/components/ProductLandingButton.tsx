@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Sparkles, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { apiFetch } from "@/lib/api-client";
-import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
+import { boutiquePayShareText, boutiquePayUrl, boutiqueProductUrl } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 import {
@@ -130,16 +131,16 @@ export function ProductLandingButton({
 
   const share = () => {
     const store = localStore.get();
-    if (!store?.slug) {
+    const url = boutiqueProductUrl(store?.slug, product.id);
+    if (!url) {
       setError("Publiez d’abord votre boutique (slug manquant).");
       return;
     }
-    const url = `${window.location.origin}/boutique/${store.slug}/produit/${product.id}`;
     const pitch =
       existing?.content.whatsappPitch ||
       `Découvrez ${product.name} : ${url}`;
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(`${pitch}\n${url}`)}`,
+      buildWhatsAppShareUrl(`${pitch}\n${url}`),
       "_blank",
       "noopener,noreferrer"
     );
@@ -158,6 +159,11 @@ export function ProductLandingButton({
       "noopener,noreferrer"
     );
   };
+
+  const store = localStore.get();
+  const productUrl = boutiqueProductUrl(store?.slug, product.id);
+  const productQuote =
+    existing?.content.whatsappPitch || `Découvrez ${product.name}`;
 
   return (
     <div className="space-y-1">
@@ -179,8 +185,18 @@ export function ProductLandingButton({
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={share}>
           <Share2 className="h-3.5 w-3.5" />
-          Partager
+          WhatsApp
         </Button>
+        {productUrl ? (
+          <ShareFacebookButton
+            url={productUrl}
+            quote={productQuote}
+            storeId={storeId}
+            kind="product"
+            productId={product.id}
+            size="sm"
+          />
+        ) : null}
         <Button
           type="button"
           size="sm"

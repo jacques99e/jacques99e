@@ -14,6 +14,8 @@ import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
+import { boutiquePublicUrl } from "@/lib/bring-clients";
+import { buildFacebookShareUrl } from "@/lib/facebook-share";
 import { trackMetaFirstProduct } from "@/lib/meta-pixel";
 import { setTaskDone } from "@/lib/onboarding";
 import { getProducts, saveProduct, uploadProductImage } from "@/lib/products";
@@ -185,21 +187,42 @@ export default function AddProductPage() {
             <div className="rounded-xl border border-green-100 bg-green-50 p-3">
               <p className="text-xs font-semibold text-green-900">Pitch WhatsApp suggéré</p>
               <p className="mt-1 whitespace-pre-wrap text-xs text-green-800">{whatsappPitch}</p>
-              <Button
-                type="button"
-                size="sm"
-                className="mt-2 bg-[#075E54] hover:bg-[#064e47]"
-                onClick={() => {
-                  void navigator.clipboard.writeText(whatsappPitch);
-                  window.open(
-                    `https://wa.me/?text=${encodeURIComponent(whatsappPitch)}`,
-                    "_blank",
-                    "noopener,noreferrer"
-                  );
-                }}
-              >
-                Partager sur WhatsApp
-              </Button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-[#075E54] hover:bg-[#064e47]"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(whatsappPitch);
+                    window.open(
+                      `https://wa.me/?text=${encodeURIComponent(whatsappPitch)}`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
+                  }}
+                >
+                  Partager sur WhatsApp
+                </Button>
+                {boutiquePublicUrl(localStore.get()?.slug) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-[#1877F2]/40 text-[#1877F2]"
+                    onClick={() => {
+                      const url = boutiquePublicUrl(localStore.get()?.slug);
+                      if (!url) return;
+                      window.open(
+                        buildFacebookShareUrl(url, whatsappPitch),
+                        "_blank",
+                        "noopener,noreferrer"
+                      );
+                    }}
+                  >
+                    Facebook
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
 

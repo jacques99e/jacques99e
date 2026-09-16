@@ -35,6 +35,13 @@ export function boutiquePayUrl(slug?: string | null, productId?: string | null):
   return `${base}/payer`;
 }
 
+export function boutiqueProductUrl(slug?: string | null, productId?: string | null): string | null {
+  const base = boutiquePublicUrl(slug);
+  const id = productId?.trim();
+  if (!base || !id) return null;
+  return `${base}/produit/${encodeURIComponent(id)}`;
+}
+
 export function boutiquePayShareText(storeName: string, url: string, productName?: string): string {
   const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
   const item = productName?.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80);

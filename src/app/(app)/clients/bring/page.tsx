@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Copy, MessageCircle, Share2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Facebook, MessageCircle, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { apiFetch } from "@/lib/api-client";
 import { isPaidSubscriber, type BillingSubscription } from "@/lib/billing";
 import {
@@ -21,6 +22,7 @@ import {
   type BringClientStepId,
 } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
+import { buildFacebookShareUrl } from "@/lib/facebook-share";
 import { buildWhatsAppShareUrl } from "@/lib/whatsapp-share";
 
 const STEP_COPY: Record<
@@ -182,19 +184,43 @@ export default function BringClientsPage() {
           Envoyer le lien paiement MoMo
         </a>
       ) : null}
+      {url ? (
+        <ShareFacebookButton
+          url={url}
+          quote={shareText}
+          storeId={store?.id}
+          kind="boutique"
+          className="w-full"
+          buttonClassName="w-full h-11"
+          label="Partager sur Facebook"
+        />
+      ) : null}
     </div>
   ) : null;
 
   const whatsAppButton = (label: string) => (
-    <a
-      href={waHref}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-semibold text-white"
-    >
-      <MessageCircle className="h-4 w-4" />
-      {label}
-    </a>
+    <div className="space-y-2">
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-semibold text-white"
+      >
+        <MessageCircle className="h-4 w-4" />
+        {label}
+      </a>
+      {url ? (
+        <a
+          href={buildFacebookShareUrl(url, shareText)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] text-sm font-semibold text-white"
+        >
+          <Facebook className="h-4 w-4" />
+          Partager aussi sur Facebook
+        </a>
+      ) : null}
+    </div>
   );
 
   const qrBlock = (

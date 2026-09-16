@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
 import { boutiquePayShareText, boutiquePayUrl } from "@/lib/bring-clients";
+import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import {
   DAY0_STEPS,
   getDay0Progress,
@@ -88,6 +89,11 @@ export function Day0Mission() {
   const step = DAY0_STEPS.find((s) => s.id === stepId) ?? DAY0_STEPS[0];
   const stepIndex = DAY0_STEPS.findIndex((s) => s.id === stepId) + 1;
   const onTargetPage = pathMatchesStep(pathname, stepId);
+  const store = localStore.get();
+  const payShareUrl = boutiquePayUrl(store?.slug);
+  const payShareQuote = payShareUrl
+    ? boutiquePayShareText(store?.name || "Ma boutique", payShareUrl)
+    : "";
 
   const shareWhatsApp = () => {
     const store = localStore.get();
@@ -204,6 +210,23 @@ export function Day0Mission() {
                 Envoyer le lien paiement MoMo
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
+              {payShareUrl ? (
+                <ShareFacebookButton
+                  url={payShareUrl}
+                  quote={payShareQuote}
+                  storeId={store?.id}
+                  kind="boutique"
+                  className="w-full"
+                  buttonClassName="w-full"
+                  label="Partager aussi sur Facebook"
+                  onShared={() => {
+                    markDay0ShareDone();
+                    markDay0Complete();
+                    setFlags((f) => ({ ...f, shareDone: true }));
+                    setOpen(false);
+                  }}
+                />
+              ) : null}
               <Button asChild variant="outline" className="w-full">
                 <Link href="/products?share=1&first=1">Voir mon lien</Link>
               </Button>

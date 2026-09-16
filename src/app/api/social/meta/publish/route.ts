@@ -4,7 +4,10 @@ import {
   appPublicUrl,
   publishInstagramPhoto,
   publishPageFeed,
+  publishPagePhoto,
 } from "@/lib/merchant-meta";
+import { PRODUCT_DB_COLUMNS, rowToProduct } from "@/lib/product-db-map";
+import { toPublicProductImageUrl } from "@/lib/storage-public-url";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +18,20 @@ type PublishBody = {
   /** boutique | product */
   kind?: "boutique" | "product";
   productId?: string;
+  /** URL publique à coller dans la légende (boutique, produit ou paiement). */
+  link?: string;
   platforms?: Array<"facebook" | "instagram">;
 };
+
+function isAllowedShareLink(link: string, appUrl: string) {
+  try {
+    const parsed = new URL(link);
+    const allowed = new URL(appUrl);
+    return parsed.origin === allowed.origin && parsed.pathname.startsWith("/boutique/");
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuthContext();
@@ -66,25 +81,39 @@ export async function POST(request: NextRequest) {
   }
 
   const appUrl = appPublicUrl();
-  let message = "";
+  const landingUrl =
+    process.env.NEXT_PUBLIC_LANDING_URL?.trim().replace(/\/$/, "") || "https://wazo-digital.com";
   let link = store.slug ? `${appUrl}/boutique/${store.slug}` : appUrl;
-  let imageUrl = store.cover_url || store.logo_url || `${process.env.NEXT_PUBLIC_LANDING_URL || "https://wazo-digital.com"}/social-card.png`;
+  let imageUrl =
+    toPublicProductImageUrl(store.cover_url) ||
+    toPublicProductImageUrl(store.logo_url) ||
+    `${landingUrl}/social-card.png`;
+  let message = [
+    `Découvrez ${store.name} sur Wazo Digital`,
+    "",
+    "Catalogue + commande WhatsApp",
+    "",
+    link,
+  ].join("\n");
 
   if (kind === "product") {
     if (!body.productId) {
       return NextResponse.json({ success: false, error: "productId requis" }, { status: 400 });
     }
-    const { data: product } = await service
+    const { data: productRow } = await service
       .from("products")
-      .select("id, name, price, description, photo_url")
+      .select(PRODUCT_DB_COLUMNS)
       .eq("id", body.productId)
       .eq("store_id", storeId)
       .maybeSingle();
-    if (!product) {
+    if (!productRow) {
       return NextResponse.json({ success: false, error: "Produit introuvable" }, { status: 404 });
     }
-    const price =
-      product.price != null ? `${Number(product.price).toLocaleString("fr-FR")} FCFA` : "";
+    const product = rowToProduct(productRow as Record<string, unknown>);
+    if (store.slug) {
+      link = `${appUrl}/boutique/${store.slug}/produit/${product.id}`;
+    }
+    const price = product.price ? `${product.price.toLocaleString("fr-FR")} FCFA` : "";
     message = [
       `${product.name}${price ? ` — ${price}` : ""}`,
       "",
@@ -95,30 +124,52 @@ export async function POST(request: NextRequest) {
     ]
       .filter(Boolean)
       .join("\n");
-    link = store.slug
-      ? `${appUrl}/boutique/${store.slug}/produit/${product.id}`
-      : link;
-    if (product.photo_url) imageUrl = product.photo_url;
-  } else {
-    message = [
-      `Découvrez ${store.name} sur Wazo Digital`,
-      "",
-      "Catalogue + commande WhatsApp",
-      "",
-      link,
-    ].join("\n");
+    imageUrl = product.image_url || imageUrl;
+  }
+
+  if (body.link && isAllowedShareLink(body.link, appUrl) && body.link !== link) {
+    message = message.split(link).join(body.link);
+    link = body.link;
+    const productIdFromLink = new URL(link).searchParams.get("product");
+    if (kind !== "product" && productIdFromLink) {
+      const { data: payProductRow } = await service
+        .from("products")
+        .select(PRODUCT_DB_COLUMNS)
+        .eq("id", productIdFromLink)
+        .eq("store_id", storeId)
+        .maybeSingle();
+      if (payProductRow) {
+        const payProduct = rowToProduct(payProductRow as Record<string, unknown>);
+        imageUrl = payProduct.image_url || imageUrl;
+      }
+    }
   }
 
   const results: Record<string, { ok: boolean; id?: string; error?: string }> = {};
 
   if (platforms.includes("facebook")) {
     try {
-      const fb = await publishPageFeed({
-        pageId: social.page_id,
-        pageAccessToken: social.page_access_token,
-        message,
-        link,
-      });
+      const fb =
+        imageUrl && /^https:\/\//i.test(imageUrl)
+          ? await publishPagePhoto({
+              pageId: social.page_id,
+              pageAccessToken: social.page_access_token,
+              imageUrl,
+              caption: message,
+            }).catch(() =>
+              publishPageFeed({
+                pageId: social.page_id,
+                pageAccessToken: social.page_access_token,
+                message,
+                link,
+              })
+            )
+          : await publishPageFeed({
+              pageId: social.page_id,
+              pageAccessToken: social.page_access_token,
+              message,
+              link,
+            });
       results.facebook = { ok: true, id: fb.id };
     } catch (e) {
       results.facebook = {

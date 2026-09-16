@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createServiceSupabase } from "@/lib/supabase/server";
-import { APP_URL } from "@/lib/seo";
+import { APP_URL, openGraphShareImages } from "@/lib/seo";
 import { resolveContactPhone } from "@/lib/contact-phone";
 import { PRODUCT_DB_COLUMNS, rowToProduct } from "@/lib/product-db-map";
 import { toPublicProductImageUrl } from "@/lib/storage-public-url";
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, name")
+    .select("id, name, logo_url, cover_url")
     .eq("slug", slug)
     .eq("is_public", true)
     .single();
@@ -44,13 +44,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Produit — Wazo Digital", robots: { index: false, follow: false } };
   }
 
-  const imageUrl = toPublicProductImageUrl(
-    (product.photo_url as string | null)
-  );
+  const imageUrl =
+    toPublicProductImageUrl(product.photo_url as string | null) ||
+    toPublicProductImageUrl(store.cover_url) ||
+    toPublicProductImageUrl(store.logo_url);
+  const description = product.description || `Découvrez ${product.name} sur ${store.name}`;
+  const images = openGraphShareImages(imageUrl, product.name);
 
   return {
     title: `${product.name} — ${store.name}`,
-    description: product.description || `Découvrez ${product.name} sur ${store.name}`,
+    description,
     alternates: { canonical: `/boutique/${slug}/produit/${id}` },
     robots: { index: true, follow: true },
     openGraph: {
@@ -59,7 +62,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: `${APP_URL}/boutique/${slug}/produit/${id}`,
       type: "website",
       siteName: store.name,
-      images: imageUrl ? [{ url: imageUrl, alt: product.name }] : undefined,
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description,
+      images: images.map((img) => img.url),
     },
   };
 }
@@ -84,7 +93,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const { data: productRow } = await supabase
     .from("products")
-    .select(PRODUCT_DB_COLUMNS)
+    .select("id, store_id, name, description, price, stock, stock_quantity, barcode, photo_url, image_url, is_active, created_at, landing_content")
     .eq("id", id)
     .eq("store_id", store.id)
     .single();

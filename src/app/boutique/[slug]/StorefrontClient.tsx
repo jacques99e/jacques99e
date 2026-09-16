@@ -12,6 +12,8 @@ import {
   Store,
 } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
+import { PublicPageShare } from "@/components/PublicPageShare";
+import { boutiquePublicUrl, boutiqueShareText } from "@/lib/bring-clients";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { formatCurrency, getWhatsAppLink } from "@/lib/utils";
 import type { Product, Store as StoreType } from "@/types";
@@ -27,6 +29,8 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
   const landingUrl = resolveLandingUrl();
   const productCount = store.products.length;
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const shareUrl = boutiquePublicUrl(store.slug);
+  const shareText = shareUrl ? boutiqueShareText(store.name, shareUrl) : "";
 
   useEffect(() => {
     const onScroll = () => setStickyVisible(window.scrollY > 280);
@@ -124,7 +128,7 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
-        <div className="mb-6 flex items-end justify-between gap-3">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight text-[#075E54] md:text-3xl">
               {t("storefront.catalog")}
@@ -133,6 +137,9 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
               {t("storefront.productsCount", { count: productCount })}
             </p>
           </div>
+          {shareUrl ? (
+            <PublicPageShare url={shareUrl} text={shareText} />
+          ) : null}
         </div>
 
         {!contactPhone ? (
