@@ -19,6 +19,41 @@ function waCloseLink(phone: string, text: string): string | null {
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
+async function firstProductPay(
+  db: SupabaseClient,
+  storeId: string,
+  slug?: string | null
+): Promise<{ name: string; url: string } | null> {
+  const { data: product } = await db
+    .from("products")
+    .select("id, name")
+    .eq("store_id", storeId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!product?.id || !slug) return product?.id
+    ? { name: String(product.name || "Produit"), url: "" }
+    : null;
+  const item =
+    String(product.name || "Produit")
+      .replace(/[\r\n\t]+/g, " ")
+      .trim()
+      .slice(0, 80) || "Produit";
+  return {
+    name: item,
+    url: `https://app.wazo-digital.com/boutique/${encodeURIComponent(slug)}/payer?product=${encodeURIComponent(String(product.id))}`,
+  };
+}
+
+async function succeededSaleCount(db: SupabaseClient, storeId: string): Promise<number> {
+  const { count } = await db
+    .from("sale_payments")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", storeId)
+    .eq("status", "succeeded");
+  return count ?? 0;
+}
+
 export async function nudgeEndingTrials(db: SupabaseClient): Promise<number> {
   const { data: subs } = await db
     .from("billing_subscriptions")
@@ -58,34 +93,81 @@ export async function nudgeEndingTrials(db: SupabaseClient): Promise<number> {
       String(userData.user?.user_metadata?.full_name || "").trim() || name;
 
     if (days === 11) {
-      const { count } = await db
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("store_id", sub.store_id);
-      if ((count ?? 0) > 0) continue;
+      const product = await firstProductPay(db, sub.store_id, store.slug);
+
+      if (!product) {
+        const silentText = [
+          `Bonjour ${person} !`,
+          "",
+          `Votre boutique ${name} est ouverte. Ajoutez 1 produit, puis envoyez le lien MoMo.`,
+          ADD_PRODUCT,
+          "",
+          "Jacques — Wazo Digital",
+        ].join("\n");
+        const wa = waCloseLink(phone, silentText);
+        digest.push(
+          [
+            `${name} (${store.slug || sub.store_id}) — J+3 silencieux, 0 produit`,
+            to || "pas d’email",
+            wa || "pas de WhatsApp",
+          ].join(" — ")
+        );
+        continue;
+      }
+
+      if ((await succeededSaleCount(db, sub.store_id)) > 0) continue;
+
       const silentText = [
         `Bonjour ${person} !`,
         "",
-        `Votre boutique ${name} est ouverte. Ajoutez 1 produit, puis envoyez le lien MoMo.`,
-        ADD_PRODUCT,
+        `Votre produit ${product.name} est en ligne sur ${name}.`,
+        "Envoyez ce lien à 3 clients maintenant — ils paient tout seuls :",
+        product.url || "Ouvrez Produits dans Wazo, puis Envoyer le lien MoMo.",
         "",
         "Jacques — Wazo Digital",
       ].join("\n");
+
+      if (to) {
+        const result = await sendWeeklyReportEmail({
+          to,
+          storeName: name,
+          subject: `${name} — envoyez le lien MoMo à 3 clients`,
+          html: `<p>${silentText.replace(/\n/g, "<br/>")}</p>`,
+          text: silentText,
+        });
+        if (result.ok) sent += 1;
+      }
+
       const wa = waCloseLink(phone, silentText);
       digest.push(
         [
-          `${name} (${store.slug || sub.store_id}) — J+3 silencieux, 0 produit`,
+          `${name} (${store.slug || sub.store_id}) — J+3 silencieux, 0 vente MoMo`,
           to || "pas d’email",
           wa || "pas de WhatsApp",
-        ].join(" — ")
+          product.url,
+        ]
+          .filter(Boolean)
+          .join(" — ")
       );
       continue;
     }
 
+    const product = await firstProductPay(db, sub.store_id, store.slug);
+    const hasSale = (await succeededSaleCount(db, sub.store_id)) > 0;
     const text =
       days === 0
         ? `L'essai de ${name} est terminé. Pour garder caisse, stock et lien MoMo : ${PRO_PAY}\n\nJacques — Wazo Digital`
-        : `Plus que 2 jours d'essai sur ${name}. 1 produit + 1 vente MoMo, puis PRO à 9,99 €/mois : ${PRO_PAY}\n\nJacques — Wazo Digital`;
+        : !hasSale && product?.url
+          ? [
+              `Plus que 2 jours d'essai sur ${name}.`,
+              `Envoyez ce lien MoMo à 3 clients maintenant :`,
+              product.url,
+              "",
+              `Pour garder l'outil ensuite : ${PRO_PAY}`,
+              "",
+              "Jacques — Wazo Digital",
+            ].join("\n")
+          : `Plus que 2 jours d'essai sur ${name}. 1 produit + 1 vente MoMo, puis PRO à 9,99 €/mois : ${PRO_PAY}\n\nJacques — Wazo Digital`;
     const subject =
       days === 0
         ? `${name} — l'essai Wazo est terminé`
@@ -108,7 +190,10 @@ export async function nudgeEndingTrials(db: SupabaseClient): Promise<number> {
         `${name} (${store.slug || sub.store_id}) — J-${days}`,
         to || "pas d’email",
         wa || "pas de WhatsApp",
-      ].join(" — ")
+        !hasSale && product?.url ? product.url : "",
+      ]
+        .filter(Boolean)
+        .join(" — ")
     );
   }
 
