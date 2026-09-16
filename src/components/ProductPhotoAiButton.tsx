@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -19,21 +19,26 @@ interface ProductPhotoAiButtonProps {
   imageFile: File | null;
   onFilled: (result: ProductAiFillResult) => void;
   className?: string;
+  autoAnalyze?: boolean;
 }
 
 export function ProductPhotoAiButton({
   imageFile,
   onFilled,
   className = "",
+  autoAnalyze = false,
 }: ProductPhotoAiButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
+  const lastFileRef = useRef<File | null>(null);
+  const onFilledRef = useRef(onFilled);
+  onFilledRef.current = onFilled;
 
-  const analyze = async () => {
+  const analyze = useCallback(async (fileToAnalyze: File | null) => {
     setError("");
     setHint("");
-    if (!imageFile) {
+    if (!fileToAnalyze) {
       setError("Ajoutez d’abord une photo (Galerie ou Caméra).");
       return;
     }
@@ -44,7 +49,7 @@ export function ProductPhotoAiButton({
 
     setLoading(true);
     try {
-      const file = await normalizeProductImageFile(imageFile);
+      const file = await normalizeProductImageFile(fileToAnalyze);
       const form = new FormData();
       form.append("file", file, file.name || "produit.jpg");
 
@@ -83,7 +88,7 @@ export function ProductPhotoAiButton({
         return;
       }
 
-      onFilled({
+      onFilledRef.current({
         ...data.suggestion,
         source: data.source || "fallback",
       });
@@ -107,7 +112,13 @@ export function ProductPhotoAiButton({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!autoAnalyze || !imageFile || imageFile === lastFileRef.current) return;
+    lastFileRef.current = imageFile;
+    void analyze(imageFile);
+  }, [autoAnalyze, imageFile, analyze]);
 
   return (
     <div className={className}>
@@ -117,7 +128,7 @@ export function ProductPhotoAiButton({
         size="sm"
         className="w-full border-[#FF6F00]/40 text-[#FF6F00] hover:bg-orange-50"
         disabled={loading || !imageFile}
-        onClick={() => void analyze()}
+        onClick={() => void analyze(imageFile)}
       >
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />

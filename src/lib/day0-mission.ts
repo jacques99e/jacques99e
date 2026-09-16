@@ -18,7 +18,7 @@ export const DAY0_STEPS: Array<{
   {
     id: "product",
     title: "Ajoutez votre 1er produit",
-    description: "Nom, prix et stock — 2 minutes. La photo est optionnelle.",
+    description: "Photo, nom et prix — 2 minutes. La photo se vend toute seule.",
     href: "/products/add",
     cta: "Ajouter un produit",
   },

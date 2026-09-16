@@ -122,8 +122,12 @@ export default function AddProductPage() {
                 setWhatsappPitch("");
               }}
             />
+            <p className="mt-2 text-xs text-[#1A1A1A]/60">
+              La photo s’affiche sur WhatsApp et Facebook. Sans photo, le client ignore souvent le produit.
+            </p>
             <ProductPhotoAiButton
               className="mt-2"
+              autoAnalyze
               imageFile={imageFile}
               onFilled={(result) => {
                 if (result.name && result.name !== "Produit") setName(result.name);

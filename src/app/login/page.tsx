@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { localAuth } from "@/lib/db";
+import { isEmailNotConfirmedError } from "@/lib/email-confirm";
 import { getLandingRegisterUrl } from "@/lib/public-urls";
 
 function LoginForm() {
@@ -17,6 +18,7 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(
     searchParams.get("error") ? "Connexion Google interrompue. Réessayez." : null
   );
+  const [confirmHint, setConfirmHint] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +52,21 @@ function LoginForm() {
       });
 
       if (error) {
+        if (isEmailNotConfirmedError(error.message)) {
+          setConfirmHint(true);
+          setErrorMessage("Confirmez d’abord le lien reçu par email.");
+          try {
+            await supabase.auth.resend({
+              type: "signup",
+              email: email.trim(),
+              options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+            });
+          } catch {
+            // le message ci-dessus suffit
+          }
+          return;
+        }
+        setConfirmHint(false);
         setErrorMessage("Email ou mot de passe incorrect.");
         return;
       }
@@ -143,6 +160,7 @@ function LoginForm() {
             {errorMessage ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                 {errorMessage}
+                {confirmHint ? " Un nouveau lien vient d’être envoyé — vérifiez aussi les spams." : ""}
               </p>
             ) : null}
 
