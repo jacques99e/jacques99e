@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       slug?: string;
       phone?: string;
       modules?: string[];
+      plan?: string;
     };
 
     const name = body.name?.trim();
@@ -124,11 +125,13 @@ export async function POST(request: NextRequest) {
       .eq("id", auth.userId);
 
     const now = new Date().toISOString();
+    const requested = String(body.plan || "").toLowerCase();
+    const paidPlan = requested === "business" ? "business" : requested === "pro" ? "pro" : null;
     await auth.serviceSupabase.from("billing_subscriptions").upsert(
       {
         store_id: savedStore.id,
-        plan: "starter",
-        status: "trial",
+        plan: paidPlan || "starter",
+        status: paidPlan ? "trial" : "active",
         trial_start: now.slice(0, 10),
         trial_days: 14,
         updated_at: now,

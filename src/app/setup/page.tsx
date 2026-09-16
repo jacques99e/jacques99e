@@ -20,6 +20,7 @@ import {
 import { setBusinessVertical } from "@/lib/onboarding";
 import { apiFetch } from "@/lib/api-client";
 import { ensureUserProfile } from "@/lib/ensure-profile";
+import { trackMetaStartTrial } from "@/lib/meta-pixel";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
 import { getLandingLoginUrl, resolveLandingUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
@@ -232,6 +233,7 @@ export default function SetupPage() {
             slug: finalSlug,
             phone,
             modules,
+            plan: readPendingPlan() || String((user.user_metadata as Record<string, string> | undefined)?.pending_plan || ""),
           }),
         });
         const createData = (await createRes.json()) as {
@@ -262,10 +264,16 @@ export default function SetupPage() {
           .update({ whatsapp: phone, phone })
           .eq("id", savedStore.id);
 
+        const pendingPlan =
+          readPendingPlan() ||
+          String((user.user_metadata as Record<string, string> | undefined)?.pending_plan || "");
         const meta = (user.user_metadata || {}) as Record<string, string>;
         const utm = [meta.utm_source, meta.utm_medium, meta.utm_campaign]
           .filter(Boolean)
           .join(" / ");
+        if (isPaidVitrinePlan(pendingPlan)) {
+          trackMetaStartTrial(pendingPlan === "business" ? "business" : "pro");
+        }
         void fetch(`${resolveLandingUrl()}/api/signup-alert`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -277,6 +285,7 @@ export default function SetupPage() {
             slug: savedStore.slug,
             stage: "store",
             utm,
+            plan: pendingPlan || "",
           }),
         }).catch(() => undefined);
       }

@@ -36,6 +36,29 @@ export default function AuthReceivePage() {
       window.location.replace("/dashboard");
     };
 
+    const persistHandoffIntent = async () => {
+      applyPendingModule();
+      const params = new URLSearchParams(window.location.search);
+      const pendingPlan = params.get("plan");
+      if (pendingPlan) savePendingPlan(pendingPlan);
+      if (params.get("pay") === "1") {
+        savePendingPlanPay(true);
+      }
+      const utmSource = params.get("utm_source")?.trim() || "";
+      const utmMedium = params.get("utm_medium")?.trim() || "";
+      const utmCampaign = params.get("utm_campaign")?.trim() || "";
+      if (pendingPlan || utmSource || utmCampaign) {
+        await supabase.auth.updateUser({
+          data: {
+            ...(pendingPlan ? { pending_plan: pendingPlan } : {}),
+            ...(utmSource ? { utm_source: utmSource } : {}),
+            ...(utmMedium ? { utm_medium: utmMedium } : {}),
+            ...(utmCampaign ? { utm_campaign: utmCampaign } : {}),
+          },
+        });
+      }
+    };
+
     const run = async () => {
       const tokens = readTokensFromHash();
 
@@ -50,19 +73,14 @@ export default function AuthReceivePage() {
             id: data.session.user.id,
             phone: data.session.user.phone,
           });
-          applyPendingModule();
-          const params = new URLSearchParams(window.location.search);
-          const pendingPlan = params.get("plan");
-          if (pendingPlan) savePendingPlan(pendingPlan);
-          if (params.get("pay") === "1") {
-            savePendingPlanPay(true);
-          }
+          await persistHandoffIntent();
           goDashboard();
           return;
         }
 
         const { data: retry } = await supabase.auth.getSession();
         if (retry.session?.user) {
+          await persistHandoffIntent();
           goDashboard();
           return;
         }
@@ -78,6 +96,7 @@ export default function AuthReceivePage() {
 
       const { data: existing } = await supabase.auth.getSession();
       if (existing.session?.user) {
+        await persistHandoffIntent();
         goDashboard();
         return;
       }

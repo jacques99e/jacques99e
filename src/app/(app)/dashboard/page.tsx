@@ -271,7 +271,11 @@ export default function DashboardPage() {
         if (response.ok && data.success && data.subscription) {
           setBilling(data.subscription);
           const status = normalizeBillingStatus(data.subscription);
-          if (status === "trial" && typeof window !== "undefined") {
+          if (
+            status === "trial" &&
+            (data.subscription.plan === "pro" || data.subscription.plan === "business") &&
+            typeof window !== "undefined"
+          ) {
             const key = "wazo_start_trial_pixel";
             if (!sessionStorage.getItem(key)) {
               sessionStorage.setItem(key, "1");
