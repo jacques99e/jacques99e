@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/contexts/I18nContext";
@@ -29,6 +30,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className={plusJakarta.variable}>
       <body className={`${plusJakarta.className} min-h-screen`}>
+        <Script id="wazo-pwa-unstick" strategy="beforeInteractive">
+          {`try{if("caches" in window){caches.keys().then(function(keys){keys.forEach(function(name){caches.delete(name);});});}if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.update();});});}}catch(e){}`}
+        </Script>
         <I18nProvider>
           <MetaPixel />
           <Providers>{children}</Providers>

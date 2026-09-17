@@ -10,16 +10,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useSync();
 
   useEffect(() => {
-    void registerServiceWorker();
-    if ("caches" in window) {
-      void caches.keys().then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith("wazo-app-") && key !== "wazo-app-v5")
-            .map((key) => caches.delete(key))
-        )
-      );
-    }
+    const boot = () => {
+      void registerServiceWorker();
+      if ("caches" in window) {
+        void caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
+      }
+    };
+    if (document.readyState === "complete") boot();
+    else window.addEventListener("load", boot, { once: true });
+    return () => window.removeEventListener("load", boot);
   }, []);
 
   return (

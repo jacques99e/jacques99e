@@ -68,9 +68,43 @@ export class WazoDatabase extends Dexie {
 
 function createDb(): WazoDatabase | null {
   if (typeof window === "undefined") return null;
+  const openingKey = "wazo_idb_opening";
+  const disabledKey = "wazo_idb_disabled";
   try {
-    return new WazoDatabase();
+    if (localStorage.getItem(disabledKey) === "1") return null;
+    if (localStorage.getItem(openingKey) === "1") {
+      localStorage.removeItem(openingKey);
+      localStorage.setItem(disabledKey, "1");
+      try {
+        indexedDB.deleteDatabase("WazoDigital");
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+    localStorage.setItem(openingKey, "1");
+    const instance = new WazoDatabase();
+    void instance
+      .open()
+      .then(() => {
+        localStorage.removeItem(openingKey);
+      })
+      .catch(() => {
+        localStorage.removeItem(openingKey);
+        localStorage.setItem(disabledKey, "1");
+        try {
+          indexedDB.deleteDatabase("WazoDigital");
+        } catch {
+          // ignore
+        }
+      });
+    return instance;
   } catch {
+    try {
+      localStorage.removeItem(openingKey);
+    } catch {
+      // ignore
+    }
     return null;
   }
 }
