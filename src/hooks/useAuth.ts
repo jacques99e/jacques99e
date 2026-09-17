@@ -43,14 +43,16 @@ export function useAuth() {
     void init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (session?.user) {
           setUser(session.user);
           localAuth.saveSession(session.access_token, {
             id: session.user.id,
             phone: session.user.phone,
           });
-        } else if (navigator.onLine) {
+          return;
+        }
+        if (event === "SIGNED_OUT") {
           setUser(null);
           localAuth.clear();
         }

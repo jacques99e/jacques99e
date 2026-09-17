@@ -1,4 +1,4 @@
-const CACHE = "wazo-app-v4";
+const CACHE = "wazo-app-v5";
 const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 const SKIP_PREFIXES = ["/api/", "/boutique/", "/formation", "/suivi", "/trace"];
 
@@ -11,26 +11,47 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
+      )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 function skipPath(pathname) {
   return SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-function shouldCache(request, response) {
-  if (!response || !response.ok) return false;
-  if (response.type === "opaque" || response.type === "opaqueredirect") return false;
+function isDocumentRequest(request) {
+  if (request.mode === "navigate" || request.destination === "document") return true;
   try {
-    if (new URL(response.url).origin !== self.location.origin) return false;
+    const url = new URL(request.url);
+    if (url.searchParams.has("_rsc")) return true;
   } catch {
     return false;
   }
-  return !skipPath(new URL(request.url).pathname);
+  return request.headers.get("RSC") === "1";
+}
+
+function shouldCache(request, response) {
+  if (!response || !response.ok) return false;
+  if (response.type === "opaque" || response.type === "opaqueredirect") return false;
+  if (isDocumentRequest(request)) return false;
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  if (contentType.includes("text/html") || contentType.includes("text/x-component")) {
+    return false;
+  }
+  try {
+    const url = new URL(response.url);
+    if (url.origin !== self.location.origin) return false;
+    if (url.pathname === "/sw.js" || url.pathname === "/manifest.json") return false;
+    if (skipPath(url.pathname)) return false;
+  } catch {
+    return false;
+  }
+  return true;
 }
 
 function putInCache(request, response) {
@@ -50,20 +71,12 @@ self.addEventListener("fetch", (event) => {
   const isStatic =
     url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/");
 
-  if (request.mode === "navigate") {
+  if (isDocumentRequest(request)) {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          putInCache(request, response);
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          const dashboard = await caches.match("/dashboard");
-          if (dashboard) return dashboard;
-          return caches.match("/offline.html");
-        })
+      fetch(request, { cache: "no-store" }).catch(async () => {
+        const offline = await caches.match("/offline.html");
+        return offline || Response.error();
+      })
     );
     return;
   }

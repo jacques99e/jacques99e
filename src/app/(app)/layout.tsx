@@ -12,13 +12,7 @@ import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { localStore } from "@/lib/db";
-import {
-  billingCheckoutPath,
-  captureCheckoutIntentFromLocation,
-  isPaidVitrinePlan,
-  readPendingPlan,
-  readPendingPlanPay,
-} from "@/lib/modules/preference";
+import { captureCheckoutIntentFromLocation } from "@/lib/modules/preference";
 import { loadUserStore } from "@/lib/store";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -49,18 +43,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
         router.replace("/setup");
         return;
-      }
-
-      const pendingPlan = readPendingPlan();
-      const wantsPay = readPendingPlanPay();
-      if (wantsPay && pendingPlan && isPaidVitrinePlan(pendingPlan)) {
-        const onBilling =
-          window.location.pathname === "/billing" ||
-          window.location.pathname.startsWith("/billing/");
-        if (!onBilling) {
-          router.replace(billingCheckoutPath(pendingPlan));
-          return;
-        }
       }
 
       setStoreReady(true);

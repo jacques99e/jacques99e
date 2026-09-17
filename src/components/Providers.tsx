@@ -11,6 +11,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void registerServiceWorker();
+    if ("caches" in window) {
+      void caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("wazo-app-") && key !== "wazo-app-v5")
+            .map((key) => caches.delete(key))
+        )
+      );
+    }
   }, []);
 
   return (
