@@ -487,7 +487,7 @@
   "storefront.noDescription": "Aucune description pour ce produit.",
   "storefront.stockAvailable": "{count} en stock",
   "storefront.payMomo": "Payer en MoMo",
-  "storefront.payMomoHint": "Payez maintenant avec Mobile Money. Le vendeur est notifié automatiquement.",
+  "storefront.payMomoHint": "Un tap, vous payez. Le vendeur est prévenu tout seul.",
   "storefront.payNow": "Payer maintenant",
   "storefront.paying": "Redirection vers Mobile Money…",
   "storefront.paySuccess": "Paiement reçu. Merci !",

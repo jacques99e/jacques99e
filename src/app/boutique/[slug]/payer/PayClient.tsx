@@ -21,8 +21,6 @@ export function PayClient({ store, products, selectedProduct }: PayClientProps) 
   const catalogHref = `/boutique/${store.slug}`;
   const [productId, setProductId] = useState(selectedProduct?.id || "");
   const [quantity, setQuantity] = useState("1");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,8 +48,6 @@ export function PayClient({ store, products, selectedProduct }: PayClientProps) 
           slug: store.slug,
           productId: product.id,
           quantity: qty,
-          customerName,
-          customerPhone,
         }),
       });
       const data = (await res.json()) as {
@@ -168,33 +164,21 @@ export function PayClient({ store, products, selectedProduct }: PayClientProps) 
               </div>
             ) : null}
 
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-[#075E54]">
-                {t("storefront.quantity")}
-              </span>
-              <input
-                type="number"
-                min={1}
-                max={product?.stock_quantity || 1}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="h-12 w-full rounded-xl border border-gray-200 px-3 text-sm"
-              />
-            </label>
-
-            <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder={t("storefront.yourName")}
-              className="h-12 w-full rounded-xl border border-gray-200 px-3 text-sm"
-            />
-            <input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder={t("storefront.yourPhone")}
-              inputMode="tel"
-              className="h-12 w-full rounded-xl border border-gray-200 px-3 text-sm"
-            />
+            {selectedProduct ? null : (
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-bold text-[#075E54]">
+                  {t("storefront.quantity")}
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={product?.stock_quantity || 1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-gray-200 px-3 text-sm"
+                />
+              </label>
+            )}
 
             {product ? (
               <p className="text-center text-base font-extrabold text-[#075E54]">
