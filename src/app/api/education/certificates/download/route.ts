@@ -8,20 +8,16 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json().catch(() => ({}))) as CertificateIssueInput & {
-      student_name?: string;
-      course_title?: string;
-      instructor_name?: string;
-    };
+    const body = (await request.json().catch(() => ({}))) as CertificateIssueInput;
 
     const result = await issueCertificateForEnrollment(body);
     if (!result.ok) {
       return NextResponse.json({ success: false, error: result.error }, { status: result.status });
     }
 
-    const studentName = body.student_name?.trim() || result.studentName;
-    const courseTitle = body.course_title?.trim() || "Formation";
-    const instructorName = body.instructor_name?.trim() || "Wazo Digital";
+    const studentName = result.studentName;
+    const courseTitle = "Formation";
+    const instructorName = "Wazo Digital";
 
     const pdf = await buildCertificatePdfBuffer({
       studentName,

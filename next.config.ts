@@ -14,7 +14,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self' data:",
@@ -30,7 +30,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   images: {
+    dangerouslyAllowSVG: false,
+    contentDispositionType: "attachment",
+    formats: ["image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },
     ],

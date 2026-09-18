@@ -22,7 +22,6 @@ import { apiFetch } from "@/lib/api-client";
 import { ensureUserProfile } from "@/lib/ensure-profile";
 import { trackMetaStartTrial } from "@/lib/meta-pixel";
 import { mapErrorToUserMessage } from "@/lib/user-messages";
-import { resolveLandingUrl } from "@/lib/public-urls";
 import { slugify } from "@/lib/utils";
 import {
   isValidWhatsAppPhone,
@@ -286,7 +285,7 @@ export default function SetupPage() {
         if (isPaidVitrinePlan(pendingPlan)) {
           trackMetaStartTrial(pendingPlan === "business" ? "business" : "pro");
         }
-        void fetch(`${resolveLandingUrl()}/api/signup-alert`, {
+        void fetch("/api/merchant-alert", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
