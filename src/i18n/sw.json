@@ -406,6 +406,8 @@
   "pwa.install": "Sakinisha",
   "pwa.installDesc": "Ufikiaji wa haraka na hali ya nje ya mtandao",
   "pwa.installTitle": "Sakinisha Wazo Digital",
+  "pwa.iosHint": "Kwenye iPhone: Share, kisha “Add to Home Screen”.",
+  "pwa.androidHint": "Menyu ya Chrome (⋮) → Add to Home Screen.",
   "qr.assetLabel": "Asset to label",
   "qr.chooseAsset": "Choose an asset…",
   "qr.copied": "Copied!",

@@ -31,7 +31,7 @@ export default function RootLayout({
     <html lang="fr" className={plusJakarta.variable}>
       <body className={`${plusJakarta.className} min-h-screen`}>
         <Script id="wazo-pwa-unstick" strategy="beforeInteractive">
-          {`try{if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if("caches" in window){caches.keys().then(function(keys){keys.forEach(function(name){caches.delete(name);});});}}catch(e){}`}
+          {`try{if(localStorage.getItem("wazo_sw_unstick")!=="v8"){if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}if("caches" in window){caches.keys().then(function(keys){keys.forEach(function(name){caches.delete(name);});});}localStorage.setItem("wazo_sw_unstick","v8");}}catch(e){}`}
         </Script>
         <I18nProvider>
           <MetaPixel />

@@ -406,6 +406,8 @@
   "pwa.install": "Installer",
   "pwa.installDesc": "Accès rapide ak mode hors ligne",
   "pwa.installTitle": "Installer Wazo Digital",
+  "pwa.iosHint": "Ci iPhone : bouton Partager, « Sur l’écran d’accueil ».",
+  "pwa.androidHint": "Menu Chrome (⋮) → Ajouter à l’écran d’accueil.",
   "qr.assetLabel": "Asset to label",
   "qr.chooseAsset": "Choose an asset…",
   "qr.copied": "Copied!",

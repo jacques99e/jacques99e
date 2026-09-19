@@ -8,6 +8,7 @@ import { localAuth } from "@/lib/db";
 import { isEmailNotConfirmedError } from "@/lib/email-confirm";
 import { getLandingRegisterUrl } from "@/lib/public-urls";
 import { captureCheckoutIntentFromLocation, postLoginHref } from "@/lib/modules/preference";
+import { isStandalonePwa } from "@/lib/pwa";
 
 function GoogleIcon() {
   return (
@@ -43,11 +44,20 @@ export function LoginForm({ embedded = false }: { embedded?: boolean }) {
     searchParams.get("error") ? "Connexion Google interrompue. Réessayez." : null
   );
   const [confirmHint, setConfirmHint] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [standalone, setStandalone] = useState(false);
+
+  useEffect(() => {
+    setStandalone(isStandalonePwa());
+  }, []);
 
   useEffect(() => {
     if (embedded) return;
     captureCheckoutIntentFromLocation();
     let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) setCheckingSession(false);
+    }, 4000);
     void (async () => {
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
@@ -63,6 +73,7 @@ export function LoginForm({ embedded = false }: { embedded?: boolean }) {
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
     };
   }, [embedded, router]);
 
@@ -115,6 +126,38 @@ export function LoginForm({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
+  async function handleSignup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage(null);
+    setConfirmHint(false);
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) {
+        setErrorMessage("Impossible de créer le compte. Réessayez.");
+        return;
+      }
+      if (data.session?.user) {
+        localAuth.saveSession(data.session.access_token, {
+          id: data.session.user.id,
+          phone: data.session.user.phone,
+        });
+        router.replace("/setup");
+        return;
+      }
+      setConfirmHint(true);
+      setErrorMessage("Confirmez le lien reçu par email, puis reconnectez-vous ici.");
+    } catch {
+      setErrorMessage("Impossible de créer le compte pour le moment.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handleGoogle() {
     setErrorMessage(null);
     setIsLoading(true);
@@ -147,12 +190,16 @@ export function LoginForm({ embedded = false }: { embedded?: boolean }) {
     <main className="min-h-screen bg-[#FFF8F0] px-4 py-8">
       <div className="mx-auto w-full max-w-md">
         <section className="rounded-2xl border border-[#075E54]/10 bg-white p-6 shadow-sm md:p-8">
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Connexion</h1>
+          <h1 className="text-2xl font-bold text-[#1A1A1A]">
+            {mode === "signup" ? "Créer un compte" : "Connexion"}
+          </h1>
           <p className="mt-2 text-sm text-[#1A1A1A]/75">
-            Accédez à votre espace Wazo Digital sans quitter l’application.
+            {mode === "signup"
+              ? "Email et mot de passe. Vous restez dans Wazo."
+              : "Accédez à votre espace Wazo Digital sans quitter l’application."}
           </p>
 
-          <form className="mt-6 space-y-4" onSubmit={handleLogin}>
+          <form className="mt-6 space-y-4" onSubmit={mode === "signup" ? handleSignup : handleLogin}>
             <label className="block text-sm font-medium text-[#1A1A1A]">
               Adresse email
               <div className="mt-1 flex items-center gap-2 rounded-xl border border-[#075E54]/20 px-3 py-2">
@@ -198,38 +245,72 @@ export function LoginForm({ embedded = false }: { embedded?: boolean }) {
               disabled={isLoading}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6F00] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isLoading ? (
+                {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Connexion...
+                  {mode === "signup" ? "Création..." : "Connexion..."}
                 </>
+              ) : mode === "signup" ? (
+                "Créer mon compte"
               ) : (
                 "Se connecter"
               )}
             </button>
           </form>
 
-          <div className="my-5 flex items-center gap-3">
-            <span className="h-px flex-1 bg-[#075E54]/10" />
-            <span className="text-xs text-[#1A1A1A]/50">ou</span>
-            <span className="h-px flex-1 bg-[#075E54]/10" />
-          </div>
+          {standalone ? null : (
+            <>
+              <div className="my-5 flex items-center gap-3">
+                <span className="h-px flex-1 bg-[#075E54]/10" />
+                <span className="text-xs text-[#1A1A1A]/50">ou</span>
+                <span className="h-px flex-1 bg-[#075E54]/10" />
+              </div>
 
-          <button
-            type="button"
-            onClick={() => void handleGoogle()}
-            disabled={isLoading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#075E54]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-[#075E54]/5 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-            Continuer avec Google
-          </button>
+              <button
+                type="button"
+                onClick={() => void handleGoogle()}
+                disabled={isLoading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#075E54]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition hover:bg-[#075E54]/5 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+                Continuer avec Google
+              </button>
+            </>
+          )}
 
           <p className="mt-4 text-center text-sm text-[#1A1A1A]/75">
-            Pas encore de compte ?{" "}
-            <a href={getLandingRegisterUrl()} className="font-semibold text-[#075E54] hover:underline">
-              Créer un compte
-            </a>
+            {mode === "signup" ? (
+              <button
+                type="button"
+                className="font-semibold text-[#075E54] hover:underline"
+                onClick={() => {
+                  setMode("login");
+                  setErrorMessage(null);
+                  setConfirmHint(false);
+                }}
+              >
+                J’ai déjà un compte
+              </button>
+            ) : standalone ? (
+              <button
+                type="button"
+                className="font-semibold text-[#075E54] hover:underline"
+                onClick={() => {
+                  setMode("signup");
+                  setErrorMessage(null);
+                  setConfirmHint(false);
+                }}
+              >
+                Créer un compte
+              </button>
+            ) : (
+              <>
+                Pas encore de compte ?{" "}
+                <a href={getLandingRegisterUrl()} className="font-semibold text-[#075E54] hover:underline">
+                  Créer un compte
+                </a>
+              </>
+            )}
           </p>
         </section>
       </div>

@@ -68,30 +68,38 @@ export class WazoDatabase extends Dexie {
 
 function createDb(): WazoDatabase | null {
   if (typeof window === "undefined") return null;
-  const openingKey = "wazo_idb_opening";
-  const disabledKey = "wazo_idb_disabled";
+  const openingKey = "wazo_idb_opening_at";
+  const disabledKey = "wazo_idb_disabled_until";
+  const now = Date.now();
   try {
-    if (localStorage.getItem(disabledKey) === "1") return null;
-    if (localStorage.getItem(openingKey) === "1") {
+    const disabledUntil = Number(localStorage.getItem(disabledKey) || "0");
+    if (disabledUntil > now) return null;
+    if (disabledUntil) localStorage.removeItem(disabledKey);
+
+    const openedAt = Number(localStorage.getItem(openingKey) || "0");
+    if (openedAt && now - openedAt < 8000) {
+      return null;
+    }
+    if (openedAt && now - openedAt >= 8000) {
       localStorage.removeItem(openingKey);
-      localStorage.setItem(disabledKey, "1");
       try {
         indexedDB.deleteDatabase("WazoDigital");
       } catch {
         // ignore
       }
-      return null;
     }
-    localStorage.setItem(openingKey, "1");
+
+    localStorage.setItem(openingKey, String(now));
     const instance = new WazoDatabase();
     void instance
       .open()
       .then(() => {
         localStorage.removeItem(openingKey);
+        localStorage.removeItem(disabledKey);
       })
       .catch(() => {
         localStorage.removeItem(openingKey);
-        localStorage.setItem(disabledKey, "1");
+        localStorage.setItem(disabledKey, String(now + 60 * 60 * 1000));
         try {
           indexedDB.deleteDatabase("WazoDigital");
         } catch {

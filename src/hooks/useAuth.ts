@@ -23,7 +23,13 @@ export function useAuth() {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) =>
+            window.setTimeout(() => reject(new Error("auth-timeout")), 4000)
+          ),
+        ]);
+        const session = data.session;
         if (session?.user) {
           setUser(session.user);
           localAuth.saveSession(session.access_token, {

@@ -2,27 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Script from "next/script";
+import { isStandalonePwa } from "@/lib/pwa";
 
 /** Pixel public Wazo (même ID que la landing / les pubs Meta). */
 const PIXEL_ID =
   process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "901524749185736";
 
-function isInstalledApp() {
-  if (typeof window === "undefined") return true;
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return (
-    Boolean(nav.standalone) ||
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    window.matchMedia("(display-mode: minimal-ui)").matches
-  );
-}
-
 export function MetaPixel() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    if (!isInstalledApp()) setEnabled(true);
+    if (!isStandalonePwa()) setEnabled(true);
   }, []);
 
   if (!enabled) return null;
