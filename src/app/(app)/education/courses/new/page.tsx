@@ -17,12 +17,22 @@ export default function NewCoursePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
-    const c = await saveCourse(store.id, { title, description, is_public: isPublic });
-    router.push(`/education/courses/${encodeURIComponent(c.id)}`);
+    setLoading(true);
+    setError("");
+    try {
+      const c = await saveCourse(store.id, { title, description, is_public: isPublic });
+      router.push(`/education/courses/${encodeURIComponent(c.id)}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer le cours.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,7 +56,10 @@ export default function NewCoursePage() {
             />
             Cours public (lien + code invitation pour apprenants)
           </label>
-          <Button type="submit" className="w-full">{t("common.save")}</Button>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {t("common.save")}
+          </Button>
         </form>
       </main>
     </>

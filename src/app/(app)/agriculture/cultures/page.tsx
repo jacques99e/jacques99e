@@ -6,6 +6,14 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { localStore } from "@/lib/db";
+import {
+  cultureStageToFarmStage,
+  farmStageToCultureStage,
+  listParcels,
+  readLocalCultures,
+  saveParcel,
+} from "@/lib/agriculture";
 
 type CultureType =
   | "riz"
@@ -58,15 +66,35 @@ export default function CulturesPage() {
   const [stage, setStage] = useState<CultureStage>("préparation");
   const [cropFilter, setCropFilter] = useState<CultureType | "all">("all");
   const [stageFilter, setStageFilter] = useState<CultureStage | "all">("all");
-  const [plots, setPlots] = useState<CulturePlot[]>(() => {
-    const raw = localStorage.getItem("wazo_cultures");
-    return raw ? (JSON.parse(raw) as CulturePlot[]) : [];
-  });
+  const [plots, setPlots] = useState<CulturePlot[]>([]);
 
   const savePlots = (next: CulturePlot[]) => {
     setPlots(next);
-    localStorage.setItem("wazo_cultures", JSON.stringify(next));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("wazo_cultures", JSON.stringify(next));
+    }
   };
+
+  useEffect(() => {
+    const local = readLocalCultures<CulturePlot>();
+    setPlots(local);
+    const store = localStore.get();
+    if (!store || local.length > 0) return;
+    void listParcels(store.id).then((rows) => {
+      if (!rows.length) return;
+      const mapped: CulturePlot[] = rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        area: Number(row.area_hectares || 0),
+        cropType: (cropTypes.includes(row.crop_type as CultureType)
+          ? row.crop_type
+          : "autre") as CultureType,
+        sowingDate: row.sowing_date || new Date().toISOString().slice(0, 10),
+        stage: farmStageToCultureStage(row.stage),
+      }));
+      savePlots(mapped);
+    });
+  }, []);
 
   const addPlot = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +107,16 @@ export default function CulturesPage() {
       stage,
     };
     savePlots([newPlot, ...plots]);
+    const store = localStore.get();
+    if (store) {
+      void saveParcel(store.id, {
+        name: newPlot.name,
+        area_hectares: newPlot.area,
+        crop_type: newPlot.cropType,
+        sowing_date: newPlot.sowingDate,
+        stage: cultureStageToFarmStage(newPlot.stage),
+      }).catch(() => undefined);
+    }
     setName("");
     setArea("");
     setCropType("riz");

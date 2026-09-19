@@ -1,7 +1,9 @@
 "use client";
 
-import { BookOpen, BookMarked, Calculator, Calendar, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, BookMarked, Calculator, Calendar, Plus, ShoppingBasket, Sprout, TrendingUp } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
 import { AgricultureInsights } from "@/components/agriculture/AgricultureInsights";
 import { ParcelDecisionPanel } from "@/components/agriculture/ParcelDecisionPanel";
 import { ModuleCompetitiveEdge } from "@/components/ModuleCompetitiveEdge";
@@ -22,6 +24,13 @@ export default function AgriculturePage() {
         <ModuleCompetitiveEdge moduleId="agriculture" />
         <AgricultureInsights />
         <ParcelDecisionPanel />
+
+        <Button asChild className="w-full">
+          <Link href="/agriculture/parcels/new">
+            <Plus className="h-4 w-4" />
+            {t("agriculture.newParcel")}
+          </Link>
+        </Button>
 
         <ModuleMenuLink
           href="/agriculture/journal"

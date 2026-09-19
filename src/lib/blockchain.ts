@@ -6,18 +6,27 @@ import { generateLocalId } from "@/lib/sync";
 import type { BlockchainAsset, BlockchainLedgerEntry } from "@/types";
 
 export async function listAssets(storeId: string): Promise<BlockchainAsset[]> {
-  if (db) {
-    const local = await db.blockchainAssets.where("store_id").equals(storeId).toArray();
-    if (local.length || !navigator.onLine) return local;
-  }
-  if (!navigator.onLine) return [];
-  const { data } = await supabase
+  const local = db ? await db.blockchainAssets.where("store_id").equals(storeId).toArray() : [];
+  if (typeof navigator !== "undefined" && !navigator.onLine) return local;
+
+  const { data, error } = await supabase
     .from("blockchain_assets")
     .select("*")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false });
-  if (data && db) await db.blockchainAssets.bulkPut(data);
-  return data || [];
+  if (error || !data) return local;
+
+  const pending = local.filter((asset) => asset._pendingSync || asset.id.startsWith("local-"));
+  const cloudIds = new Set(data.map((asset) => asset.id));
+  const merged = [
+    ...data.map((asset) => ({ ...asset, _pendingSync: false })),
+    ...pending.filter((asset) => !cloudIds.has(asset.id)),
+  ];
+  if (db) {
+    await db.blockchainAssets.where("store_id").equals(storeId).delete();
+    if (merged.length) await db.blockchainAssets.bulkPut(merged);
+  }
+  return merged;
 }
 
 export async function createAsset(
@@ -144,19 +153,20 @@ export async function createAsset(
 }
 
 export async function listLedger(storeId: string): Promise<BlockchainLedgerEntry[]> {
-  if (db) {
-    const local = await db.blockchainLedger.where("store_id").equals(storeId).reverse().sortBy("created_at");
-    if (local.length || !navigator.onLine) return local;
-  }
-  if (!navigator.onLine) return [];
-  const { data } = await supabase
+  const local = db
+    ? await db.blockchainLedger.where("store_id").equals(storeId).reverse().sortBy("created_at")
+    : [];
+  if (typeof navigator !== "undefined" && !navigator.onLine) return local;
+
+  const { data, error } = await supabase
     .from("blockchain_ledger")
     .select("*")
     .eq("store_id", storeId)
     .order("created_at", { ascending: false })
     .limit(50);
-  if (data && db) await db.blockchainLedger.bulkPut(data);
-  return data || [];
+  if (error || !data) return local;
+  if (db && data.length) await db.blockchainLedger.bulkPut(data);
+  return data;
 }
 
 export async function verifyAssetHash(asset: BlockchainAsset): Promise<boolean> {

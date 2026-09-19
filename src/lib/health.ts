@@ -224,11 +224,14 @@ export async function saveAppointment(
     return record;
   }
 
+  const patientId =
+    appointment.patient_id && isCloudUuid(appointment.patient_id) ? appointment.patient_id : null;
+
   const { data, error } = await supabase
     .from("health_appointments")
     .insert({
       store_id: storeId,
-      patient_id: appointment.patient_id ?? null,
+      patient_id: patientId,
       scheduled_at: appointment.scheduled_at,
       status: appointment.status ?? "pending",
       notes: appointment.notes ?? null,
@@ -236,7 +239,9 @@ export async function saveAppointment(
     .select("*")
     .single();
 
-  if (error || !data) return record;
+  if (error || !data) {
+    throw new Error(error?.message || "Impossible d'enregistrer le rendez-vous en ligne.");
+  }
 
   const saved = data as HealthAppointment;
   const local = readLocalAppointments(storeId).filter((a) => a.id !== localId);
@@ -255,8 +260,14 @@ export async function listVitals(patientId: string): Promise<HealthVital[]> {
 }
 
 export async function saveVital(vital: Omit<HealthVital, "id">): Promise<void> {
-  if (!navigator.onLine) return;
-  await supabase.from("health_vitals").insert(vital);
+  if (!navigator.onLine) {
+    throw new Error("Connectez-vous pour enregistrer les constantes.");
+  }
+  if (!isCloudUuid(vital.patient_id)) {
+    throw new Error("Patient non synchronisé. Enregistrez-le en ligne puis réessayez.");
+  }
+  const { error } = await supabase.from("health_vitals").insert(vital);
+  if (error) throw new Error(error.message || "Impossible d'enregistrer les constantes.");
 }
 
 export async function generatePrescriptionPdf(

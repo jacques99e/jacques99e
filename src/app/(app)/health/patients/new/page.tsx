@@ -18,17 +18,27 @@ export default function NewPatientPage() {
   const [age, setAge] = useState("");
   const [blood, setBlood] = useState("");
   const [allergies, setAllergies] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
-    await savePatient(store.id, {
-      full_name: fullName,
-      age: age ? Number(age) : null,
-      blood_group: blood || null,
-      allergies: allergies || null,
-    });
-    router.push("/health");
+    setLoading(true);
+    setError("");
+    try {
+      await savePatient(store.id, {
+        full_name: fullName,
+        age: age ? Number(age) : null,
+        blood_group: blood || null,
+        allergies: allergies || null,
+      });
+      router.push("/health");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer le patient.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,7 +64,10 @@ export default function NewPatientPage() {
             <Label>{t("health.allergies")}</Label>
             <Input value={allergies} onChange={(e) => setAllergies(e.target.value)} className="mt-1" />
           </div>
-          <Button type="submit" className="w-full">{t("common.save")}</Button>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {t("common.save")}
+          </Button>
         </form>
       </main>
     </>

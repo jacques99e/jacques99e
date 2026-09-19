@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,15 +33,25 @@ export default function InputsPage() {
   const [search, setSearch] = useState("");
 
   const plots = useMemo(() => {
-    const raw = localStorage.getItem("wazo_cultures");
-    const data = raw ? (JSON.parse(raw) as CulturePlot[]) : [];
-    return data;
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("wazo_cultures");
+      return raw ? (JSON.parse(raw) as CulturePlot[]) : [];
+    } catch {
+      return [];
+    }
   }, []);
 
-  const [entries, setEntries] = useState<FarmInputEntry[]>(() => {
-    const raw = localStorage.getItem("wazo_intrants");
-    return raw ? (JSON.parse(raw) as FarmInputEntry[]) : [];
-  });
+  const [entries, setEntries] = useState<FarmInputEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("wazo_intrants");
+      setEntries(raw ? (JSON.parse(raw) as FarmInputEntry[]) : []);
+    } catch {
+      setEntries([]);
+    }
+  }, []);
 
   const saveEntries = (next: FarmInputEntry[]) => {
     setEntries(next);

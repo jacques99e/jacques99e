@@ -90,23 +90,52 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    if (body.id?.trim()) {
+    // Index unique partiel (store_id, external_local_id) — PostgREST
+    // onConflict ne l'infère pas. Lookup puis update/insert.
+    const existingId = body.id?.trim() || null;
+    if (existingId) {
       const { data, error } = await service
         .from("crm_clients")
         .update(row)
-        .eq("id", body.id.trim())
+        .eq("id", existingId)
         .eq("store_id", storeId)
         .select("id")
         .maybeSingle();
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
-      return NextResponse.json({ success: true, id: data?.id || body.id });
+      if (data?.id) {
+        return NextResponse.json({ success: true, id: data.id });
+      }
+    }
+
+    const { data: existing, error: lookupError } = await service
+      .from("crm_clients")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("external_local_id", externalLocalId)
+      .maybeSingle();
+    if (lookupError) {
+      return NextResponse.json({ success: false, error: lookupError.message }, { status: 500 });
+    }
+
+    if (existing?.id) {
+      const { data, error } = await service
+        .from("crm_clients")
+        .update(row)
+        .eq("id", existing.id)
+        .eq("store_id", storeId)
+        .select("id")
+        .maybeSingle();
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, id: data?.id || existing.id });
     }
 
     const { data, error } = await service
       .from("crm_clients")
-      .upsert(row, { onConflict: "store_id,external_local_id" })
+      .insert(row)
       .select("id")
       .maybeSingle();
 

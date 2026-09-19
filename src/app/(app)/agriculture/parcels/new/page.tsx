@@ -18,19 +18,26 @@ export default function NewParcelPage() {
   const [area, setArea] = useState("");
   const [crop, setCrop] = useState("mais");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store) return;
     setLoading(true);
-    await saveParcel(store.id, {
-      name,
-      area_hectares: Number(area),
-      crop_type: crop,
-      stage: "growth",
-    });
-    router.push("/agriculture");
-    setLoading(false);
+    setError("");
+    try {
+      await saveParcel(store.id, {
+        name,
+        area_hectares: Number(area),
+        crop_type: crop,
+        stage: "growth",
+      });
+      router.push("/agriculture");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer la parcelle.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,6 +57,7 @@ export default function NewParcelPage() {
             <Label>{t("agriculture.crop")}</Label>
             <Input value={crop} onChange={(e) => setCrop(e.target.value)} className="mt-1" />
           </div>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={loading}>
             {t("common.save")}
           </Button>

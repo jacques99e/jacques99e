@@ -8,7 +8,7 @@ import { ModuleStatGrid } from "@/components/ModuleStatGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
-import { syncStoreToCloud } from "@/lib/cloud-sync";
+import { pullClientsFromCloud, syncStoreToCloud } from "@/lib/cloud-sync";
 import { localStore } from "@/lib/db";
 import {
   readLocalClients,
@@ -54,6 +54,13 @@ export default function ClientsPage() {
   useEffect(() => {
     setStoreLabel(localStorage.getItem("store_name") || "Wazo Digital");
   }, []);
+
+  useEffect(() => {
+    if (!storeId || typeof navigator === "undefined" || !navigator.onLine) return;
+    void pullClientsFromCloud(storeId, []).then(() => {
+      setClients(readLocalClients(storeId));
+    });
+  }, [storeId]);
 
   useEffect(() => {
     const loadBilling = async () => {

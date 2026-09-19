@@ -54,8 +54,7 @@ export async function saveParcel(
   if (db) await db.farmParcels.put(record);
 
   if (navigator.onLine) {
-    try {
-      const response = await apiFetch("/api/agriculture/parcels", {
+    const response = await apiFetch("/api/agriculture/parcels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -81,12 +80,37 @@ export async function saveParcel(
       await db.farmParcels.put(saved);
     }
     return saved;
-    } catch {
-      // Keep local record for offline / retry.
-    }
   }
 
   return record;
+}
+
+export function cultureStageToFarmStage(stage: string): FarmStage {
+  if (stage === "floraison") return "flowering";
+  if (stage === "récolte") return "harvest";
+  if (stage === "préparation") return "fallow";
+  return "growth";
+}
+
+export function farmStageToCultureStage(
+  stage: string
+): "préparation" | "semis" | "croissance" | "floraison" | "récolte" {
+  if (stage === "flowering") return "floraison";
+  if (stage === "harvest") return "récolte";
+  if (stage === "fallow") return "préparation";
+  return "croissance";
+}
+
+export function readLocalCultures<T = unknown>(): T[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("wazo_cultures");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function calcYieldPerHectare(parcel: FarmParcel): number {

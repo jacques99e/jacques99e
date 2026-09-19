@@ -73,14 +73,23 @@ async function syncPendingModules(courseId: string): Promise<CourseModule[]> {
 }
 
 export async function listCourses(storeId: string): Promise<Course[]> {
+  const local = db ? await db.courses.where("store_id").equals(storeId).toArray() : [];
+  if (typeof navigator !== "undefined" && !navigator.onLine) return local;
+
+  const { data, error } = await supabase.from("courses").select("*").eq("store_id", storeId);
+  if (error || !data) return local;
+
+  const pending = local.filter((course) => course._pendingSync || course.id.startsWith("local-"));
+  const cloudIds = new Set(data.map((course) => course.id));
+  const merged = [
+    ...data.map((course) => ({ ...course, _pendingSync: false })),
+    ...pending.filter((course) => !cloudIds.has(course.id)),
+  ];
   if (db) {
-    const local = await db.courses.where("store_id").equals(storeId).toArray();
-    if (local.length || !navigator.onLine) return local;
+    await db.courses.where("store_id").equals(storeId).delete();
+    if (merged.length) await db.courses.bulkPut(merged);
   }
-  if (!navigator.onLine) return [];
-  const { data } = await supabase.from("courses").select("*").eq("store_id", storeId);
-  if (data && db) await db.courses.bulkPut(data);
-  return data || [];
+  return merged;
 }
 
 export async function saveCourse(
@@ -122,8 +131,9 @@ export async function saveCourse(
         return record;
       }
       throw new Error(payload.error || "Impossible d'enregistrer le cours en ligne.");
-    } catch {
-      // Offline or API error: keep local Dexie record.
+    } catch (error) {
+      if (error instanceof Error) throw error;
+      throw new Error("Impossible d'enregistrer le cours en ligne.");
     }
   }
   return record;

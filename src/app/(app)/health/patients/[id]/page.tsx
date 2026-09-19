@@ -40,17 +40,21 @@ export default function PatientDetailPage() {
       setError("Valeurs de constantes invalides.");
       return;
     }
-    await saveVital({
-      patient_id: id,
-      weight_kg: parsedWeight,
-      blood_pressure: bp || null,
-      temperature_c: parsedTemp,
-    });
-    setWeight("");
-    setBp("");
-    setTemp("");
-    setNotice("Constantes enregistrées.");
-    listVitals(id).then(setVitals);
+    try {
+      await saveVital({
+        patient_id: id,
+        weight_kg: parsedWeight,
+        blood_pressure: bp || null,
+        temperature_c: parsedTemp,
+      });
+      setWeight("");
+      setBp("");
+      setTemp("");
+      setNotice("Constantes enregistrées.");
+      listVitals(id).then(setVitals);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer les constantes.");
+    }
   };
 
   const exportRx = async () => {

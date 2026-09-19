@@ -19,10 +19,16 @@ export default function YieldCalculatorPage() {
   const [computed, setComputed] = useState<number | null>(null);
   const [history, setHistory] = useState<
     { id: string; harvestKg: number; areaHa: number; result: number; createdAt: string }[]
-  >(() => {
-    const raw = localStorage.getItem("wazo_yield_history");
-    return raw ? JSON.parse(raw) : [];
-  });
+  >([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("wazo_yield_history");
+      setHistory(raw ? JSON.parse(raw) : []);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
 
   const advice = useMemo(() => {
     if (computed === null) return "";
