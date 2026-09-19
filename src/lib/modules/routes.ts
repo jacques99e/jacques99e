@@ -20,6 +20,7 @@ const ALWAYS_OPEN_PREFIXES = [
   "/help",
   "/analytics",
   "/insights",
+  "/notifications",
 ];
 
 export function getModuleForPath(pathname: string): ModuleId | null {

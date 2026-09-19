@@ -5,6 +5,7 @@ import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } f
 import { notifyStoreSubscribers } from "@/lib/push-server";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { runDailyEvolutionDigest } from "@/lib/evolution-notify";
 import { nudgeEndingTrials } from "@/lib/trial-nudge";
 
 /** Hobby : seul cron quotidien (paiements MoMo + relances essai). */
@@ -125,6 +126,13 @@ export async function GET(request: Request) {
     console.error("[cron] trial-nudge", e instanceof Error ? e.message : e);
   }
 
+  let evolution = { stores: 0, created: 0, emailed: 0 };
+  try {
+    evolution = await runDailyEvolutionDigest(db);
+  } catch (e) {
+    console.error("[cron] evolution", e instanceof Error ? e.message : e);
+  }
+
   return NextResponse.json({
     success: true,
     salesOk,
@@ -132,5 +140,6 @@ export async function GET(request: Request) {
     billingOk,
     billingExpired,
     trialNudges,
+    evolution,
   });
 }

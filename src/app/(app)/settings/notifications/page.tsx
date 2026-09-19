@@ -34,6 +34,8 @@ export default function NotificationsSettingsPage() {
   const [syncResult, setSyncResult] = useState("");
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState("");
+  const [evoSaved, setEvoSaved] = useState(false);
+  const [evoError, setEvoError] = useState("");
 
   const load = useCallback(async () => {
     if (!activeStore?.id) return;
@@ -130,6 +132,46 @@ export default function NotificationsSettingsPage() {
     <>
       <AppHeader title="Notifications & sync" />
       <main className="mx-auto max-w-lg space-y-4 p-4">
+        <section className="rounded-xl bg-white p-4 shadow-sm space-y-3 dark:bg-gray-800">
+          <h2 className="text-sm font-semibold">Email d&apos;évolution (chaque lundi)</h2>
+          <p className="text-xs text-gray-500">
+            Résumé de vos ventes, produits et essai — dans l&apos;app et par e-mail. Tous les
+            comptes. Le rapport PDF détaillé reste réservé au plan BUSINESS.
+          </p>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@exemple.com"
+          />
+          <Button
+            className="w-full bg-[#075E54]"
+            onClick={async () => {
+              if (!activeStore?.id || !email.trim()) return;
+              setEvoError("");
+              const res = await apiFetch("/api/notifications/email", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ store_id: activeStore.id, email: email.trim() }),
+              });
+              const data = (await res.json()) as { success?: boolean; error?: string };
+              if (res.ok && data.success !== false) {
+                setEvoSaved(true);
+                setTimeout(() => setEvoSaved(false), 2000);
+              } else {
+                setEvoError(data.error || "Impossible d'enregistrer l'e-mail.");
+              }
+            }}
+          >
+            Enregistrer l&apos;e-mail d&apos;évolution
+          </Button>
+          {evoSaved ? <p className="text-xs text-green-600">E-mail enregistré. Prochain envoi lundi.</p> : null}
+          {evoError ? <p className="text-xs text-red-600">{evoError}</p> : null}
+          <Link href="/notifications" className="block text-center text-xs text-[#075E54]">
+            Voir les notifications dans l&apos;app →
+          </Link>
+        </section>
+
         <section className="rounded-xl bg-white p-4 shadow-sm space-y-3 dark:bg-gray-800">
           <h2 className="text-sm font-semibold">Sync cloud Supabase</h2>
           <p className="text-xs text-gray-500">
