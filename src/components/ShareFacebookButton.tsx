@@ -3,7 +3,8 @@
 import { Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
-import { openFacebookShare } from "@/lib/facebook-share";
+import { buildFacebookShareHref } from "@/lib/facebook-share";
+import { isStandaloneDisplay } from "@/lib/open-share";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -21,7 +22,6 @@ type Props = {
 
 export function ShareFacebookButton({
   url,
-  quote,
   storeId,
   kind = "boutique",
   productId,
@@ -32,9 +32,13 @@ export function ShareFacebookButton({
   onShared,
 }: Props) {
   if (!url) return null;
+  const href = buildFacebookShareHref(url);
+  const stayInPlace =
+    isStandaloneDisplay() ||
+    (typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent));
+  const target = stayInPlace ? "_self" : "_blank";
 
   const onClick = () => {
-    openFacebookShare(url, quote);
     onShared?.();
     if (!storeId) return;
     void apiFetch("/api/social/meta/publish", {
@@ -48,21 +52,17 @@ export function ShareFacebookButton({
         platforms: ["facebook"],
       }),
     }).catch(() => {
-      /* Le sharer Facebook est déjà ouvert. */
+      /* Le lien Facebook est déjà ouvert. */
     });
   };
 
   return (
     <div className={className}>
-      <Button
-        type="button"
-        variant="outline"
-        size={size}
-        className={cn("border-[#1877F2]/40 text-[#1877F2]", buttonClassName)}
-        onClick={onClick}
-      >
-        <Facebook className="h-3.5 w-3.5" />
-        {label}
+      <Button asChild variant="outline" size={size} className={cn("border-[#1877F2]/40 text-[#1877F2]", buttonClassName)}>
+        <a href={href} target={target} rel="noopener noreferrer" onClick={onClick}>
+          <Facebook className="h-3.5 w-3.5" />
+          {label}
+        </a>
       </Button>
     </div>
   );

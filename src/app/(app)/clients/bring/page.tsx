@@ -22,7 +22,7 @@ import {
   type BringClientStepId,
 } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
-import { openFacebookShare } from "@/lib/facebook-share";
+import { buildFacebookShareHref } from "@/lib/facebook-share";
 import { openWhatsAppShare } from "@/lib/whatsapp-share";
 
 const STEP_COPY: Record<
@@ -205,14 +205,15 @@ export default function BringClientsPage() {
         {label}
       </button>
       {url ? (
-        <button
-          type="button"
-          onClick={() => openFacebookShare(url, shareText)}
+        <a
+          href={buildFacebookShareHref(url)}
+          target="_self"
+          rel="noopener noreferrer"
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] text-sm font-semibold text-white"
         >
           <Facebook className="h-4 w-4" />
           Partager aussi sur Facebook
-        </button>
+        </a>
       ) : null}
     </div>
   );

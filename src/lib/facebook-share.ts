@@ -1,4 +1,4 @@
-import { isAndroidUserAgent, isStandaloneDisplay, openShareLink } from "@/lib/open-share";
+import { isAndroidUserAgent, isStandaloneDisplay } from "@/lib/open-share";
 
 /** Sharer Facebook : l’aperçu vient des balises Open Graph. */
 export function buildFacebookShareUrl(url: string): string {
@@ -7,22 +7,28 @@ export function buildFacebookShareUrl(url: string): string {
   return share.toString();
 }
 
-function buildFacebookAppUrl(url: string): string {
-  return `fb://facewebmodal/f?href=${encodeURIComponent(buildFacebookShareUrl(url))}`;
+/** Intent Android : ouvre l’appli Facebook, sinon le site. */
+export function buildFacebookShareHref(url: string): string {
+  const web = buildFacebookShareUrl(url);
+  if (typeof navigator === "undefined" || !/Android/i.test(navigator.userAgent)) {
+    return web;
+  }
+  const path = `www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  return `intent://${path}#Intent;scheme=https;package=com.facebook.katana;S.browser_fallback_url=${encodeURIComponent(web)};end`;
 }
 
-/** Ouvre Facebook tout de suite — pas le menu de partage du téléphone. */
+/** Ouvre Facebook tout de suite — pas le menu de partage, pas fb://. */
 export function openFacebookShare(url: string, _quote?: string) {
-  if (!url) return;
-  const href = buildFacebookShareUrl(url);
+  if (!url || typeof window === "undefined") return;
+  const web = buildFacebookShareUrl(url);
 
-  if (isStandaloneDisplay() && isAndroidUserAgent()) {
-    window.location.assign(buildFacebookAppUrl(url));
+  if (isStandaloneDisplay() || isAndroidUserAgent()) {
+    window.location.assign(buildFacebookShareHref(url));
     window.setTimeout(() => {
-      if (document.visibilityState === "visible") window.location.assign(href);
-    }, 500);
+      if (document.visibilityState === "visible") window.location.assign(web);
+    }, 700);
     return;
   }
 
-  openShareLink(href);
+  window.location.assign(web);
 }

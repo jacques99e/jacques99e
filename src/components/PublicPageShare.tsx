@@ -1,7 +1,7 @@
 "use client";
 
 import { Facebook, MessageCircle } from "lucide-react";
-import { openFacebookShare } from "@/lib/facebook-share";
+import { buildFacebookShareHref } from "@/lib/facebook-share";
 import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import { appendShareUrl } from "@/lib/bring-clients";
 
@@ -28,14 +28,15 @@ export function PublicPageShare({ url, text, className }: Props) {
           <MessageCircle className="h-4 w-4" />
           WhatsApp
         </button>
-        <button
-          type="button"
-          onClick={() => openFacebookShare(url, waText)}
+        <a
+          href={buildFacebookShareHref(url)}
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex h-10 items-center gap-2 rounded-full bg-[#1877F2] px-4 text-sm font-semibold text-white"
         >
           <Facebook className="h-4 w-4" />
           Facebook
-        </button>
+        </a>
       </div>
     </div>
   );
