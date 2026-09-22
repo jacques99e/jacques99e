@@ -5,7 +5,7 @@ import { Sparkles, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { apiFetch } from "@/lib/api-client";
-import { boutiquePayShareText, boutiquePayUrl, boutiqueProductUrl, appendShareUrl, productShareText } from "@/lib/bring-clients";
+import { boutiquePayShareText, boutiquePayUrl, shareableProductUrl, appendShareUrl, productShareText } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import {
@@ -129,36 +129,27 @@ export function ProductLandingButton({
     }
   };
 
+  const store = localStore.get();
+  const productUrl = shareableProductUrl(store?.slug, product.id);
+  const payUrl = boutiquePayUrl(store?.slug, product.id);
+  const productQuote = productUrl
+    ? existing?.content.whatsappPitch
+      ? appendShareUrl(existing.content.whatsappPitch, productUrl)
+      : productShareText(store?.name || "Ma boutique", product.name, productUrl, product.price)
+    : existing?.content.whatsappPitch || `Découvrez ${product.name}`;
+  const payQuote = payUrl
+    ? boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)
+    : "";
+
   const share = () => {
-    const store = localStore.get();
-    const url = boutiqueProductUrl(store?.slug, product.id);
-    if (!url) {
-      setError("Publiez d’abord votre boutique (slug manquant).");
-      return;
-    }
-    const text = existing?.content.whatsappPitch
-      ? appendShareUrl(existing.content.whatsappPitch, url)
-      : productShareText(store?.name || "Ma boutique", product.name, url, product.price);
-    openWhatsAppShare(text);
+    if (!productQuote.trim()) return;
+    openWhatsAppShare(productQuote);
   };
 
   const sharePayLink = () => {
-    const store = localStore.get();
-    const payUrl = boutiquePayUrl(store?.slug, product.id);
-    if (!payUrl) {
-      setError("Publiez d’abord votre boutique (slug manquant).");
-      return;
-    }
-    openWhatsAppShare(
-      boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)
-    );
+    if (!payQuote.trim()) return;
+    openWhatsAppShare(payQuote);
   };
-
-  const store = localStore.get();
-  const productUrl = boutiqueProductUrl(store?.slug, product.id);
-  const productQuote = productUrl
-    ? productShareText(store?.name || "Ma boutique", product.name, productUrl, product.price)
-    : existing?.content.whatsappPitch || `Découvrez ${product.name}`;
 
   return (
     <div className="space-y-1">

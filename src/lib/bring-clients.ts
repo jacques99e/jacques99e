@@ -1,3 +1,4 @@
+import { isCloudUuid } from "@/lib/cloud-uuid";
 import { PROD_APP_URL } from "@/lib/site-urls";
 import { isSafeStoreSlug } from "@/lib/utils";
 
@@ -40,6 +41,13 @@ export function boutiqueProductUrl(slug?: string | null, productId?: string | nu
   const id = productId?.trim();
   if (!base || !id) return null;
   return `${base}/produit/${encodeURIComponent(id)}`;
+}
+
+/** URL publique qui existe vraiment : page produit si id cloud, sinon catalogue. */
+export function shareableProductUrl(slug?: string | null, productId?: string | null): string | null {
+  const id = productId?.trim();
+  if (id && isCloudUuid(id)) return boutiqueProductUrl(slug, id);
+  return boutiquePublicUrl(slug);
 }
 
 export function boutiquePayShareText(storeName: string, url: string, productName?: string): string {

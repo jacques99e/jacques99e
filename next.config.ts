@@ -20,7 +20,7 @@ const securityHeaders = [
       "font-src 'self' data:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.paydunya.com https://paydunya.com",
       "frame-src 'self' https://app.paydunya.com",
-      "form-action 'self' https://app.paydunya.com",
+      "form-action 'self' https://app.paydunya.com https://www.facebook.com https://m.facebook.com https://web.facebook.com https://wa.me https://api.whatsapp.com https://web.whatsapp.com",
       "object-src 'none'",
       "base-uri 'self'",
       "frame-ancestors 'self'",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Copy, Facebook, MessageCircle, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 import { AppHeader } from "@/components/AppHeader";
@@ -23,7 +23,7 @@ import {
 } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { openFacebookShare } from "@/lib/facebook-share";
-import { buildWhatsAppShareUrl, openWhatsAppShare } from "@/lib/whatsapp-share";
+import { openWhatsAppShare } from "@/lib/whatsapp-share";
 
 const STEP_COPY: Record<
   BringClientStepId,
@@ -156,11 +156,6 @@ export default function BringClientsPage() {
     openWhatsAppShare(shareText);
   }
 
-  const waHref = useMemo(
-    () => (shareText ? buildWhatsAppShareUrl(shareText) : "#"),
-    [shareText]
-  );
-
   const linkActions = url ? (
     <div className="space-y-3">
       <p className="break-all rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-800">{url}</p>
@@ -175,14 +170,13 @@ export default function BringClientsPage() {
         </Button>
       </div>
       {payUrl ? (
-        <a
-          href={buildWhatsAppShareUrl(payShareText)}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={() => openWhatsAppShare(payShareText)}
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF6F00] text-sm font-semibold text-white"
         >
           Envoyer le lien paiement MoMo
-        </a>
+        </button>
       ) : null}
       {url ? (
         <ShareFacebookButton
@@ -200,15 +194,16 @@ export default function BringClientsPage() {
 
   const whatsAppButton = (label: string) => (
     <div className="space-y-2">
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        type="button"
+        onClick={() => {
+          if (shareText) openWhatsAppShare(shareText);
+        }}
         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-semibold text-white"
       >
         <MessageCircle className="h-4 w-4" />
         {label}
-      </a>
+      </button>
       {url ? (
         <button
           type="button"

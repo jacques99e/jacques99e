@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { useModule } from "@/hooks/useModule";
 import {
   boutiquePayUrl,
-  boutiqueProductUrl,
   productMoMoShareText,
   productShareText,
   readFirstProductShareDraft,
+  shareableProductUrl,
 } from "@/lib/bring-clients";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import {
@@ -99,7 +99,7 @@ export function Day0Mission() {
   const draft = typeof window === "undefined" ? null : readFirstProductShareDraft();
   const shareProduct = products.find((p) => p.id === draft?.productId) || products[0];
   const payShareUrl = boutiquePayUrl(store?.slug, shareProduct?.id || draft?.productId);
-  const productShareUrl = boutiqueProductUrl(store?.slug, shareProduct?.id || draft?.productId);
+  const productShareUrl = shareableProductUrl(store?.slug, shareProduct?.id || draft?.productId);
   const payShareQuote = payShareUrl
     ? productMoMoShareText({
         storeName: store?.name || "Ma boutique",

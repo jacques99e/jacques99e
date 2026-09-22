@@ -27,12 +27,12 @@ import { buildWhatsAppCatalog } from "@/lib/commerce-catalog";
 import { markDay0ShareDone } from "@/lib/day0-mission";
 import {
   boutiquePayUrl,
-  boutiqueProductUrl,
   boutiquePublicUrl,
   boutiqueShareText,
   productMoMoShareText,
   productShareText,
   readFirstProductShareDraft,
+  shareableProductUrl,
 } from "@/lib/bring-clients";
 import { setTaskDone } from "@/lib/onboarding";
 import { localStore } from "@/lib/db";
@@ -85,7 +85,7 @@ export default function ProductsPage() {
     (!shareProductId && isFirstProduct ? products[0] : undefined);
   const shareProductName = shareProduct?.name || shareDraft?.name || "";
   const payUrl = boutiquePayUrl(storeSlug, shareProductId || shareProduct?.id);
-  const productUrl = boutiqueProductUrl(storeSlug, shareProductId || shareProduct?.id);
+  const productUrl = shareableProductUrl(storeSlug, shareProductId || shareProduct?.id);
   const payShareText = payUrl
     ? productMoMoShareText({
         storeName,
