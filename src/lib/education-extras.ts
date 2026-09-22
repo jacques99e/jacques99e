@@ -231,8 +231,13 @@ async function savePublicProgress(
   inviteCode: string,
   enrollmentId: string,
   meta: LearnerProgressMeta,
-  percent: number
-): Promise<void> {
+  percent: number,
+  quizAttempt?: { module_id: string; answers: Record<string, number> }
+): Promise<{
+  percent: number;
+  quiz: { score: number; passed: boolean } | null;
+  meta: LearnerProgressMeta | null;
+}> {
   const res = await fetch(`/api/education/public/${encodeURIComponent(inviteCode)}/progress`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -240,12 +245,44 @@ async function savePublicProgress(
       enrollment_id: enrollmentId,
       progress_meta: meta,
       progress_percent: percent,
+      quiz_attempt: quizAttempt,
     }),
   });
-  const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+  const json = (await res.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+    enrollment?: { progress_percent?: number; progress_meta?: LearnerProgressMeta };
+    quiz?: { score: number; passed: boolean } | null;
+  };
   if (!res.ok || !json.success) {
     throw new Error(json.error || "Synchronisation de la progression impossible");
   }
+  const serverPercent =
+    typeof json.enrollment?.progress_percent === "number" ? json.enrollment.progress_percent : percent;
+  return { percent: serverPercent, quiz: json.quiz ?? null, meta: json.enrollment?.progress_meta ?? null };
+}
+
+export async function submitPublicQuiz(params: {
+  inviteCode: string;
+  courseId: string;
+  enrollmentId: string;
+  moduleId: string;
+  answers: Record<string, number>;
+  orderedModuleIds: string[];
+  hasQuizByModuleId: Record<string, boolean>;
+}): Promise<{ score: number; passed: boolean; percent: number }> {
+  const meta = readLocalProgress(params.courseId, params.enrollmentId);
+  const percent = computeProgressPercent(params.orderedModuleIds, meta, params.hasQuizByModuleId);
+  const saved = await savePublicProgress(params.inviteCode, params.enrollmentId, meta, percent, {
+    module_id: params.moduleId,
+    answers: params.answers,
+  });
+  if (saved.meta) writeLocalProgress(params.courseId, params.enrollmentId, saved.meta);
+  return {
+    score: saved.quiz?.score ?? 0,
+    passed: Boolean(saved.quiz?.passed),
+    percent: saved.percent,
+  };
 }
 
 export async function saveLearnerProgress(
@@ -264,7 +301,9 @@ export async function saveLearnerProgress(
 
   if (publicInviteCode) {
     try {
-      await savePublicProgress(publicInviteCode, enrollmentId, meta, percent);
+      const saved = await savePublicProgress(publicInviteCode, enrollmentId, meta, percent);
+      if (saved.meta) writeLocalProgress(courseId, enrollmentId, saved.meta);
+      return saved.percent;
     } catch {
       /* garde la progression locale */
     }

@@ -50,7 +50,12 @@ export async function GET(
         course_id: course.id,
         title: row.title as string,
         passing_score: (row.passing_score as number) ?? 70,
-        questions: (row.questions as QuizQuestion[]) ?? [],
+        questions: ((row.questions as QuizQuestion[]) ?? []).map((q) => ({
+          id: q.id,
+          prompt: q.prompt,
+          choices: Array.isArray(q.choices) ? q.choices : [],
+          correctIndex: -1,
+        })),
       };
     }
 

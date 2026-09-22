@@ -13,6 +13,7 @@ import { apiFetch } from "@/lib/api-client";
 import { PLAN_LIMITS, normalizeBillingStatus, type BillingSubscription } from "@/lib/billing";
 import { billingUpgradeHref } from "@/lib/billing-checkout";
 import { useAuth } from "@/hooks/useAuth";
+import { listParcels } from "@/lib/agriculture";
 import { localStore } from "@/lib/db";
 import { getProducts, saveProduct, uploadProductImage } from "@/lib/products";
 import { formatCurrency } from "@/lib/utils";
@@ -68,24 +69,22 @@ export default function SellHarvestPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("wazo_cultures");
-      if (!raw) return;
-      const cultures = JSON.parse(raw) as Array<{ cropType?: string; name?: string }>;
-      const harvest = cultures.find((c) => c.cropType);
-      if (!harvest?.cropType) return;
+    const store = localStore.get();
+    if (!store) return;
+    void listParcels(store.id)
+      .then((rows) => {
+        const harvest = rows.find((c) => c.crop_type);
+        if (!harvest?.crop_type) return;
+        const cropLabel = CROP_LABELS[harvest.crop_type] ?? harvest.crop_type;
+        setName(harvest.name?.trim() ? `${cropLabel} — ${harvest.name}` : cropLabel);
 
-      const cropLabel = CROP_LABELS[harvest.cropType] ?? harvest.cropType;
-      setName(harvest.name?.trim() ? `${cropLabel} — ${harvest.name}` : cropLabel);
-
-      const priceId = CROP_TO_PRICE_ID[harvest.cropType];
-      if (priceId && prices.length) {
-        const match = prices.find((p) => p.id === priceId);
-        if (match) setPrice(String(match.priceFcfa));
-      }
-    } catch {
-      /* ignore */
-    }
+        const priceId = CROP_TO_PRICE_ID[harvest.crop_type];
+        if (priceId && prices.length) {
+          const match = prices.find((p) => p.id === priceId);
+          if (match) setPrice(String(match.priceFcfa));
+        }
+      })
+      .catch(() => undefined);
   }, [prices]);
 
   const applySuggestion = (suggestedPrice: number, label: string) => {

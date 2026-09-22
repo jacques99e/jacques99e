@@ -101,6 +101,156 @@ export function farmStageToCultureStage(
   return "croissance";
 }
 
+export async function deleteParcel(storeId: string, parcelId: string): Promise<void> {
+  if (!isCloudUuid(parcelId)) return;
+  const response = await apiFetch(
+    `/api/agriculture/parcels?storeId=${encodeURIComponent(storeId)}&id=${encodeURIComponent(parcelId)}`,
+    { method: "DELETE" }
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(payload.error || "Suppression impossible.");
+  }
+  if (db) await db.farmParcels.delete(parcelId);
+}
+
+export interface FarmInputRow {
+  id: string;
+  type: "engrais" | "pesticides" | "eau";
+  name: string;
+  quantity: number;
+  date: string;
+  plotId: string;
+  plotName: string;
+}
+
+export interface YieldRow {
+  id: string;
+  harvestKg: number;
+  areaHa: number;
+  result: number;
+  createdAt: string;
+}
+
+export async function listFarmInputs(storeId: string): Promise<FarmInputRow[]> {
+  const response = await apiFetch(`/api/agriculture/records?storeId=${encodeURIComponent(storeId)}&kind=input`);
+  const payload = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    records?: Array<{
+      id: string;
+      parcel_id: string;
+      input_type: FarmInputRow["type"];
+      quantity: number;
+      notes: string | null;
+      applied_at: string;
+      plot_name: string;
+    }>;
+  };
+  if (!response.ok || !payload.success) return [];
+  return (payload.records || []).map((row) => ({
+    id: row.id,
+    type: row.input_type,
+    name: row.notes || row.input_type,
+    quantity: Number(row.quantity) || 0,
+    date: row.applied_at,
+    plotId: row.parcel_id,
+    plotName: row.plot_name,
+  }));
+}
+
+export async function saveFarmInput(
+  storeId: string,
+  input: Omit<FarmInputRow, "id" | "plotName">
+): Promise<FarmInputRow> {
+  const response = await apiFetch("/api/agriculture/records", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      store_id: storeId,
+      kind: "input",
+      parcel_id: input.plotId,
+      input_type: input.type,
+      name: input.name,
+      quantity: input.quantity,
+      date: input.date,
+    }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+    record?: {
+      id: string;
+      parcel_id: string;
+      input_type: FarmInputRow["type"];
+      quantity: number;
+      notes: string | null;
+      applied_at: string;
+      plot_name: string;
+    };
+  };
+  if (!response.ok || !payload.success || !payload.record) {
+    throw new Error(payload.error || "Impossible d'enregistrer l'intrant.");
+  }
+  const row = payload.record;
+  return {
+    id: row.id,
+    type: row.input_type,
+    name: row.notes || input.name,
+    quantity: Number(row.quantity) || input.quantity,
+    date: row.applied_at,
+    plotId: row.parcel_id,
+    plotName: row.plot_name,
+  };
+}
+
+export async function listYieldHistory(storeId: string): Promise<YieldRow[]> {
+  const response = await apiFetch(`/api/agriculture/records?storeId=${encodeURIComponent(storeId)}&kind=yield`);
+  const payload = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    records?: Array<{ id: string; created_at: string; payload?: { harvest_kg?: number; area_ha?: number; result?: number } }>;
+  };
+  if (!response.ok || !payload.success) return [];
+  return (payload.records || []).map((row) => ({
+    id: row.id,
+    harvestKg: Number(row.payload?.harvest_kg) || 0,
+    areaHa: Number(row.payload?.area_ha) || 0,
+    result: Number(row.payload?.result) || 0,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function saveYieldRecord(
+  storeId: string,
+  input: Omit<YieldRow, "id" | "createdAt">
+): Promise<YieldRow> {
+  const response = await apiFetch("/api/agriculture/records", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      store_id: storeId,
+      kind: "yield",
+      harvest_kg: input.harvestKg,
+      area_ha: input.areaHa,
+      result: input.result,
+    }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+    record?: { id: string; created_at: string; payload?: { harvest_kg?: number; area_ha?: number; result?: number } };
+  };
+  if (!response.ok || !payload.success || !payload.record) {
+    throw new Error(payload.error || "Impossible d'enregistrer le rendement.");
+  }
+  return {
+    id: payload.record.id,
+    harvestKg: Number(payload.record.payload?.harvest_kg) || input.harvestKg,
+    areaHa: Number(payload.record.payload?.area_ha) || input.areaHa,
+    result: Number(payload.record.payload?.result) || input.result,
+    createdAt: payload.record.created_at,
+  };
+}
+
 export function readLocalCultures<T = unknown>(): T[] {
   if (typeof window === "undefined") return [];
   try {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { computeProgressPercent, moduleHasQuiz } from "@/lib/education-extras";
+import { gradeStoredQuiz } from "@/lib/education-progress-server";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { LearnerProgressMeta, QuizQuestion } from "@/types";
 
@@ -12,6 +13,7 @@ export async function POST(
   const body = (await request.json().catch(() => ({}))) as {
     enrollment_id?: string;
     progress_meta?: LearnerProgressMeta;
+    quiz_attempt?: { module_id?: string; answers?: Record<string, number> };
   };
 
   const enrollmentId = body.enrollment_id?.trim();
@@ -19,14 +21,9 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Paramètres invalides" }, { status: 400 });
   }
 
-  const meta: LearnerProgressMeta = {
-    completedModuleIds: Array.isArray(body.progress_meta?.completedModuleIds)
-      ? body.progress_meta.completedModuleIds.filter((id) => typeof id === "string").slice(0, 80)
-      : [],
-    passedQuizModuleIds: Array.isArray(body.progress_meta?.passedQuizModuleIds)
-      ? body.progress_meta.passedQuizModuleIds.filter((id) => typeof id === "string").slice(0, 80)
-      : [],
-  };
+  const completedIds = Array.isArray(body.progress_meta?.completedModuleIds)
+    ? body.progress_meta.completedModuleIds.filter((id) => typeof id === "string").slice(0, 80)
+    : [];
 
   try {
     const supabase = await createServiceSupabase();
@@ -42,7 +39,7 @@ export async function POST(
 
     const { data: enrollment } = await supabase
       .from("course_enrollments")
-      .select("id, course_id")
+      .select("id, course_id, progress_meta")
       .eq("id", enrollmentId)
       .eq("course_id", course.id)
       .maybeSingle();
@@ -58,9 +55,31 @@ export async function POST(
       .order("sort_order");
     const orderedIds = (modules || []).map((row) => row.id as string);
     const allowed = new Set(orderedIds);
+    const stored = (enrollment.progress_meta || {}) as Partial<LearnerProgressMeta>;
+    const passed = new Set(
+      (Array.isArray(stored.passedQuizModuleIds) ? stored.passedQuizModuleIds : []).filter((id) =>
+        allowed.has(id)
+      )
+    );
+
+    let quizResult: { score: number; passed: boolean } | null = null;
+    const attemptModule = body.quiz_attempt?.module_id?.trim() || "";
+    const attemptAnswers = body.quiz_attempt?.answers;
+    if (attemptModule && allowed.has(attemptModule) && attemptAnswers && typeof attemptAnswers === "object") {
+      const { data: quizRow } = await supabase
+        .from("course_quizzes")
+        .select("questions, passing_score")
+        .eq("course_id", course.id)
+        .eq("module_id", attemptModule)
+        .maybeSingle();
+      const questions = (quizRow?.questions as QuizQuestion[]) ?? [];
+      quizResult = gradeStoredQuiz(questions, Number(quizRow?.passing_score ?? 70), attemptAnswers);
+      if (quizResult.passed) passed.add(attemptModule);
+    }
+
     const safeMeta: LearnerProgressMeta = {
-      completedModuleIds: meta.completedModuleIds.filter((id) => allowed.has(id)),
-      passedQuizModuleIds: meta.passedQuizModuleIds.filter((id) => allowed.has(id)),
+      completedModuleIds: completedIds.filter((id) => allowed.has(id)),
+      passedQuizModuleIds: [...passed],
     };
 
     const { data: quizRows } = await supabase
@@ -108,10 +127,10 @@ export async function POST(
       if (fallback.error) {
         return NextResponse.json({ success: false, error: fallback.error.message }, { status: 500 });
       }
-      return NextResponse.json({ success: true, enrollment: fallback.data });
+      return NextResponse.json({ success: true, enrollment: fallback.data, quiz: quizResult });
     }
 
-    return NextResponse.json({ success: true, enrollment: data });
+    return NextResponse.json({ success: true, enrollment: data, quiz: quizResult });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur serveur";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

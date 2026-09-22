@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { localStore } from "@/lib/db";
 import {
   cultureStageToFarmStage,
+  deleteParcel,
   farmStageToCultureStage,
   listParcels,
   readLocalCultures,
@@ -75,58 +76,67 @@ export default function CulturesPage() {
     }
   };
 
+  const mapParcel = (row: {
+    id: string;
+    name: string;
+    area_hectares: number;
+    crop_type: string;
+    sowing_date?: string | null;
+    stage: string;
+  }): CulturePlot => ({
+    id: row.id,
+    name: row.name,
+    area: Number(row.area_hectares || 0),
+    cropType: (cropTypes.includes(row.crop_type as CultureType) ? row.crop_type : "autre") as CultureType,
+    sowingDate: row.sowing_date || new Date().toISOString().slice(0, 10),
+    stage: farmStageToCultureStage(row.stage),
+  });
+
   useEffect(() => {
     const local = readLocalCultures<CulturePlot>();
-    setPlots(local);
+    if (local.length) setPlots(local);
     const store = localStore.get();
-    if (!store || local.length > 0) return;
+    if (!store) return;
     void listParcels(store.id).then((rows) => {
       if (!rows.length) return;
-      const mapped: CulturePlot[] = rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        area: Number(row.area_hectares || 0),
-        cropType: (cropTypes.includes(row.crop_type as CultureType)
-          ? row.crop_type
-          : "autre") as CultureType,
-        sowingDate: row.sowing_date || new Date().toISOString().slice(0, 10),
-        stage: farmStageToCultureStage(row.stage),
-      }));
-      savePlots(mapped);
+      savePlots(rows.map(mapParcel));
     });
   }, []);
 
   const addPlot = (e: React.FormEvent) => {
     e.preventDefault();
-    const newPlot: CulturePlot = {
-      id: `culture-${Date.now()}`,
+    const store = localStore.get();
+    const draft = {
       name: name.trim(),
       area: Number(area),
       cropType,
       sowingDate,
       stage,
     };
-    savePlots([newPlot, ...plots]);
-    const store = localStore.get();
-    if (store) {
-      void saveParcel(store.id, {
-        name: newPlot.name,
-        area_hectares: newPlot.area,
-        crop_type: newPlot.cropType,
-        sowing_date: newPlot.sowingDate,
-        stage: cultureStageToFarmStage(newPlot.stage),
-      }).catch(() => undefined);
-    }
-    setName("");
-    setArea("");
-    setCropType("riz");
-    setSowingDate(new Date().toISOString().slice(0, 10));
-    setStage("préparation");
-    setShowForm(false);
+    if (!store) return;
+    void saveParcel(store.id, {
+      name: draft.name,
+      area_hectares: draft.area,
+      crop_type: draft.cropType,
+      sowing_date: draft.sowingDate,
+      stage: cultureStageToFarmStage(draft.stage),
+    })
+      .then((saved) => {
+        savePlots([mapParcel(saved), ...plots]);
+        setName("");
+        setArea("");
+        setCropType("riz");
+        setSowingDate(new Date().toISOString().slice(0, 10));
+        setStage("préparation");
+        setShowForm(false);
+      })
+      .catch(() => undefined);
   };
 
   const deletePlot = (id: string) => {
     savePlots(plots.filter((p) => p.id !== id));
+    const store = localStore.get();
+    if (store) void deleteParcel(store.id, id).catch(() => undefined);
   };
 
   const [dayTick, setDayTick] = useState(() => {

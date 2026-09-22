@@ -19,6 +19,7 @@ interface ModuleQuizPanelProps {
   moduleTitle: string;
   mode: "edit" | "take";
   onPassed?: () => void;
+  gradeOnServer?: (answers: Record<string, number>) => Promise<{ score: number; passed: boolean }>;
   /** Quiz préchargé (portail public) */
   preloadedQuiz?: ModuleQuiz | null;
 }
@@ -29,6 +30,7 @@ export function ModuleQuizPanel({
   moduleTitle,
   mode,
   onPassed,
+  gradeOnServer,
   preloadedQuiz,
 }: ModuleQuizPanelProps) {
   const [quiz, setQuiz] = useState<ModuleQuiz | null>(preloadedQuiz ?? null);
@@ -170,9 +172,15 @@ export function ModuleQuizPanel({
   if (!quiz?.questions.length) return null;
 
   const submit = () => {
-    const graded = gradeQuiz(quiz, answers);
-    setResult(graded);
-    if (graded.passed) onPassed?.();
+    void (async () => {
+      try {
+        const graded = gradeOnServer ? await gradeOnServer(answers) : gradeQuiz(quiz, answers);
+        setResult(graded);
+        if (graded.passed) onPassed?.();
+      } catch {
+        setResult({ score: 0, passed: false });
+      }
+    })();
   };
 
   return (

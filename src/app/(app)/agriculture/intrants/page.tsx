@@ -6,6 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { listFarmInputs, listParcels, saveFarmInput } from "@/lib/agriculture";
+import { localStore } from "@/lib/db";
 
 type InputType = "engrais" | "pesticides" | "eau";
 
@@ -32,31 +34,18 @@ export default function InputsPage() {
   const [plotId, setPlotId] = useState("");
   const [search, setSearch] = useState("");
 
-  const plots = useMemo(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem("wazo_cultures");
-      return raw ? (JSON.parse(raw) as CulturePlot[]) : [];
-    } catch {
-      return [];
-    }
-  }, []);
-
+  const [plots, setPlots] = useState<CulturePlot[]>([]);
   const [entries, setEntries] = useState<FarmInputEntry[]>([]);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("wazo_intrants");
-      setEntries(raw ? (JSON.parse(raw) as FarmInputEntry[]) : []);
-    } catch {
-      setEntries([]);
-    }
+    const store = localStore.get();
+    if (!store) return;
+    void listParcels(store.id).then((rows) => {
+      setPlots(rows.map((row) => ({ id: row.id, name: row.name })));
+    });
+    void listFarmInputs(store.id).then(setEntries);
   }, []);
-
-  const saveEntries = (next: FarmInputEntry[]) => {
-    setEntries(next);
-    localStorage.setItem("wazo_intrants", JSON.stringify(next));
-  };
 
   const filteredEntries = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -79,22 +68,30 @@ export default function InputsPage() {
 
   const addEntry = (e: React.FormEvent) => {
     e.preventDefault();
-    const plot = plots.find((p) => p.id === plotId);
-    const entry: FarmInputEntry = {
-      id: `intrant-${Date.now()}`,
+    const store = localStore.get();
+    if (!store || !plotId) {
+      setFormError("Choisissez une parcelle enregistrée.");
+      return;
+    }
+    setFormError("");
+    void saveFarmInput(store.id, {
       type,
       name: name.trim(),
       quantity: Number(quantity),
       date,
-      plotId: plotId || "none",
-      plotName: plot?.name || "Non précisée",
-    };
-    saveEntries([entry, ...entries]);
-    setType("engrais");
-    setName("");
-    setQuantity("");
-    setDate(new Date().toISOString().slice(0, 10));
-    setPlotId("");
+      plotId,
+    })
+      .then((entry) => {
+        setEntries((prev) => [entry, ...prev]);
+        setType("engrais");
+        setName("");
+        setQuantity("");
+        setDate(new Date().toISOString().slice(0, 10));
+        setPlotId("");
+      })
+      .catch((err: unknown) => {
+        setFormError(err instanceof Error ? err.message : "Enregistrement impossible.");
+      });
   };
 
   return (
@@ -174,6 +171,7 @@ export default function InputsPage() {
           <Button type="submit" className="w-full bg-[#8B7355] hover:opacity-90">
             Ajouter au journal
           </Button>
+          {formError ? <p className="text-xs text-red-600">{formError}</p> : null}
         </form>
 
         <Input

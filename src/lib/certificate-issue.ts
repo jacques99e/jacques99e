@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
-import { ensureEnrollmentCompleted, type CompletionClientContext } from "@/lib/education-progress-server";
+import { ensureEnrollmentCompleted } from "@/lib/education-progress-server";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { LearnerProgressMeta } from "@/types";
 
@@ -21,13 +21,6 @@ export type CertificateIssueResult =
       completedAt: string | null;
     }
   | { ok: false; status: number; error: string };
-
-function clientContextFromBody(body: CertificateIssueInput): CompletionClientContext {
-  return {
-    orderedModuleIds: body.ordered_module_ids,
-    hasQuizByModuleId: body.has_quiz_by_module_id,
-  };
-}
 
 export async function issueCertificateForEnrollment(
   body: CertificateIssueInput
@@ -50,12 +43,7 @@ export async function issueCertificateForEnrollment(
     return { ok: false, status: 404, error: "Inscription introuvable." };
   }
 
-  const completion = await ensureEnrollmentCompleted(
-    service,
-    enrollment,
-    body.progress_meta,
-    clientContextFromBody(body)
-  );
+  const completion = await ensureEnrollmentCompleted(service, enrollment);
   if (!completion.ok) {
     return { ok: false, status: 400, error: "Parcours non terminé (100 % requis)." };
   }

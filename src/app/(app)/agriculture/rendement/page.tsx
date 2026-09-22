@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLocalizedMarketPrices } from "@/hooks/useLocalizedMarketPrices";
+import { listYieldHistory, saveYieldRecord } from "@/lib/agriculture";
 import { estimateHarvestRevenue } from "@/lib/agriculture-markets";
+import { localStore } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
 const regionalAverage = 2500; // mock kg/ha
@@ -22,12 +24,9 @@ export default function YieldCalculatorPage() {
   >([]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("wazo_yield_history");
-      setHistory(raw ? JSON.parse(raw) : []);
-    } catch {
-      setHistory([]);
-    }
+    const store = localStore.get();
+    if (!store) return;
+    void listYieldHistory(store.id).then(setHistory);
   }, []);
 
   const advice = useMemo(() => {
@@ -48,18 +47,12 @@ export default function YieldCalculatorPage() {
     if (harvest > 0 && area > 0) {
       const result = Math.round((harvest / area) * 100) / 100;
       setComputed(result);
-      const next = [
-        {
-          id: `yield-${Date.now()}`,
-          harvestKg: harvest,
-          areaHa: area,
-          result,
-          createdAt: new Date().toISOString(),
-        },
-        ...history,
-      ].slice(0, 10);
-      setHistory(next);
-      localStorage.setItem("wazo_yield_history", JSON.stringify(next));
+      const store = localStore.get();
+      if (store) {
+        void saveYieldRecord(store.id, { harvestKg: harvest, areaHa: area, result }).then((row) => {
+          setHistory((prev) => [row, ...prev].slice(0, 10));
+        });
+      }
     } else {
       setComputed(null);
     }
@@ -137,21 +130,7 @@ export default function YieldCalculatorPage() {
         )}
 
         <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-700">Historique des calculs</p>
-            {history.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setHistory([]);
-                  localStorage.removeItem("wazo_yield_history");
-                }}
-                className="text-xs text-red-600"
-              >
-                Vider
-              </button>
-            ) : null}
-          </div>
+          <p className="mb-2 text-sm font-semibold text-gray-700">Historique des calculs</p>
           {history.length === 0 ? (
             <p className="text-sm text-gray-500">Aucun calcul enregistré.</p>
           ) : (

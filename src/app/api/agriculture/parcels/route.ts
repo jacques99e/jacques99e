@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { isCloudUuid } from "@/lib/cloud-uuid";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { FarmParcel, FarmStage } from "@/types";
 
@@ -74,4 +75,26 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAuthContext();
+  if (!auth.ok) {
+    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+  const storeId = request.nextUrl.searchParams.get("storeId")?.trim() || "";
+  const id = request.nextUrl.searchParams.get("id")?.trim() || "";
+  if (!isCloudUuid(storeId) || !isCloudUuid(id)) {
+    return NextResponse.json({ success: false, error: "Parcelle invalide." }, { status: 400 });
+  }
+  const access = await checkStoreAccess(auth.serviceSupabase, auth.userId, storeId, "write");
+  if (!access.ok) {
+    return NextResponse.json({ success: false, error: access.error }, { status: access.status });
+  }
+  const service = await createServiceSupabase();
+  const { error } = await service.from("farm_parcels").delete().eq("id", id).eq("store_id", storeId);
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ success: true });
 }

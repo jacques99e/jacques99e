@@ -17,6 +17,7 @@ import {
   moduleHasQuiz,
   readLocalProgress,
   saveLearnerProgress,
+  submitPublicQuiz,
 } from "@/lib/education-extras";
 import type { CourseEnrollment, CourseModule, ModuleQuiz } from "@/types";
 
@@ -345,7 +346,28 @@ export function StudentLearnPanel({
                       moduleTitle={m.title}
                       mode="take"
                       preloadedQuiz={preloaded}
-                      onPassed={() => void markQuizPassed(m.id)}
+                      gradeOnServer={
+                        publicInviteCode && enrollmentId
+                          ? async (answers) => {
+                              const result = await submitPublicQuiz({
+                                inviteCode: publicInviteCode,
+                                courseId,
+                                enrollmentId,
+                                moduleId: m.id,
+                                answers,
+                                orderedModuleIds: orderedIds,
+                                hasQuizByModuleId,
+                              });
+                              setPercent(result.percent);
+                              setTick((t) => t + 1);
+                              onProgressUpdated();
+                              return result;
+                            }
+                          : undefined
+                      }
+                      onPassed={
+                        publicInviteCode ? undefined : () => void markQuizPassed(m.id)
+                      }
                     />
                   ) : null}
 
