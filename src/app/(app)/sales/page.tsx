@@ -12,6 +12,7 @@ import { refreshSalesFromCloud, syncStoreToCloud } from "@/lib/cloud-sync";
 import { appendLocalSale } from "@/lib/local-sales";
 import { activePromotions, applyDiscount, discountForProduct } from "@/lib/commerce-promotions";
 import { localStore } from "@/lib/db";
+import { paydunyaCheckoutUrl } from "@/lib/paydunya-checkout";
 import { formatCurrency } from "@/lib/utils";
 import { getProducts, saveProduct } from "@/lib/products";
 import { productToLegacy } from "@/lib/product-legacy-mirror";
@@ -333,8 +334,9 @@ function SalesPageInner() {
           setPayError(data.error || "Impossible de démarrer le paiement MoMo.");
           return;
         }
-        if (data.checkout_url) {
-          window.location.href = data.checkout_url;
+        const checkout = paydunyaCheckoutUrl(data.checkout_url);
+        if (checkout) {
+          window.location.href = checkout;
           return;
         }
         if (data.status === "succeeded") {

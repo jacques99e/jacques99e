@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { paydunyaCheckoutUrl } from "@/lib/paydunya-checkout";
 import {
   PLAN_LIMITS,
   getTrialDaysLeft,
@@ -163,10 +164,11 @@ export default function BillingPage() {
         await loadSubscription();
         return;
       }
-      if (data.checkout_url) {
+      const checkout = paydunyaCheckoutUrl(data.checkout_url);
+      if (checkout) {
         trackMetaProCheckout(id);
         setNotice("Redirection vers le paiement Mobile Money...");
-        window.location.href = data.checkout_url;
+        window.location.href = checkout;
         return;
       }
       if (data.status === "pending") {

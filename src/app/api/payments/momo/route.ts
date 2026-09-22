@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { addDays, type BillingPlanId } from "@/lib/billing";
+import { paydunyaCheckoutUrl, paydunyaProviderMessage } from "@/lib/paydunya-checkout";
 import {
   getPaymentMode,
   getPaydunyaCheckoutCreateUrl,
@@ -279,21 +280,15 @@ export async function POST(request: NextRequest) {
         .eq("provider_tx_id", transactionId);
 
       const checkoutLink =
-        typeof data.response_text === "string" && String(data.response_text).startsWith("http")
-          ? data.response_text
-          : typeof data.url === "string"
-            ? data.url
-            : null;
+        paydunyaCheckoutUrl(data.response_text) || paydunyaCheckoutUrl(data.url);
 
       const paydunyaOk = data.response_code === "00" && Boolean(checkoutLink);
 
       if (!paydunyaOk) {
-        const providerMessage =
-          typeof data.response_text === "string" && !String(data.response_text).startsWith("http")
-            ? data.response_text
-            : typeof data.description === "string"
-              ? data.description
-              : "PayDunya a refuse la creation de la facture.";
+        const providerMessage = paydunyaProviderMessage(
+          data.response_text,
+          paydunyaProviderMessage(data.description, "PayDunya a refuse la creation de la facture.")
+        );
 
         if (mode === "test" && process.env.PAYMENT_ALLOW_SIMULATE_FALLBACK === "true") {
           const periodEnd = await activateSubscription();

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { paydunyaCheckoutUrl, paydunyaProviderMessage } from "@/lib/paydunya-checkout";
 import {
   getPaymentMode,
   getPaydunyaCheckoutCreateUrl,
@@ -262,12 +263,7 @@ export async function POST(request: NextRequest) {
       .update({ payload: payloadWithInvoiceToken(data), updated_at: new Date().toISOString() })
       .eq("provider_tx_id", transactionId);
 
-    const checkoutLink =
-      typeof data.response_text === "string" && data.response_text.startsWith("http")
-        ? data.response_text
-        : typeof data.url === "string"
-          ? data.url
-          : null;
+    const checkoutLink = paydunyaCheckoutUrl(data.response_text) || paydunyaCheckoutUrl(data.url);
 
     if (data.response_code !== "00" || !checkoutLink) {
       await db
@@ -277,12 +273,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            (typeof data.response_text === "string" && !data.response_text.startsWith("http")
-              ? data.response_text
-              : null) ||
-            (typeof data.description === "string" ? data.description : null) ||
-            "PayDunya a refusé la facture.",
+          error: paydunyaProviderMessage(
+            data.response_text,
+            paydunyaProviderMessage(data.description, "PayDunya a refusé la facture.")
+          ),
         },
         { status: 402 }
       );

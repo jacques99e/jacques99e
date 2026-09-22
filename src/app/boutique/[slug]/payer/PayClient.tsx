@@ -6,6 +6,7 @@ import { ArrowLeft, Smartphone } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { trackMetaMomoCheckout } from "@/lib/meta-pixel";
+import { paydunyaCheckoutUrl } from "@/lib/paydunya-checkout";
 import { formatCurrency } from "@/lib/utils";
 import type { Product, Store as StoreType } from "@/types";
 
@@ -62,13 +63,17 @@ export function PayClient({ store, products, selectedProduct }: PayClientProps) 
         return;
       }
       trackMetaMomoCheckout(total);
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
+      const checkout = paydunyaCheckoutUrl(data.checkout_url);
+      if (checkout) {
+        window.location.href = checkout;
         return;
       }
       if (data.return_url) {
-        window.location.href = data.return_url;
-        return;
+        const back = new URL(data.return_url, window.location.origin);
+        if (back.origin === window.location.origin) {
+          window.location.href = back.pathname + back.search;
+          return;
+        }
       }
       setError(t("storefront.payFailed"));
     } catch {
