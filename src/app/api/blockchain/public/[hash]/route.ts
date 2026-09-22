@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { celoExplorerTxUrl, verifyHashOnCelo } from "@/lib/celo";
+import { allowIp } from "@/lib/rate-limit";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ hash: string }> }
 ) {
+  if (!allowIp(request, "trace", 40, 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de recherches. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
   const { hash } = await context.params;
   const prefix = decodeURIComponent(hash).trim().toLowerCase();
-  if (!prefix || prefix.length < 8) {
+  if (!/^[a-f0-9]{16,64}$/.test(prefix)) {
     return NextResponse.json({ success: false, error: "Hash invalide" }, { status: 400 });
   }
 

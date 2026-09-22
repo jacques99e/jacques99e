@@ -10,6 +10,10 @@ import { createServiceSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+function safeNote(value: string): string {
+  return value.replace(/[\u0000-\u001F]/g, " ").trim().slice(0, 140);
+}
+
 export async function GET(request: NextRequest) {
   const base = appPublicUrl();
   const settingsUrl = `${base}/settings/business`;
@@ -19,7 +23,7 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("error");
   if (err) {
     return NextResponse.redirect(
-      `${settingsUrl}?social=error&msg=${encodeURIComponent(err)}`
+      `${settingsUrl}?social=error&msg=${encodeURIComponent(safeNote(err))}`
     );
   }
 
@@ -58,6 +62,17 @@ export async function GET(request: NextRequest) {
       : null;
 
     const service = await createServiceSupabase();
+    const { data: store } = await service
+      .from("stores")
+      .select("owner_id")
+      .eq("id", parsed.storeId)
+      .maybeSingle();
+    if (!store || store.owner_id !== parsed.userId) {
+      return NextResponse.redirect(
+        `${settingsUrl}?social=error&msg=${encodeURIComponent("Boutique invalide")}`
+      );
+    }
+
     const { error } = await service.from("store_social_accounts").upsert(
       {
         store_id: parsed.storeId,
@@ -75,17 +90,17 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        `${settingsUrl}?social=error&msg=${encodeURIComponent(error.message)}`
+        `${settingsUrl}?social=error&msg=${encodeURIComponent(safeNote(error.message))}`
       );
     }
 
     return NextResponse.redirect(
-      `${settingsUrl}?social=ok&page=${encodeURIComponent(page.name)}`
+      `${settingsUrl}?social=ok&page=${encodeURIComponent(safeNote(page.name))}`
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Connexion Meta échouée";
     return NextResponse.redirect(
-      `${settingsUrl}?social=error&msg=${encodeURIComponent(message)}`
+      `${settingsUrl}?social=error&msg=${encodeURIComponent(safeNote(message))}`
     );
   }
 }

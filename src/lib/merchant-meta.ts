@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import { secretsEqual } from "@/lib/secret-compare";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -203,9 +204,14 @@ export async function publishInstagramPhoto(options: {
   return { id: pubData.id };
 }
 
+function oauthSecret(): string | null {
+  return process.env.META_APP_SECRET?.trim() || null;
+}
+
 /** Encode state OAuth (storeId|userId|nonce|sig) */
 export function signOAuthState(storeId: string, userId: string) {
-  const secret = process.env.META_APP_SECRET?.trim() || "wazo";
+  const secret = oauthSecret();
+  if (!secret) return "";
   const nonce = Math.random().toString(36).slice(2, 10);
   const payload = `${storeId}.${userId}.${nonce}.${Date.now()}`;
   const sig = simpleHmac(payload, secret);
@@ -214,15 +220,16 @@ export function signOAuthState(storeId: string, userId: string) {
 
 export function verifyOAuthState(state: string): { storeId: string; userId: string } | null {
   try {
+    const secret = oauthSecret();
+    if (!secret) return null;
     const raw = Buffer.from(state, "base64url").toString("utf8");
     const parts = raw.split(".");
     if (parts.length < 5) return null;
     const [storeId, userId, nonce, ts, sig] = parts;
-    const secret = process.env.META_APP_SECRET?.trim() || "wazo";
     const payload = `${storeId}.${userId}.${nonce}.${ts}`;
-    if (simpleHmac(payload, secret) !== sig) return null;
+    if (!secretsEqual(simpleHmac(payload, secret), sig)) return null;
     const age = Date.now() - Number(ts);
-    if (!Number.isFinite(age) || age > 30 * 60 * 1000) return null;
+    if (!Number.isFinite(age) || age > 30 * 60 * 1000 || age < 0) return null;
     return { storeId, userId };
   } catch {
     return null;

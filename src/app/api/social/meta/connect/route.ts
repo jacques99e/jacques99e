@@ -54,6 +54,9 @@ export async function GET(request: NextRequest) {
   }
 
   const state = signOAuthState(storeId, auth.userId);
+  if (!state) {
+    return NextResponse.json({ success: false, error: "OAuth indisponible" }, { status: 503 });
+  }
   const url = buildMetaOAuthUrl(state);
   if (!url) {
     return NextResponse.json({ success: false, error: "OAuth indisponible" }, { status: 503 });

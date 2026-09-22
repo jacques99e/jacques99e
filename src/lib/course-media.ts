@@ -15,6 +15,8 @@ const COURSE_VIDEO_MAX_MB = 50;
 export function parseLessonMediaUrl(raw: string): ParsedLessonMedia | null {
   const url = raw.trim();
   if (!url) return null;
+  const scheme = url.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase();
+  if (scheme && scheme !== "http" && scheme !== "https") return null;
 
   const ytMatch =
     url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/i) ||
