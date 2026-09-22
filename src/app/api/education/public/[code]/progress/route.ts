@@ -119,14 +119,14 @@ export async function POST(
     }
 
     const percent = computeProgressPercent(orderedIds, safeMeta, hasQuizByModuleId);
-    const completed = percent >= 100;
+    const courseDone = percent >= 100;
 
     const { data, error } = await supabase
       .from("course_enrollments")
       .update({
         progress_percent: percent,
         progress_meta: safeMeta,
-        completed_at: completed ? new Date().toISOString() : null,
+        completed_at: courseDone ? new Date().toISOString() : null,
       })
       .eq("id", enrollmentId)
       .select("id, student_name, progress_percent, progress_meta, completed_at")
@@ -137,7 +137,7 @@ export async function POST(
         .from("course_enrollments")
         .update({
           progress_percent: percent,
-          completed_at: completed ? new Date().toISOString() : null,
+          completed_at: courseDone ? new Date().toISOString() : null,
         })
         .eq("id", enrollmentId)
         .select("id, student_name, progress_percent, completed_at")
