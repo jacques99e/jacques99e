@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOrCreateEnrollment } from "@/lib/education-enrollment";
-import { allowIp } from "@/lib/rate-limit";
+import { allowIp, allowRequest } from "@/lib/rate-limit";
 import { buildFormationInviteSms, looksLikePhone, sendSms } from "@/lib/sms";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
@@ -49,7 +49,12 @@ export async function POST(
     );
 
     const contact = body.student_email?.trim();
-    if (contact && looksLikePhone(contact) && course.invite_code && !enrollment.invite_sms_sent_at) {
+    const smsDigits = contact?.replace(/\D/g, "") || "";
+    const smsAllowed =
+      smsDigits.length >= 8 &&
+      allowRequest(`formation-sms-phone:${smsDigits}`, 1, 24 * 60 * 60 * 1000) &&
+      allowIp(request, "formation-sms", 3, 60 * 60 * 1000);
+    if (contact && looksLikePhone(contact) && course.invite_code && !enrollment.invite_sms_sent_at && smsAllowed) {
       const base = (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(
         /\/$/,
         ""

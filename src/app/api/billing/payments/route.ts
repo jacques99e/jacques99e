@@ -76,9 +76,10 @@ export async function GET(request: NextRequest) {
     if (planParam && ["starter", "pro", "business"].includes(planParam)) {
       query = query.eq("plan", planParam);
     }
-    if (searchParam) {
+    const safeSearch = searchParam?.replace(/[^a-zA-Z0-9@._+-]/g, "").slice(0, 40);
+    if (safeSearch) {
       query = query.or(
-        `provider_tx_id.ilike.%${searchParam}%,provider.ilike.%${searchParam}%,method.ilike.%${searchParam}%`
+        `provider_tx_id.ilike.%${safeSearch}%,provider.ilike.%${safeSearch}%,method.ilike.%${safeSearch}%`
       );
     }
 

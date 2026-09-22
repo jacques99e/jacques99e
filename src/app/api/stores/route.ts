@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { createServiceSupabase } from "@/lib/supabase/server";
 import { normalizeModuleIds } from "@/lib/modules/config";
 import { getOwnerStoreAccess } from "@/lib/plan-access";
 import { slugify } from "@/lib/utils";
@@ -127,7 +128,8 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const requested = String(body.plan || "").toLowerCase();
     const paidPlan = requested === "pro" ? "pro" : null;
-    await auth.serviceSupabase.from("billing_subscriptions").upsert(
+    const billingDb = await createServiceSupabase();
+    await billingDb.from("billing_subscriptions").upsert(
       {
         store_id: savedStore.id,
         plan: paidPlan || "starter",

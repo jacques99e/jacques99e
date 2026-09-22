@@ -15,6 +15,7 @@ import {
   getPaymentMode,
   hasPaydunyaCredentials,
 } from "@/lib/paydunya";
+import { createServiceSupabase } from "@/lib/supabase/server";
 
 async function resolveStoreId(
   serviceSupabase: SupabaseClient,
@@ -265,15 +266,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: resolved.error }, { status: resolved.status });
     }
 
-    const subscription = await getOrCreateSubscription(auth.serviceSupabase, resolved.storeId);
+    const billingDb = await createServiceSupabase();
+    const subscription = await getOrCreateSubscription(billingDb, resolved.storeId);
     const txReconciled = await reconcileByTransaction(
-      auth.serviceSupabase,
+      billingDb,
       subscription,
       txId,
       invoiceToken
     );
-    const reconciled = await reconcileSucceededPayment(auth.serviceSupabase, txReconciled);
-    const normalized = await normalizeAndPersistStatus(auth.serviceSupabase, reconciled);
+    const reconciled = await reconcileSucceededPayment(billingDb, txReconciled);
+    const normalized = await normalizeAndPersistStatus(billingDb, reconciled);
     const trialDaysLeft = getTrialDaysLeft(normalized);
     const limits = PLAN_LIMITS[normalized.plan];
     const paymentMode = getPaymentMode();
@@ -325,8 +327,9 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString();
-    const existing = await getOrCreateSubscription(auth.serviceSupabase, resolved.storeId);
-    const { data, error } = await auth.serviceSupabase
+    const billingDb = await createServiceSupabase();
+    const existing = await getOrCreateSubscription(billingDb, resolved.storeId);
+    const { data, error } = await billingDb
       .from("billing_subscriptions")
       .update({
         plan,

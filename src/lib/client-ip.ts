@@ -1,9 +1,16 @@
-/** Client IP as set by Vercel (x-real-ip) then first forwarded hop. */
+/**
+ * IP du visiteur. Sur Vercel, le premier X-Forwarded-For peut être inventé
+ * par le client : on prend x-real-ip, sinon le dernier relais ajouté par la plateforme.
+ */
 export function clientIp(request: Request): string {
-  return (
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    "unknown"
-  );
+  const real = request.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const cf = request.headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  const hops = (request.headers.get("x-forwarded-for") || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!hops.length) return "unknown";
+  return process.env.VERCEL ? hops[hops.length - 1] : hops[0];
 }

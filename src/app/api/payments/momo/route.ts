@@ -10,6 +10,7 @@ import {
   payloadWithInvoiceToken,
   validatePaydunyaKeys,
 } from "@/lib/paydunya";
+import { createServiceSupabase } from "@/lib/supabase/server";
 import { paymentFcfaForPlan } from "@/lib/vitrine-plans";
 
 /**
@@ -64,13 +65,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const billingDb = await createServiceSupabase();
     const provider = process.env.PAYMENT_PROVIDER || "paydunya";
     const apiKey = process.env.PAYMENT_API_KEY;
     const mode = getPaymentMode();
     const transactionId = `WAZO-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
 
-    const { error: paymentInsertError } = await auth.serviceSupabase.from("billing_payments").insert({
+    const { error: paymentInsertError } = await billingDb.from("billing_payments").insert({
       store_id: resolvedStoreId,
       user_id: auth.userId,
       plan,
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     const activateSubscription = async () => {
       const periodEnd = addDays(new Date().toISOString().slice(0, 10), 30);
-      await auth.serviceSupabase.from("billing_subscriptions").upsert(
+      await billingDb.from("billing_subscriptions").upsert(
         {
           store_id: resolvedStoreId,
           plan,
@@ -114,7 +116,7 @@ export async function POST(request: NextRequest) {
         },
         { onConflict: "store_id" }
       );
-      await auth.serviceSupabase
+      await billingDb
         .from("billing_payments")
         .update({ status: "succeeded", updated_at: new Date().toISOString() })
         .eq("provider_tx_id", transactionId);
@@ -271,7 +273,7 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ success: false, error: hint }, { status: 502 });
       }
-      await auth.serviceSupabase
+      await billingDb
         .from("billing_payments")
         .update({ payload: payloadWithInvoiceToken(data), updated_at: new Date().toISOString() })
         .eq("provider_tx_id", transactionId);
@@ -346,7 +348,7 @@ export async function POST(request: NextRequest) {
         }),
       });
       const data = await res.json();
-      await auth.serviceSupabase
+      await billingDb
         .from("billing_payments")
         .update({ payload: data, updated_at: new Date().toISOString() })
         .eq("provider_tx_id", transactionId);

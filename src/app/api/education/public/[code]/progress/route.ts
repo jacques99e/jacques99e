@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { computeProgressPercent, moduleHasQuiz } from "@/lib/education-extras";
 import { gradeStoredQuiz } from "@/lib/education-progress-server";
+import { allowIp, allowRequest } from "@/lib/rate-limit";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { LearnerProgressMeta, QuizQuestion } from "@/types";
 
@@ -19,6 +20,15 @@ export async function POST(
   const enrollmentId = body.enrollment_id?.trim();
   if (!inviteCode || !enrollmentId) {
     return NextResponse.json({ success: false, error: "Paramètres invalides" }, { status: 400 });
+  }
+  if (
+    !allowIp(request, "formation-progress", 40, 60 * 60 * 1000) ||
+    !allowRequest(`formation-progress:${enrollmentId}`, 30, 60 * 60 * 1000)
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Trop de tentatives. Réessayez plus tard." },
+      { status: 429 }
+    );
   }
 
   const completedIds = Array.isArray(body.progress_meta?.completedModuleIds)
@@ -61,6 +71,14 @@ export async function POST(
         allowed.has(id)
       )
     );
+    const completed = new Set(
+      (Array.isArray(stored.completedModuleIds) ? stored.completedModuleIds : []).filter((id) =>
+        allowed.has(id)
+      )
+    );
+    for (const id of completedIds) {
+      if (allowed.has(id)) completed.add(id);
+    }
 
     let quizResult: { score: number; passed: boolean } | null = null;
     const attemptModule = body.quiz_attempt?.module_id?.trim() || "";
@@ -78,7 +96,7 @@ export async function POST(
     }
 
     const safeMeta: LearnerProgressMeta = {
-      completedModuleIds: completedIds.filter((id) => allowed.has(id)),
+      completedModuleIds: [...completed],
       passedQuizModuleIds: [...passed],
     };
 

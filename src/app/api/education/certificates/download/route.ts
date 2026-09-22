@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { issueCertificateForEnrollment, type CertificateIssueInput } from "@/lib/certificate-issue";
+import { allowIp } from "@/lib/rate-limit";
 import {
   buildCertificatePdfBuffer,
   certificateContentDisposition,
@@ -7,6 +8,12 @@ import {
 } from "@/lib/certificate-server";
 
 export async function POST(request: Request) {
+  if (!allowIp(request, "certificate-download", 12, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de tentatives. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
   try {
     const body = (await request.json().catch(() => ({}))) as CertificateIssueInput;
 
