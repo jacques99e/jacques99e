@@ -19,6 +19,7 @@ export async function POST(
   const body = (await request.json().catch(() => ({}))) as {
     student_name?: string;
     student_email?: string | null;
+    access_token?: string | null;
   };
 
   const studentName = body.student_name?.trim();
@@ -45,7 +46,8 @@ export async function POST(
       supabase,
       course.id,
       studentName,
-      body.student_email
+      body.student_email,
+      { accessToken: body.access_token }
     );
 
     const contact = body.student_email?.trim();

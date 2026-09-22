@@ -15,6 +15,7 @@ export function certificateVerifyUrl(token: string): string {
 
 export interface CertificateDownloadContext {
   enrollmentId: string;
+  accessToken?: string | null;
   inviteCode?: string;
   progressMeta?: LearnerProgressMeta;
   orderedModuleIds?: string[];
@@ -47,6 +48,7 @@ export async function issueCertificateToken(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       enrollment_id: params.enrollmentId,
+      access_token: params.accessToken || undefined,
       invite_code: params.inviteCode,
       progress_meta: params.progressMeta,
       ordered_module_ids: params.orderedModuleIds,

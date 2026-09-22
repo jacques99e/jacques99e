@@ -293,6 +293,7 @@ export interface CourseEnrollment {
   course_id: string;
   student_name: string;
   student_email?: string | null;
+  access_token?: string | null;
   progress_percent: number;
   progress_meta?: LearnerProgressMeta | null;
   completed_at?: string | null;

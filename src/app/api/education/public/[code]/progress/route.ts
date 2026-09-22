@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { computeProgressPercent, moduleHasQuiz } from "@/lib/education-extras";
 import { gradeStoredQuiz } from "@/lib/education-progress-server";
 import { allowIp, allowRequest } from "@/lib/rate-limit";
+import { secretsEqual } from "@/lib/secret-compare";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { LearnerProgressMeta, QuizQuestion } from "@/types";
 
@@ -13,6 +14,7 @@ export async function POST(
   const inviteCode = decodeURIComponent(code).trim().toLowerCase();
   const body = (await request.json().catch(() => ({}))) as {
     enrollment_id?: string;
+    access_token?: string;
     progress_meta?: LearnerProgressMeta;
     quiz_attempt?: { module_id?: string; answers?: Record<string, number> };
   };
@@ -49,13 +51,16 @@ export async function POST(
 
     const { data: enrollment } = await supabase
       .from("course_enrollments")
-      .select("id, course_id, progress_meta")
+      .select("id, course_id, progress_meta, access_token")
       .eq("id", enrollmentId)
       .eq("course_id", course.id)
       .maybeSingle();
 
     if (!enrollment) {
       return NextResponse.json({ success: false, error: "Inscription introuvable" }, { status: 404 });
+    }
+    if (!secretsEqual(body.access_token, enrollment.access_token as string | null)) {
+      return NextResponse.json({ success: false, error: "Session de formation invalide" }, { status: 403 });
     }
 
     const { data: modules } = await supabase

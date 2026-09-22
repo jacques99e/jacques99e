@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
       service,
       courseId,
       studentName,
-      body.student_email
+      body.student_email,
+      { resumeByName: true }
     );
 
     return NextResponse.json({ success: true, enrollment });

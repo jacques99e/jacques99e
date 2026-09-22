@@ -48,19 +48,7 @@ export default function PublicFormationPage() {
         }
 
         const rememberedName = loadLearnerNameForCourse(code);
-        if (rememberedName) {
-          setStudentName(rememberedName);
-          try {
-            const row = await enrollPublicStudent(code, rememberedName);
-            if (!cancelled) {
-              setEnrollment(row);
-              saveFormationSession(code, row);
-            }
-            return;
-          } catch {
-            /* formulaire avec nom prérempli */
-          }
-        }
+        if (rememberedName) setStudentName(rememberedName);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Cours introuvable");
@@ -128,8 +116,8 @@ export default function PublicFormationPage() {
           <form onSubmit={join} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-sm font-medium">Rejoindre le cours</p>
             <p className="text-xs text-gray-500">
-              Un seul profil par nom et par cours — si vous revenez plus tard, votre progression
-              sera conservée.
+              Votre progression reste sur cet appareil. Indiquez le même téléphone pour la
+              retrouver plus tard.
             </p>
             <Input
               value={studentName}

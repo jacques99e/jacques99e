@@ -230,6 +230,7 @@ export function writeLocalProgress(
 async function savePublicProgress(
   inviteCode: string,
   enrollmentId: string,
+  accessToken: string,
   meta: LearnerProgressMeta,
   percent: number,
   quizAttempt?: { module_id: string; answers: Record<string, number> }
@@ -243,6 +244,7 @@ async function savePublicProgress(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       enrollment_id: enrollmentId,
+      access_token: accessToken,
       progress_meta: meta,
       progress_percent: percent,
       quiz_attempt: quizAttempt,
@@ -266,14 +268,17 @@ export async function submitPublicQuiz(params: {
   inviteCode: string;
   courseId: string;
   enrollmentId: string;
+  accessToken?: string | null;
   moduleId: string;
   answers: Record<string, number>;
   orderedModuleIds: string[];
   hasQuizByModuleId: Record<string, boolean>;
 }): Promise<{ score: number; passed: boolean; percent: number }> {
+  const accessToken = params.accessToken?.trim() || "";
+  if (!accessToken) throw new Error("Session de formation invalide");
   const meta = readLocalProgress(params.courseId, params.enrollmentId);
   const percent = computeProgressPercent(params.orderedModuleIds, meta, params.hasQuizByModuleId);
-  const saved = await savePublicProgress(params.inviteCode, params.enrollmentId, meta, percent, {
+  const saved = await savePublicProgress(params.inviteCode, params.enrollmentId, accessToken, meta, percent, {
     module_id: params.moduleId,
     answers: params.answers,
   });
@@ -291,7 +296,8 @@ export async function saveLearnerProgress(
   meta: LearnerProgressMeta,
   orderedModuleIds: string[],
   hasQuizByModuleId: Record<string, boolean>,
-  publicInviteCode?: string
+  publicInviteCode?: string,
+  accessToken?: string | null
 ): Promise<number> {
   writeLocalProgress(courseId, enrollmentId, meta);
   const percent = computeProgressPercent(orderedModuleIds, meta, hasQuizByModuleId);
@@ -301,7 +307,9 @@ export async function saveLearnerProgress(
 
   if (publicInviteCode) {
     try {
-      const saved = await savePublicProgress(publicInviteCode, enrollmentId, meta, percent);
+      const token = accessToken?.trim() || "";
+      if (!token) return percent;
+      const saved = await savePublicProgress(publicInviteCode, enrollmentId, token, meta, percent);
       if (saved.meta) writeLocalProgress(courseId, enrollmentId, saved.meta);
       return saved.percent;
     } catch {

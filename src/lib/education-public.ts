@@ -36,7 +36,8 @@ export async function fetchPublicCourse(code: string): Promise<PublicCoursePaylo
 export async function enrollPublicStudent(
   code: string,
   studentName: string,
-  studentContact?: string
+  studentContact?: string,
+  accessToken?: string | null
 ): Promise<CourseEnrollment> {
   const res = await fetch(`/api/education/public/${encodeURIComponent(code)}/enroll`, {
     method: "POST",
@@ -44,6 +45,7 @@ export async function enrollPublicStudent(
     body: JSON.stringify({
       student_name: studentName,
       student_email: studentContact || null,
+      access_token: accessToken || null,
     }),
   });
   const json = (await res.json()) as {
@@ -71,20 +73,18 @@ export function loadLearnerNameForCourse(code: string): string | null {
 }
 
 export function saveFormationSession(code: string, enrollment: CourseEnrollment) {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({ code: code.toLowerCase(), enrollment })
-  );
+  if (typeof window === "undefined" || !enrollment.access_token) return;
+  const payload = JSON.stringify({ code: code.toLowerCase(), enrollment });
+  localStorage.setItem(`${SESSION_KEY}:${code.toLowerCase()}`, payload);
 }
 
 export function loadFormationSession(code: string): CourseEnrollment | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(`${SESSION_KEY}:${code.toLowerCase()}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { code: string; enrollment: CourseEnrollment };
-    if (parsed.code !== code.toLowerCase()) return null;
+    if (parsed.code !== code.toLowerCase() || !parsed.enrollment?.access_token) return null;
     return parsed.enrollment;
   } catch {
     return null;

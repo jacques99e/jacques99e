@@ -108,7 +108,8 @@ export function StudentLearnPanel({
       meta,
       orderedIds,
       hasQuizByModuleId,
-      publicInviteCode
+      publicInviteCode,
+      activeEnrollment?.access_token
     );
     setPercent(p);
     setTick((t) => t + 1);
@@ -151,9 +152,10 @@ export function StudentLearnPanel({
         enrollmentId,
         progressMeta,
         orderedIds,
-        hasQuizByModuleId,
-        publicInviteCode
-      );
+          hasQuizByModuleId,
+          publicInviteCode,
+          activeEnrollment.access_token
+        );
       await downloadCertificatePdfWithQr(
         activeEnrollment.student_name,
         courseTitle,
@@ -161,6 +163,7 @@ export function StudentLearnPanel({
         {
           enrollmentId: activeEnrollment.id,
           inviteCode: publicInviteCode,
+          accessToken: activeEnrollment.access_token,
           progressMeta,
           orderedModuleIds: orderedIds,
           hasQuizByModuleId,
@@ -353,6 +356,7 @@ export function StudentLearnPanel({
                                 inviteCode: publicInviteCode,
                                 courseId,
                                 enrollmentId,
+                                accessToken: activeEnrollment?.access_token,
                                 moduleId: m.id,
                                 answers,
                                 orderedModuleIds: orderedIds,

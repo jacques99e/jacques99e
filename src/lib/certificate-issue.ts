@@ -1,11 +1,13 @@
 import { randomBytes } from "crypto";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
+import { secretsEqual } from "@/lib/secret-compare";
 import { ensureEnrollmentCompleted } from "@/lib/education-progress-server";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import type { LearnerProgressMeta } from "@/types";
 
 export interface CertificateIssueInput {
   enrollment_id?: string;
+  access_token?: string;
   invite_code?: string;
   progress_meta?: LearnerProgressMeta;
   ordered_module_ids?: string[];
@@ -34,7 +36,7 @@ export async function issueCertificateForEnrollment(
   const { data: enrollment, error } = await service
     .from("course_enrollments")
     .select(
-      "id, course_id, student_name, progress_percent, progress_meta, certificate_token, completed_at"
+      "id, course_id, student_name, progress_percent, progress_meta, certificate_token, completed_at, access_token"
     )
     .eq("id", enrollmentId)
     .maybeSingle();
@@ -59,7 +61,8 @@ export async function issueCertificateForEnrollment(
       .maybeSingle();
     if (
       course?.is_public &&
-      (course.invite_code || "").toLowerCase() === inviteCode
+      (course.invite_code || "").toLowerCase() === inviteCode &&
+      secretsEqual(body.access_token, enrollment.access_token as string | null)
     ) {
       authorized = true;
     }
