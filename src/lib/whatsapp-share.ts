@@ -1,10 +1,4 @@
-import {
-  canNativeShare,
-  isAndroidUserAgent,
-  isStandaloneDisplay,
-  openNativeShare,
-  openShareLink,
-} from "@/lib/open-share";
+import { isAndroidUserAgent, isStandaloneDisplay, openShareLink } from "@/lib/open-share";
 
 export function buildWhatsAppShareUrl(text: string, phone?: string): string {
   const encoded = encodeURIComponent(text.trim());
@@ -20,26 +14,17 @@ function buildWhatsAppSchemeUrl(text: string, phone?: string): string {
   return `whatsapp://send?text=${encoded}`;
 }
 
+/** Ouvre WhatsApp tout de suite — pas le menu de partage du téléphone. */
 export function openWhatsAppShare(text: string, phone?: string) {
   const body = text.trim();
   if (!body) return;
   const href = buildWhatsAppShareUrl(body, phone);
 
   if (isStandaloneDisplay() && isAndroidUserAgent()) {
-    const scheme = buildWhatsAppSchemeUrl(body, phone);
-    window.location.assign(scheme);
+    window.location.assign(buildWhatsAppSchemeUrl(body, phone));
     window.setTimeout(() => {
-      if (document.visibilityState === "visible") {
-        window.location.assign(href);
-      }
-    }, 700);
-    return;
-  }
-
-  if (canNativeShare() && !phone) {
-    void openNativeShare({ text: body }).then((shared) => {
-      if (!shared) openShareLink(href);
-    });
+      if (document.visibilityState === "visible") window.location.assign(href);
+    }, 500);
     return;
   }
 

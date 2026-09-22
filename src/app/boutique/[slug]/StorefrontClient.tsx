@@ -11,9 +11,7 @@ import {
   Smartphone,
   Store,
 } from "lucide-react";
-import { PublicPageShare } from "@/components/PublicPageShare";
 import { useI18n } from "@/contexts/I18nContext";
-import { boutiquePublicUrl, boutiqueShareText } from "@/lib/bring-clients";
 import { resolveLandingUrl } from "@/lib/public-urls";
 import { formatCurrency, getWhatsAppLink } from "@/lib/utils";
 import type { Product, Store as StoreType } from "@/types";
@@ -27,7 +25,6 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
   const { t } = useI18n();
   const [stickyVisible, setStickyVisible] = useState(false);
   const landingUrl = resolveLandingUrl();
-  const catalogUrl = boutiquePublicUrl(store.slug);
   const productCount = store.products.length;
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
@@ -134,13 +131,6 @@ export function StorefrontClient({ store, contactPhone = "" }: StorefrontClientP
           <p className="mt-1 text-sm text-[#1A1A1A]/55">
             {t("storefront.productsCount", { count: productCount })}
           </p>
-          {catalogUrl ? (
-            <PublicPageShare
-              className="mt-4"
-              url={catalogUrl}
-              text={boutiqueShareText(store.name, catalogUrl)}
-            />
-          ) : null}
         </div>
 
         {!contactPhone ? (

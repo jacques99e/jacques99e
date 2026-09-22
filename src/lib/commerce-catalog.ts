@@ -8,7 +8,7 @@ export function buildWhatsAppCatalog(params: {
 }): string {
   const lines = [`*${params.storeName}* — Catalogue`, ""];
   if (params.boutiqueUrl) {
-    lines.push(`Commandez ici : ${params.boutiqueUrl}`, "");
+    lines.push(params.boutiqueUrl, "");
   }
   const items = params.products.slice(0, 15);
   for (const p of items) {

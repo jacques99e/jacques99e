@@ -47,15 +47,7 @@ export function openShareLink(url: string): boolean {
     return true;
   }
 
-  try {
-    const popup = window.open(url, "_blank", "noopener,noreferrer");
-    if (popup && !popup.closed) return true;
-  } catch {
-    /* popup bloquée */
-  }
-
   if (clickHiddenLink(url, "_blank")) return true;
-
   window.location.assign(url);
   return true;
 }

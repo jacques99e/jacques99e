@@ -5,7 +5,7 @@ import { Sparkles, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareFacebookButton } from "@/components/ShareFacebookButton";
 import { apiFetch } from "@/lib/api-client";
-import { boutiquePayShareText, boutiquePayUrl, shareableProductUrl, appendShareUrl, productShareText } from "@/lib/bring-clients";
+import { boutiquePayShareText, boutiquePayUrl, shareableProductUrl, productShareText } from "@/lib/bring-clients";
 import { localStore } from "@/lib/db";
 import { openWhatsAppShare } from "@/lib/whatsapp-share";
 import {
@@ -133,10 +133,8 @@ export function ProductLandingButton({
   const productUrl = shareableProductUrl(store?.slug, product.id);
   const payUrl = boutiquePayUrl(store?.slug, product.id);
   const productQuote = productUrl
-    ? existing?.content.whatsappPitch
-      ? appendShareUrl(existing.content.whatsappPitch, productUrl)
-      : productShareText(store?.name || "Ma boutique", product.name, productUrl, product.price)
-    : existing?.content.whatsappPitch || `Découvrez ${product.name}`;
+    ? productShareText(store?.name || "Ma boutique", product.name, productUrl, product.price)
+    : product.name;
   const payQuote = payUrl
     ? boutiquePayShareText(store?.name || "Ma boutique", payUrl, product.name)
     : "";

@@ -103,13 +103,7 @@ export function productMoMoShareText(opts: {
 
 export function boutiqueShareText(storeName: string, url: string): string {
   const safeName = storeName.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) || "Ma boutique";
-  return [
-    `Découvrez ${safeName} !`,
-    "Commandez ici (lien boutique) :",
-    url,
-    "",
-    "Répondez-moi ici pour passer commande.",
-  ].join("\n");
+  return [`${safeName}`, url].join("\n");
 }
 
 export function productShareText(
@@ -124,7 +118,7 @@ export function productShareText(
     typeof price === "number" && Number.isFinite(price)
       ? `${name} — ${Math.round(price).toLocaleString("fr-FR")} FCFA`
       : name;
-  return [priceLine, `Chez ${store}`, "", "Commandez ici :", url].join("\n");
+  return [priceLine, store, url].join("\n");
 }
 
 export function appendShareUrl(text: string, url: string): string {
