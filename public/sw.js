@@ -1,7 +1,16 @@
-// wazo-app-v8: network-only navigations. Never cache HTML/RSC — that crashed the Android icon.
+// wazo-app-v9: network-only navigations. Never cache HTML/RSC — that crashed the Android icon.
 
 const OFFLINE = "/offline.html";
-const PRECACHE = "wazo-offline-v8";
+const PRECACHE = "wazo-offline-v9";
+
+function safePushPath(url) {
+  if (typeof url !== "string") return "/dashboard";
+  const text = url.trim();
+  if (!text.startsWith("/") || text.startsWith("//") || text.includes("://") || text.includes("\\")) {
+    return "/dashboard";
+  }
+  return text.slice(0, 200);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -56,14 +65,14 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      data: { url: data.url || "/dashboard" },
+      data: { url: safePushPath(data.url) },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/dashboard";
+  const url = safePushPath(event.notification.data?.url);
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {

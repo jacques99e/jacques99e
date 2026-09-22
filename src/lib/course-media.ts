@@ -12,32 +12,58 @@ export interface ParsedLessonMedia {
 
 const COURSE_VIDEO_MAX_MB = 50;
 
-export function parseLessonMediaUrl(raw: string): ParsedLessonMedia | null {
-  const url = raw.trim();
-  if (!url) return null;
-  const scheme = url.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase();
-  if (scheme && scheme !== "http" && scheme !== "https") return null;
+const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "youtube-nocookie.com"];
+const FACEBOOK_HOSTS = ["facebook.com", "fb.com", "fb.watch"];
 
-  const ytMatch =
-    url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/i) ||
-    url.match(/youtube\.com\/shorts\/([\w-]{11})/i);
-  if (ytMatch?.[1]) {
+function hostMatches(hostname: string, roots: string[]): boolean {
+  const host = hostname.toLowerCase();
+  return roots.some((root) => host === root || host.endsWith(`.${root}`));
+}
+
+function lessonUrl(raw: string): URL | null {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (url.username || url.password) return null;
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  url.protocol = "https:";
+  return url;
+}
+
+export function parseLessonMediaUrl(raw: string): ParsedLessonMedia | null {
+  const url = lessonUrl(raw);
+  if (!url) return null;
+
+  if (hostMatches(url.hostname, YOUTUBE_HOSTS)) {
+    const fromPath = url.hostname.toLowerCase() === "youtu.be" ? url.pathname.split("/").filter(Boolean)[0] : "";
+    const fromQuery = url.searchParams.get("v") || "";
+    const fromEmbed = url.pathname.match(/\/(?:embed|shorts)\/([\w-]{11})/)?.[1] || "";
+    const youtubeId = [fromPath, fromQuery, fromEmbed].find((id) => /^[\w-]{11}$/.test(id));
+    if (!youtubeId) return null;
     return {
       kind: "youtube",
-      watchUrl: url,
-      youtubeId: ytMatch[1],
+      watchUrl: `https://www.youtube.com/watch?v=${youtubeId}`,
+      youtubeId,
     };
   }
 
-  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
-    return { kind: "facebook", watchUrl: url };
+  if (hostMatches(url.hostname, FACEBOOK_HOSTS)) {
+    return { kind: "facebook", watchUrl: url.toString() };
   }
 
-  if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.includes("/storage/v1/object/public/course-media")) {
-    return { kind: "file", watchUrl: url };
+  const path = url.pathname;
+  if (
+    hostMatches(url.hostname, ["supabase.co"]) &&
+    path.includes("/storage/v1/object/public/course-media/") &&
+    /\.(mp4|webm|ogg|mov)$/i.test(path)
+  ) {
+    return { kind: "file", watchUrl: url.toString() };
   }
 
-  return { kind: "external", watchUrl: url };
+  return null;
 }
 
 function mapStorageUploadError(message: string): string {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthContext } from "@/lib/api-auth";
+import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { confirmPaydunyaInvoice, extractPaydunyaInvoiceToken, getPaymentMode } from "@/lib/paydunya";
 import { fulfillPendingSalePayment, type SaleCheckoutPayload } from "@/lib/sale-payment";
 import { createServiceSupabase } from "@/lib/supabase/server";
@@ -31,15 +31,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Paiement introuvable." }, { status: 404 });
     }
 
-    if (payment.user_id && payment.user_id !== auth.userId) {
-      const { data: store } = await db
-        .from("stores")
-        .select("owner_id")
-        .eq("id", payment.store_id)
-        .maybeSingle();
-      if (store?.owner_id !== auth.userId) {
-        return NextResponse.json({ success: false, error: "Accès refusé." }, { status: 403 });
-      }
+    const access = await checkStoreAccess(
+      auth.serviceSupabase,
+      auth.userId,
+      payment.store_id,
+      "read"
+    );
+    if (!access.ok && payment.user_id !== auth.userId) {
+      return NextResponse.json({ success: false, error: "Accès refusé." }, { status: 403 });
     }
 
     if (payment.status === "pending") {

@@ -15,6 +15,16 @@ async function getWebPush() {
   }
 }
 
+/** Chemin du site uniquement. Une adresse externe ne part pas dans la notification. */
+export function safePushPath(value: unknown): string {
+  if (typeof value !== "string") return "/dashboard";
+  const text = value.trim().slice(0, 200);
+  if (!text.startsWith("/") || text.startsWith("//") || /[\u0000-\u001f\\]/.test(text) || text.includes("://")) {
+    return "/dashboard";
+  }
+  return text;
+}
+
 export async function sendWebPush(
   subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
   payload: { title: string; body: string; url?: string }
@@ -32,7 +42,7 @@ export async function sendWebPush(
       endpoint: subscription.endpoint,
       keys: subscription.keys,
     },
-    JSON.stringify(payload)
+    JSON.stringify({ ...payload, url: safePushPath(payload.url) })
   );
 }
 
