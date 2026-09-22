@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allowIp } from "@/lib/rate-limit";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -10,9 +11,15 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ code: string }> }
 ) {
+  if (!allowIp(request, "tracking", 40, 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de recherches. Réessayez plus tard." },
+      { status: 429 }
+    );
+  }
   const { code } = await context.params;
   const trackingCode = decodeURIComponent(code).trim().toUpperCase();
   if (!trackingCode) {

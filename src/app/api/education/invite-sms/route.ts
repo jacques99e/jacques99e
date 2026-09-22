@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthContext, checkStoreAccess } from "@/lib/api-auth";
+import { allowRequest } from "@/lib/rate-limit";
 import { buildFormationInviteSms, looksLikePhone, sendSms } from "@/lib/sms";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
@@ -7,6 +8,12 @@ export async function POST(request: Request) {
   const auth = await requireAuthContext();
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+  if (!allowRequest(`invite-sms:${auth.userId}`, 8, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop d'invitations SMS. Réessayez plus tard." },
+      { status: 429 }
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as {

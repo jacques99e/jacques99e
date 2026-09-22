@@ -188,9 +188,7 @@ async function reconcileByTransaction(
   const mode = getPaymentMode();
   let shouldActivate = false;
 
-  if (mode === "test") {
-    shouldActivate = true;
-  } else if (hasPaydunyaCredentials()) {
+  if (hasPaydunyaCredentials() && mode !== "simulate") {
     const payload = (payment.payload ?? {}) as Record<string, unknown>;
     const token =
       invoiceToken?.trim() ||

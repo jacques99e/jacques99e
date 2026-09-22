@@ -6,7 +6,10 @@ import { enqueueSync, generateLocalId } from "@/lib/sync";
 import type { Delivery, DeliveryStatus } from "@/types";
 
 export function generateTrackingCode(): string {
-  return `WZ${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `WZ${hex.toUpperCase()}`;
 }
 
 export async function listDeliveries(storeId: string): Promise<Delivery[]> {

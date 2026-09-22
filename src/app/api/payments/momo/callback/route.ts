@@ -99,6 +99,10 @@ async function paymentConfirmed(
     const confirm = await confirmPaydunyaInvoice(invoiceToken, getPaymentMode());
     return confirm.ok;
   }
+  // Sans facture confirmée par PayDunya, un status=success envoyé par l'appelant ne compte pas.
+  if (isProductionLike() && getPaymentMode() !== "simulate") {
+    return false;
+  }
   return isSuccessfulPayment(payload);
 }
 

@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { checkStoreAccess, requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
+import { allowRequest } from "@/lib/rate-limit";
 import { looksLikePhone, sendSms } from "@/lib/sms";
 
 export async function POST(request: Request) {
   const auth = await requireAuthContext();
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  }
+  if (!allowRequest(`health-sms:${auth.userId}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { success: false, error: "Trop de rappels SMS. Réessayez plus tard." },
+      { status: 429 }
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as { appointment_id?: string };
