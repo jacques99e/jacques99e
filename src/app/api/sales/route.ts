@@ -147,7 +147,8 @@ export async function POST(request: NextRequest) {
           await service
             .from("products")
             .update({ stock: Math.max(0, Number(product.stock) - qty) })
-            .eq("id", productId);
+            .eq("id", productId)
+            .eq("store_id", storeId);
         }
       }
     }

@@ -36,20 +36,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Nom du patient requis." }, { status: 400 });
     }
 
+    const clip = (value: string | null | undefined, max: number) =>
+      value?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max) || null;
+
     const row = {
       store_id: storeId,
-      full_name,
+      full_name: full_name.slice(0, 120),
       age: body.age ?? null,
-      blood_group: body.blood_group ?? null,
-      allergies: body.allergies ?? null,
-      medical_history: body.medical_history ?? null,
-      phone: body.phone?.trim() || null,
+      blood_group: clip(body.blood_group, 8),
+      allergies: clip(body.allergies, 500),
+      medical_history: clip(body.medical_history, 2000),
+      phone: clip(body.phone, 20),
     };
 
     const service = await createServiceSupabase();
     const hasServerId = Boolean(body.id && isCloudUuid(body.id));
     const query = hasServerId
-      ? service.from("health_patients").update(row).eq("id", body.id!).select().single()
+      ? service
+          .from("health_patients")
+          .update(row)
+          .eq("id", body.id!)
+          .eq("store_id", storeId)
+          .select()
+          .single()
       : service.from("health_patients").insert(row).select().single();
 
     const { data, error } = await query;

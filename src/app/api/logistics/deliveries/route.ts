@@ -64,9 +64,12 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const body = await request.json();
   const { id, status, signature_data } = body;
-  if (!id || !status) {
+  const allowedStatus = new Set(["pending", "picked_up", "in_transit", "delivered", "cancelled"]);
+  if (!id || typeof status !== "string" || !allowedStatus.has(status)) {
     return NextResponse.json({ error: "Identifiant livraison et statut requis." }, { status: 400 });
   }
+  const signature =
+    typeof signature_data === "string" && signature_data.length <= 300_000 ? signature_data : null;
   const auth = await requireAuthContext();
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -93,8 +96,9 @@ export async function PATCH(request: NextRequest) {
 
   const { data, error } = await service
     .from("deliveries")
-    .update({ status, signature_data, updated_at: new Date().toISOString() })
+    .update({ status, signature_data: signature, updated_at: new Date().toISOString() })
     .eq("id", id)
+    .eq("store_id", delivery.store_id)
     .select()
     .single();
   if (error) return NextResponse.json({ error: "Impossible de mettre a jour la livraison." }, { status: 500 });

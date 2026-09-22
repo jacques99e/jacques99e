@@ -77,7 +77,8 @@ export async function POST(request: Request) {
       await service
         .from("course_enrollments")
         .update({ invite_sms_sent_at: new Date().toISOString() })
-        .eq("id", body.enrollment_id);
+        .eq("id", body.enrollment_id)
+        .eq("course_id", course.id);
     }
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAuthContext } from "@/lib/api-auth";
+import { allowUser } from "@/lib/rate-limit";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 const MB = 1024 * 1024;
@@ -99,6 +100,12 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthContext();
     if (!auth.ok) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+    }
+    if (!allowUser(auth.userId, "media-upload", 30, 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { success: false, error: "Trop d'envois. Réessayez plus tard." },
+        { status: 429 }
+      );
     }
 
     const formData = await request.formData();
