@@ -17,6 +17,7 @@ import {
   moduleHasQuiz,
   readLocalProgress,
   saveLearnerProgress,
+  submitPrivateQuiz,
   submitPublicQuiz,
 } from "@/lib/education-extras";
 import type { CourseEnrollment, CourseModule, ModuleQuiz } from "@/types";
@@ -121,15 +122,6 @@ export function StudentLearnPanel({
     const meta = readLocalProgress(courseId, enrollmentId);
     if (!meta.completedModuleIds.includes(moduleId)) {
       meta.completedModuleIds.push(moduleId);
-    }
-    await persistProgress(meta);
-  };
-
-  const markQuizPassed = async (moduleId: string) => {
-    if (!enrollmentId) return;
-    const meta = readLocalProgress(courseId, enrollmentId);
-    if (!meta.passedQuizModuleIds.includes(moduleId)) {
-      meta.passedQuizModuleIds.push(moduleId);
     }
     await persistProgress(meta);
   };
@@ -350,27 +342,31 @@ export function StudentLearnPanel({
                       mode="take"
                       preloadedQuiz={preloaded}
                       gradeOnServer={
-                        publicInviteCode && enrollmentId
+                        enrollmentId
                           ? async (answers) => {
-                              const result = await submitPublicQuiz({
-                                inviteCode: publicInviteCode,
-                                courseId,
-                                enrollmentId,
-                                accessToken: activeEnrollment?.access_token,
-                                moduleId: m.id,
-                                answers,
-                                orderedModuleIds: orderedIds,
-                                hasQuizByModuleId,
-                              });
+                              const result = publicInviteCode
+                                ? await submitPublicQuiz({
+                                    inviteCode: publicInviteCode,
+                                    courseId,
+                                    enrollmentId,
+                                    accessToken: activeEnrollment?.access_token,
+                                    moduleId: m.id,
+                                    answers,
+                                    orderedModuleIds: orderedIds,
+                                    hasQuizByModuleId,
+                                  })
+                                : await submitPrivateQuiz({
+                                    courseId,
+                                    enrollmentId,
+                                    moduleId: m.id,
+                                    answers,
+                                  });
                               setPercent(result.percent);
                               setTick((t) => t + 1);
                               onProgressUpdated();
                               return result;
                             }
                           : undefined
-                      }
-                      onPassed={
-                        publicInviteCode ? undefined : () => void markQuizPassed(m.id)
                       }
                     />
                   ) : null}
