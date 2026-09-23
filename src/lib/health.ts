@@ -188,10 +188,9 @@ export async function updateAppointmentStatus(
 
   if (!navigator.onLine) return;
 
-  const { error } = await supabase
-    .from("health_appointments")
-    .update({ status })
-    .eq("id", appointmentId);
+  let query = supabase.from("health_appointments").update({ status }).eq("id", appointmentId);
+  if (storeId) query = query.eq("store_id", storeId);
+  const { error } = await query;
   if (error) throw error;
 }
 

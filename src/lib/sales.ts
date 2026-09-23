@@ -111,9 +111,10 @@ export async function completeSale(
             await supabase
               .from("products")
               .update({
-                stock_quantity: Math.max(0, c.product.stock_quantity - c.quantity),
+                stock: Math.max(0, c.product.stock_quantity - c.quantity),
               })
-              .eq("id", c.product.id);
+              .eq("id", c.product.id)
+              .eq("store_id", storeId);
           }
         }
 

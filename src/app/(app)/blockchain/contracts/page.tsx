@@ -56,7 +56,8 @@ export default function ContractsPage() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("blockchain_contracts").update({ status }).eq("id", id);
+    if (!store) return;
+    await supabase.from("blockchain_contracts").update({ status }).eq("id", id).eq("store_id", store.id);
     await logAuditEvent({
       action: "blockchain_contract_status_updated",
       entityType: "blockchain_contract",

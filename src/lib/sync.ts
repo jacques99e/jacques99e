@@ -72,7 +72,13 @@ async function syncProduct(
     const hasServerId = Boolean(payload.id && isProductUuid(payload.id));
     const row = productToRow({ ...payload, store_id: storeId });
     const query = hasServerId
-      ? supabase.from("products").update(row).eq("id", payload.id).select().single()
+      ? supabase
+          .from("products")
+          .update(row)
+          .eq("id", payload.id)
+          .eq("store_id", storeId)
+          .select()
+          .single()
       : supabase.from("products").insert(row).select().single();
 
     const { data, error } = await query;
@@ -185,7 +191,8 @@ async function syncSale(
       await supabase
         .from("products")
         .update({ stock: Math.max(0, Number(product.stock) - i.quantity) })
-        .eq("id", i.product_id);
+        .eq("id", i.product_id)
+        .eq("store_id", storeId);
     }
   }
 
