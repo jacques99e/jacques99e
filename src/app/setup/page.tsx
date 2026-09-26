@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +42,14 @@ export default function SetupPage() {
   const [error, setError] = useState("");
   const [offlineInfo, setOfflineInfo] = useState("");
   const [selectedModules, setSelectedModules] = useState<ModuleId[]>(() => localModules.get());
+  const pendingModuleApplied = useRef(false);
 
   useEffect(() => {
     const pending = applyPendingModule();
-    if (pending) setSelectedModules(normalizeModuleIds([pending]));
+    if (pending) {
+      pendingModuleApplied.current = true;
+      setSelectedModules(normalizeModuleIds([pending]));
+    }
   }, []);
 
   const toggleModule = (id: ModuleId) => {
@@ -89,7 +93,7 @@ export default function SetupPage() {
           .select("active_modules, full_name")
           .eq("id", user.id)
           .maybeSingle();
-        if (!cancelled && profile?.active_modules) {
+        if (!cancelled && profile?.active_modules && !pendingModuleApplied.current) {
           const mods = normalizeModuleIds(profile.active_modules as string[]);
           localModules.save(mods);
           setSelectedModules(mods);

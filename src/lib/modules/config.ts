@@ -99,11 +99,21 @@ const LEGACY_MODULE_IDS: Record<string, ModuleId> = {
   éducation: "education",
 };
 
-export function normalizeModuleIds(ids: string[]): ModuleId[] {
+/** Identifiants connus, sans remplacer une liste vide par Commerce. */
+export function parseModuleIds(ids: readonly string[] | null | undefined): ModuleId[] {
+  if (!ids?.length) return [];
   const normalized = ids
-    .map((id) => LEGACY_MODULE_IDS[id] ?? id)
+    .map((id) => {
+      const key = String(id || "").trim().toLowerCase();
+      return LEGACY_MODULE_IDS[key] ?? key;
+    })
     .filter((id): id is ModuleId => ALL_MODULE_IDS.includes(id as ModuleId));
-  return [...new Set(normalized.length ? normalized : DEFAULT_MODULES)];
+  return [...new Set(normalized)];
+}
+
+export function normalizeModuleIds(ids: string[]): ModuleId[] {
+  const parsed = parseModuleIds(ids);
+  return parsed.length ? parsed : [...DEFAULT_MODULES];
 }
 
 export function getModuleConfig(id: ModuleId): ModuleConfig {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { localModules } from "@/lib/db";
-import { normalizeModuleIds } from "@/lib/modules/config";
+import { normalizeModuleIds, parseModuleIds } from "@/lib/modules/config";
 import { apiFetch } from "@/lib/api-client";
 import type { ModuleId } from "@/types";
 
@@ -43,28 +43,28 @@ export function useModule(storeId?: string) {
       ? await supabase.from("profiles").select("active_modules").eq("id", user.id).maybeSingle()
       : { data: null };
 
-    const profileIds = normalizeModuleIds(
-      Array.isArray(profile?.active_modules) ? (profile!.active_modules as string[]) : []
+    const profileIds = parseModuleIds(
+      Array.isArray(profile?.active_modules) ? (profile.active_modules as string[]) : []
     );
 
-    const { data: storeMods } = await supabase
-      .from("store_modules")
-      .select("module_id")
-      .eq("store_id", storeId)
-      .eq("enabled", true);
+    const [{ data: storeMods }, { data: storeRow }] = await Promise.all([
+      supabase
+        .from("store_modules")
+        .select("module_id")
+        .eq("store_id", storeId)
+        .eq("enabled", true),
+      supabase.from("stores").select("modules").eq("id", storeId).maybeSingle(),
+    ]);
 
-    const storeIds = normalizeModuleIds(
-      (storeMods || []).map((m) => m.module_id as string)
+    const rowIds = parseModuleIds((storeMods || []).map((m) => m.module_id as string));
+    const columnIds = parseModuleIds(
+      Array.isArray(storeRow?.modules) ? (storeRow.modules as string[]) : []
     );
+    const merged = parseModuleIds([...rowIds, ...columnIds, ...profileIds]);
+    const union = merged.length ? merged : normalizeModuleIds(cached);
+    const needsPersist = !sameModules(rowIds, union) || !sameModules(profileIds, union);
 
-    // Union : on ne perd plus les modules cochés à l'inscription.
-    const union = normalizeModuleIds([...storeIds, ...profileIds]);
-    const needsPersist =
-      !storeIds.length ||
-      !sameModules(storeIds, union) ||
-      (profileIds.length > 0 && !sameModules(profileIds, union));
-
-    if (needsPersist && union.length) {
+    if (needsPersist) {
       try {
         const res = await apiFetch("/api/stores/modules", {
           method: "PUT",
@@ -72,7 +72,6 @@ export function useModule(storeId?: string) {
           body: JSON.stringify({
             storeId,
             modules: union,
-            syncFromProfile: true,
           }),
         });
         const data = (await res.json()) as { success?: boolean; modules?: string[] };
@@ -82,11 +81,11 @@ export function useModule(storeId?: string) {
           return;
         }
       } catch {
-        /* fallback local below */
+        /* garde l'union locale */
       }
     }
 
-    applyLocal(union.length ? union : storeIds.length ? storeIds : profileIds.length ? profileIds : cached);
+    applyLocal(union);
     setLoading(false);
   }, [storeId, applyLocal]);
 
@@ -96,6 +95,7 @@ export function useModule(storeId?: string) {
 
   const setActiveModules = useCallback(
     async (ids: ModuleId[]) => {
+      const previous = localModules.get();
       const unique = applyLocal(ids);
 
       if (!storeId || !navigator.onLine) return;
@@ -106,24 +106,15 @@ export function useModule(storeId?: string) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ storeId, modules: unique }),
         });
-        if (res.ok) return;
+        const data = (await res.json()) as { success?: boolean; modules?: string[] };
+        if (res.ok && data.success && data.modules?.length) {
+          applyLocal(normalizeModuleIds(data.modules));
+          return;
+        }
       } catch {
-        /* fallback client */
+        /* retour à l'état précédent */
       }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({ active_modules: unique }).eq("id", user.id);
-      }
-      await supabase.from("store_modules").delete().eq("store_id", storeId);
-      if (unique.length) {
-        await supabase.from("store_modules").insert(
-          unique.map((module_id) => ({ store_id: storeId, module_id, enabled: true }))
-        );
-      }
-      await supabase.from("stores").update({ modules: unique }).eq("id", storeId);
+      applyLocal(previous);
     },
     [storeId, applyLocal]
   );

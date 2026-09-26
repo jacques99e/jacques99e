@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { createServiceSupabase } from "@/lib/supabase/server";
 import { normalizeModuleIds } from "@/lib/modules/config";
+import { persistStoreModules } from "@/lib/store-modules";
 import { getOwnerStoreAccess } from "@/lib/plan-access";
 import { slugify } from "@/lib/utils";
 
@@ -101,34 +102,18 @@ export async function POST(request: NextRequest) {
       Array.isArray(body.modules) && body.modules.length ? body.modules : ["commerce"]
     );
 
-    const { error: modulesError } = await auth.serviceSupabase.from("store_modules").insert(
-      modules.map((module_id) => ({
-        store_id: savedStore!.id,
-        module_id,
-        enabled: true,
-      }))
-    );
-    if (modulesError) {
+    const billingDb = await createServiceSupabase();
+    const savedModules = await persistStoreModules(billingDb, savedStore.id, auth.userId, modules);
+    if ("error" in savedModules) {
       return NextResponse.json(
-        { success: false, error: modulesError.message || "Impossible d'activer les modules." },
+        { success: false, error: savedModules.error || "Impossible d'activer les modules." },
         { status: 500 }
       );
     }
 
-    await auth.serviceSupabase
-      .from("stores")
-      .update({ modules })
-      .eq("id", savedStore.id);
-
-    await auth.serviceSupabase
-      .from("profiles")
-      .update({ active_modules: modules })
-      .eq("id", auth.userId);
-
     const now = new Date().toISOString();
     const requested = String(body.plan || "").toLowerCase();
     const paidPlan = requested === "pro" ? "pro" : null;
-    const billingDb = await createServiceSupabase();
     await billingDb.from("billing_subscriptions").upsert(
       {
         store_id: savedStore.id,
@@ -141,7 +126,7 @@ export async function POST(request: NextRequest) {
       { onConflict: "store_id" }
     );
 
-    return NextResponse.json({ success: true, store: savedStore, modules });
+    return NextResponse.json({ success: true, store: savedStore, modules: savedModules.modules });
   } catch {
     return NextResponse.json(
       { success: false, error: "Impossible de créer la boutique." },

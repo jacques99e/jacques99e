@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
-import { normalizeModuleIds } from "@/lib/modules/config";
+import { normalizeModuleIds, parseModuleIds } from "@/lib/modules/config";
+import { persistStoreModules } from "@/lib/store-modules";
+import { createServiceSupabase } from "@/lib/supabase/server";
 
 /**
  * PUT /api/stores/modules
@@ -51,48 +53,26 @@ export async function PUT(request: NextRequest) {
       .eq("store_id", storeId)
       .eq("enabled", true);
 
-    const fromStore = (existingRows || []).map((r) => String(r.module_id));
-    const fromProfile = Array.isArray(profile?.active_modules)
-      ? (profile!.active_modules as string[])
-      : [];
-    const fromBody = Array.isArray(body.modules) ? body.modules : [];
-
-    let modules = normalizeModuleIds(
-      body.syncFromProfile || !fromBody.length
-        ? [...fromStore, ...fromProfile, ...fromBody]
-        : fromBody
+    const fromStore = parseModuleIds((existingRows || []).map((r) => String(r.module_id)));
+    const fromProfile = parseModuleIds(
+      Array.isArray(profile?.active_modules) ? (profile.active_modules as string[]) : []
     );
+    const fromColumn = parseModuleIds(Array.isArray(store.modules) ? (store.modules as string[]) : []);
+    const fromBody = parseModuleIds(Array.isArray(body.modules) ? body.modules : []);
 
-    if (!modules.length) modules = ["commerce"];
+    const modules = fromBody.length
+      ? fromBody
+      : normalizeModuleIds([...fromStore, ...fromColumn, ...fromProfile]);
 
-    await auth.serviceSupabase.from("store_modules").delete().eq("store_id", storeId);
-    const { error: insertError } = await auth.serviceSupabase.from("store_modules").insert(
-      modules.map((module_id) => ({
-        store_id: storeId,
-        module_id,
-        enabled: true,
-      }))
-    );
-    if (insertError) {
-      return NextResponse.json(
-        { success: false, error: insertError.message },
-        { status: 500 }
-      );
+    const db = await createServiceSupabase();
+    const saved = await persistStoreModules(db, storeId, auth.userId, modules);
+    if ("error" in saved) {
+      return NextResponse.json({ success: false, error: saved.error }, { status: 500 });
     }
-
-    await auth.serviceSupabase
-      .from("stores")
-      .update({ modules })
-      .eq("id", storeId);
-
-    await auth.serviceSupabase
-      .from("profiles")
-      .update({ active_modules: modules })
-      .eq("id", auth.userId);
 
     return NextResponse.json({
       success: true,
-      modules,
+      modules: saved.modules,
       reconciled: {
         beforeStore: fromStore,
         beforeProfile: fromProfile,
