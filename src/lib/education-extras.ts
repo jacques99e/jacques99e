@@ -76,7 +76,10 @@ export function computeProgressPercent(
   for (const id of orderedModuleIds) {
     if (isModuleFullyComplete(id, meta, hasQuizByModuleId[id] ?? false)) complete += 1;
   }
-  return Math.min(100, Math.round((complete / orderedModuleIds.length) * 100));
+  const percent = Math.min(100, Math.round((complete / orderedModuleIds.length) * 100));
+  const hasQuiz = orderedModuleIds.some((id) => hasQuizByModuleId[id]);
+  if (!hasQuiz) return Math.min(percent, 99);
+  return percent;
 }
 
 export function readLocalQuiz(moduleId: string): ModuleQuiz | null {

@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { syncFieldJournal } from "@/lib/agriculture-journal";
 import { apiFetch } from "@/lib/api-client";
+import { localStore } from "@/lib/db";
 import {
   computeAgricultureDecisions,
   dismissAgriDecision,
@@ -25,7 +27,11 @@ export function ParcelDecisionPanel() {
   }, [weatherAlert]);
 
   useEffect(() => {
-    refresh();
+    const storeId = localStore.get()?.id;
+    void (async () => {
+      if (storeId) await syncFieldJournal(storeId);
+      refresh();
+    })();
 
     const loadWeather = (lat?: number, lon?: number) => {
       const query =
@@ -37,6 +43,8 @@ export function ParcelDecisionPanel() {
           const json = (await res.json()) as { alert?: string | null };
           if (res.ok) {
             const alert = json.alert || null;
+            const storeId = localStore.get()?.id;
+            if (storeId) await syncFieldJournal(storeId);
             setWeatherAlert(alert);
             setActions(
               computeAgricultureDecisions({ weatherAlert: alert, limit: 4 })

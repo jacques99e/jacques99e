@@ -14,7 +14,7 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ code: string }> }
 ) {
-  if (!allowIp(request, "tracking", 40, 60 * 1000)) {
+  if (!(await allowIp(request, "tracking", 40, 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de recherches. Réessayez plus tard." },
       { status: 429 }

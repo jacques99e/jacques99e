@@ -15,7 +15,7 @@ function clip(value: string, max: number): string {
 }
 
 export async function POST(request: Request) {
-  if (!allowIp(request, "boutique-orders", 12, 60 * 60 * 1000)) {
+  if (!(await allowIp(request, "boutique-orders", 12, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de commandes. Réessayez plus tard." },
       { status: 429 }

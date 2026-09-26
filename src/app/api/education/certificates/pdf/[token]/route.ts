@@ -4,6 +4,7 @@ import {
   certificateContentDisposition,
   certificateFilename,
 } from "@/lib/certificate-server";
+import { certificateProgress } from "@/lib/education-progress-server";
 import { createServiceSupabase } from "@/lib/supabase/server";
 
 export async function GET(
@@ -21,7 +22,7 @@ export async function GET(
     const { data: enrollment, error } = await supabase
       .from("course_enrollments")
       .select(
-        "id, course_id, student_name, progress_percent, completed_at, certificate_token, courses(title, stores(name))"
+        "id, course_id, student_name, progress_percent, progress_meta, completed_at, certificate_token, courses(title, stores(name))"
       )
       .eq("certificate_token", certificateToken)
       .maybeSingle();
@@ -30,7 +31,8 @@ export async function GET(
       return NextResponse.json({ error: "Certificat introuvable" }, { status: 404 });
     }
 
-    if ((enrollment.progress_percent ?? 0) < 100 || !enrollment.completed_at) {
+    const progress = await certificateProgress(supabase, enrollment);
+    if (!progress.ok || !enrollment.completed_at) {
       return NextResponse.json({ error: "Parcours non terminé" }, { status: 403 });
     }
 

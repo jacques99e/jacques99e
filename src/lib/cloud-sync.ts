@@ -55,6 +55,9 @@ export async function pushClientsToCloud(
           status: client.status,
           next_follow_up: toIsoDate(client.nextFollowUp),
           note: client.note || null,
+          sequence_step: client.sequenceStep ?? null,
+          sequence_started_at: toIsoDate(client.sequenceStartedAt),
+          last_relance_at: toIsoDate(client.lastRelanceAt),
         }),
       });
       const data = (await response.json()) as { success?: boolean; id?: string; error?: string };
@@ -99,6 +102,9 @@ export async function pullClientsFromCloud(
       status: String(row.status ?? "prospect"),
       next_follow_up: (row.next_follow_up as string | null) ?? null,
       note: (row.note as string | null) ?? null,
+      sequence_step: row.sequence_step as number | null | undefined,
+      sequence_started_at: (row.sequence_started_at as string | null) ?? null,
+      last_relance_at: (row.last_relance_at as string | null) ?? null,
       updated_at: row.updated_at as string | undefined,
     }));
     if (!rows.length) return 0;

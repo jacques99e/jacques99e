@@ -12,6 +12,7 @@ import {
   addFieldJournalEntry,
   deleteFieldJournalEntry,
   listFieldJournal,
+  syncFieldJournal,
   type FieldJournalEntry,
 } from "@/lib/agriculture-journal";
 
@@ -30,7 +31,14 @@ export default function AgricultureJournalPage() {
   };
 
   useEffect(() => {
-    refresh();
+    if (!store?.id) return;
+    let cancelled = false;
+    void syncFieldJournal(store.id).then((rows) => {
+      if (!cancelled) setEntries(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [store?.id]);
 
   const submit = () => {
@@ -52,8 +60,8 @@ export default function AgricultureJournalPage() {
       <AppHeader title="Journal de champ" subtitle="Agriculture" />
       <main className="app-page space-y-4 pb-6">
         <p className="text-xs text-gray-600">
-          Notez chaque intervention par parcelle — semis, traitement, récolte. Exportable et
-          consultable hors ligne.
+          Notez chaque intervention par parcelle — semis, traitement, récolte. Chaque note est
+          enregistrée sur le compte et reste lisible hors ligne.
         </p>
 
         <section className="app-card space-y-3 p-4">

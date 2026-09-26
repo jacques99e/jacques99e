@@ -1,4 +1,4 @@
-import { listFieldJournal } from "@/lib/agriculture-journal";
+import { listFieldJournal, syncFieldJournal } from "@/lib/agriculture-journal";
 import { listAssets } from "@/lib/blockchain";
 import { activePromotions } from "@/lib/commerce-promotions";
 import { listCourses, listModules } from "@/lib/education";
@@ -147,6 +147,9 @@ export async function evaluateAchievements(
   const streak = getStreak();
   const clients = readLocalClients(storeId);
   const promos = activePromotions(storeId);
+  if (activeModules.includes("agriculture")) {
+    await syncFieldJournal(storeId);
+  }
   const journal = listFieldJournal(storeId);
   const deliveries = activeModules.includes("logistics") ? await listDeliveries(storeId) : [];
   const deliveredCount = deliveries.filter((d) => d.status === "delivered").length;

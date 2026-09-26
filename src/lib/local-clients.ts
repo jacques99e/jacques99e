@@ -72,6 +72,9 @@ export function mergeCloudClients(
     status: string;
     next_follow_up: string | null;
     note: string | null;
+    sequence_step?: number | null;
+    sequence_started_at?: string | null;
+    last_relance_at?: string | null;
     updated_at?: string;
   }>
 ): LocalClientRecord[] {
@@ -88,6 +91,7 @@ export function mergeCloudClients(
     const extId = row.external_local_id || row.id;
     const existing = byExternal.get(extId) || (row.id ? byCloud.get(row.id) : undefined);
     const tags = Array.isArray(row.tags) ? (row.tags as string[]) : [];
+    const cloudStep = row.sequence_step === 1 || row.sequence_step === 2 ? row.sequence_step : null;
     const merged: LocalClientRecord = {
       id: extId,
       store_id: storeId,
@@ -99,10 +103,9 @@ export function mergeCloudClients(
       nextFollowUp: row.next_follow_up,
       note: row.note || "",
       updated_at: row.updated_at,
-      // Champs séquence locaux (pas encore en cloud)
-      sequenceStep: existing?.sequenceStep ?? null,
-      sequenceStartedAt: existing?.sequenceStartedAt ?? null,
-      lastRelanceAt: existing?.lastRelanceAt ?? null,
+      sequenceStep: cloudStep,
+      sequenceStartedAt: row.sequence_started_at ?? null,
+      lastRelanceAt: row.last_relance_at ?? null,
     };
     if (existing) {
       const localTime = existing.updated_at ? Date.parse(existing.updated_at) : 0;

@@ -51,6 +51,59 @@ function buildHasQuizMap(
   return map;
 }
 
+/** Vrai seulement si chaque leçon est finie et qu'au moins un quiz du cours est réussi. */
+export async function certificateProgress(
+  service: SupabaseClient,
+  enrollment: {
+    id: string;
+    course_id: string;
+    progress_percent?: number | null;
+    progress_meta?: unknown;
+    completed_at?: string | null;
+  }
+): Promise<{ ok: boolean; percent: number }> {
+  const storedPercent = enrollment.progress_percent ?? 0;
+  const { data: modules, error: modulesError } = await service
+    .from("course_modules")
+    .select("id, sort_order")
+    .eq("course_id", enrollment.course_id)
+    .order("sort_order");
+
+  if (modulesError || !modules?.length) {
+    return { ok: false, percent: storedPercent };
+  }
+  const orderedIds = modules.map((m) => m.id as string);
+  const { data: quizRows } = await service
+    .from("course_quizzes")
+    .select("module_id, questions")
+    .in("module_id", orderedIds);
+  const hasQuizByModuleId = buildHasQuizMap(
+    orderedIds,
+    quizRows as Array<{ module_id: string; questions: unknown }> | null
+  );
+  if (!orderedIds.some((id) => hasQuizByModuleId[id])) {
+    return { ok: false, percent: Math.min(storedPercent, 99) };
+  }
+
+  const meta = normalizeMeta(enrollment.progress_meta);
+  if (!meta) {
+    return {
+      ok: storedPercent >= 100 && Boolean(enrollment.completed_at),
+      percent: storedPercent,
+    };
+  }
+  const allowed = new Set(orderedIds);
+  const percent = computeProgressPercent(
+    orderedIds,
+    {
+      completedModuleIds: meta.completedModuleIds.filter((id) => allowed.has(id)),
+      passedQuizModuleIds: meta.passedQuizModuleIds.filter((id) => allowed.has(id)),
+    },
+    hasQuizByModuleId
+  );
+  return { ok: percent >= 100, percent };
+}
+
 /** Recalcule la progression uniquement depuis ce qui est déjà enregistré en base. */
 export async function ensureEnrollmentCompleted(
   service: SupabaseClient,

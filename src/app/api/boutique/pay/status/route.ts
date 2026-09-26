@@ -31,7 +31,7 @@ function publicView(
  * Ne révèle rien d'une autre boutique.
  */
 export async function GET(request: NextRequest) {
-  if (!allowIp(request, "boutique-pay-status", 40, 60 * 1000)) {
+  if (!(await allowIp(request, "boutique-pay-status", 40, 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de requêtes. Réessayez plus tard." },
       { status: 429 }

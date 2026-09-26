@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
-  if (!allowRequest(`invite-sms:${auth.userId}`, 8, 60 * 60 * 1000)) {
+  if (!(await allowRequest(`invite-sms:${auth.userId}`, 8, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop d'invitations SMS. Réessayez plus tard." },
       { status: 429 }

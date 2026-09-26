@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
-  if (!allowRequest(`delivery-sms:${auth.userId}`, 20, 60 * 60 * 1000)) {
+  if (!(await allowRequest(`delivery-sms:${auth.userId}`, 20, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de SMS de suivi. Réessayez plus tard." },
       { status: 429 }

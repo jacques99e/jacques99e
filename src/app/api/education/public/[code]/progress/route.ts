@@ -24,8 +24,8 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Paramètres invalides" }, { status: 400 });
   }
   if (
-    !allowIp(request, "formation-progress", 40, 60 * 60 * 1000) ||
-    !allowRequest(`formation-progress:${enrollmentId}`, 30, 60 * 60 * 1000)
+    !(await allowIp(request, "formation-progress", 40, 60 * 60 * 1000)) ||
+    !(await allowRequest(`formation-progress:${enrollmentId}`, 30, 60 * 60 * 1000))
   ) {
     return NextResponse.json(
       { success: false, error: "Trop de tentatives. Réessayez plus tard." },

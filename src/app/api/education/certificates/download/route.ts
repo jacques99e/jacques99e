@@ -8,7 +8,7 @@ import {
 } from "@/lib/certificate-server";
 
 export async function POST(request: Request) {
-  if (!allowIp(request, "certificate-download", 12, 60 * 60 * 1000)) {
+  if (!(await allowIp(request, "certificate-download", 12, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de tentatives. Réessayez plus tard." },
       { status: 429 }

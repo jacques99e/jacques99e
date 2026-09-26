@@ -221,6 +221,14 @@ export function StudentLearnPanel({
                 style={{ width: `${percent}%` }}
               />
             </div>
+            {percent < 100 &&
+            orderedIds.length > 0 &&
+            orderedIds.every((id) => id in hasQuizByModuleId) &&
+            !orderedIds.some((id) => hasQuizByModuleId[id]) ? (
+              <p className="mt-2 text-xs text-gray-600">
+                Ce parcours n&apos;a pas encore de quiz. Le certificat reste fermé.
+              </p>
+            ) : null}
             {percent >= 100 ? (
               <div className="mt-3 space-y-2">
                 <p className="text-xs font-medium text-green-700">

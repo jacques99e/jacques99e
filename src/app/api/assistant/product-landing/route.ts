@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!allowUser(auth.userId, "assistant", 25, 60 * 60 * 1000)) {
+  if (!(await allowUser(auth.userId, "assistant", 25, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de requêtes IA. Réessayez plus tard." },
       { status: 429 }

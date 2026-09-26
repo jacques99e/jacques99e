@@ -30,7 +30,7 @@ function clip(value: string, max: number): string {
  * Le prix vient toujours de la base — jamais du client.
  */
 export async function POST(request: Request) {
-  if (!allowIp(request, "boutique-pay", 8, 60 * 60 * 1000)) {
+  if (!(await allowIp(request, "boutique-pay", 8, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de paiements. Réessayez plus tard." },
       { status: 429 }

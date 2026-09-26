@@ -17,7 +17,7 @@ export async function proxy(request: NextRequest) {
       );
     }
     const limit = allowPublicApi(pathname, method);
-    if (limit && !allowIp(request, limit.scope, limit.max, limit.windowMs)) {
+    if (limit && !(await allowIp(request, limit.scope, limit.max, limit.windowMs))) {
       return NextResponse.json(
         { success: false, error: "Trop de requêtes. Réessayez plus tard." },
         { status: 429 }

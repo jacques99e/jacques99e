@@ -5,7 +5,7 @@ import { issueCertificateForEnrollment, type CertificateIssueInput } from "@/lib
 import { allowIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  if (!allowIp(request, "certificate-issue", 12, 60 * 60 * 1000)) {
+  if (!(await allowIp(request, "certificate-issue", 12, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de tentatives. Réessayez plus tard." },
       { status: 429 }

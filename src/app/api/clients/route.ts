@@ -42,6 +42,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
+function sequenceStep(value: unknown): 1 | 2 | null {
+  if (value === 1 || value === "1") return 1;
+  if (value === 2 || value === "2") return 2;
+  return null;
+}
+
+function isoDate(value: unknown): string | null {
+  const day = String(value ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
 /** POST /api/clients — upsert client CRM. */
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +71,9 @@ export async function POST(request: NextRequest) {
       status?: string;
       next_follow_up?: string | null;
       note?: string | null;
+      sequence_step?: number | string | null;
+      sequence_started_at?: string | null;
+      last_relance_at?: string | null;
     };
 
     const storeId = body.store_id?.trim();
@@ -85,8 +99,11 @@ export async function POST(request: NextRequest) {
       phone: body.phone || null,
       tags: Array.isArray(body.tags) ? body.tags : [],
       status: body.status || "prospect",
-      next_follow_up: body.next_follow_up || null,
+      next_follow_up: isoDate(body.next_follow_up),
       note: body.note || null,
+      sequence_step: sequenceStep(body.sequence_step),
+      sequence_started_at: isoDate(body.sequence_started_at),
+      last_relance_at: isoDate(body.last_relance_at),
       updated_at: new Date().toISOString(),
     };
 

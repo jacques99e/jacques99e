@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
-  if (!allowRequest(`sms-test:${auth.userId}`, 3, 60 * 60 * 1000)) {
+  if (!(await allowRequest(`sms-test:${auth.userId}`, 3, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de tests SMS. Réessayez plus tard." },
       { status: 429 }

@@ -8,7 +8,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ code: string }> }
 ) {
-  if (!allowIp(request, "formation-enroll", 8, 60 * 60 * 1000)) {
+  if (!(await allowIp(request, "formation-enroll", 8, 60 * 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de tentatives. Réessayez plus tard." },
       { status: 429 }
@@ -54,8 +54,8 @@ export async function POST(
     const smsDigits = contact?.replace(/\D/g, "") || "";
     const smsAllowed =
       smsDigits.length >= 8 &&
-      allowRequest(`formation-sms-phone:${smsDigits}`, 1, 24 * 60 * 60 * 1000) &&
-      allowIp(request, "formation-sms", 3, 60 * 60 * 1000);
+      (await allowRequest(`formation-sms-phone:${smsDigits}`, 1, 24 * 60 * 60 * 1000)) &&
+      (await allowIp(request, "formation-sms", 3, 60 * 60 * 1000));
     if (contact && looksLikePhone(contact) && course.invite_code && !enrollment.invite_sms_sent_at && smsAllowed) {
       const base = (process.env.NEXT_PUBLIC_APP_URL || "https://app.wazo-digital.com").replace(
         /\/$/,

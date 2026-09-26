@@ -7,7 +7,7 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ hash: string }> }
 ) {
-  if (!allowIp(request, "trace", 40, 60 * 1000)) {
+  if (!(await allowIp(request, "trace", 40, 60 * 1000))) {
     return NextResponse.json(
       { success: false, error: "Trop de recherches. Réessayez plus tard." },
       { status: 429 }

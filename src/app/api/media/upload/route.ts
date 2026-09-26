@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) {
       return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
     }
-    if (!allowUser(auth.userId, "media-upload", 30, 60 * 60 * 1000)) {
+    if (!(await allowUser(auth.userId, "media-upload", 30, 60 * 60 * 1000))) {
       return NextResponse.json(
         { success: false, error: "Trop d'envois. Réessayez plus tard." },
         { status: 429 }
